@@ -6,7 +6,7 @@ else
 RUN := $(COMPOSE) run --build --rm app
 endif
 
-.PHONY: dev down db-upgrade db-current test lint format format-check typecheck precommit check e2e
+.PHONY: dev down db-upgrade db-current admin-create admin-reset-password test lint format format-check typecheck precommit check e2e
 
 dev:
 	$(COMPOSE) up --build
@@ -19,6 +19,12 @@ db-upgrade:
 
 db-current:
 	$(RUN) alembic current
+
+admin-create:
+	$(RUN) python -m app.cli create-admin
+
+admin-reset-password:
+	$(RUN) python -m app.cli reset-password
 
 test:
 	$(RUN) env APP_ENVIRONMENT=test pytest

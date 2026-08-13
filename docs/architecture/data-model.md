@@ -10,7 +10,7 @@ Em produção, o arquivo persistente é `/var/lib/palworld-manager/manager.db`; 
 
 ### `users`
 
-Representa administradores, inicialmente um único usuário, com identidade e material de autenticação protegido. Relaciona-se conceitualmente a sessões, tentativas de login e eventos de auditoria.
+Representa administradores, inicialmente um único usuário, com identidade e hash Argon2id da senha. A criação inicial e a redefinição por CLI estão implementadas; nenhuma senha em texto puro é persistida. Relaciona-se conceitualmente a sessões, tentativas de login e eventos de auditoria.
 
 ### `sessions`
 

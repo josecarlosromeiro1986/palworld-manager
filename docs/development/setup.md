@@ -19,6 +19,8 @@ Não é necessário instalar localmente SQLite, servidores Palworld, rclone, Dis
 make dev
 make db-upgrade
 make db-current
+make admin-create
+make admin-reset-password
 make test
 make lint
 make format
@@ -28,7 +30,14 @@ make check
 make down
 ```
 
-`make dev` mantém os serviços em primeiro plano. `make db-upgrade` aplica migrations pendentes ao SQLite configurado; `make db-current` mostra a revisão atual. `make check` executa lint, verificação de formatação, análise estática e testes. `make e2e` está reservado para a Etapa 28 e ainda não executa testes de navegador.
+`make dev` mantém os serviços em primeiro plano. `make db-upgrade` aplica migrations pendentes ao SQLite configurado; `make db-current` mostra a revisão atual. Depois da migration, `make admin-create` cria o único administrador da V1 e `make admin-reset-password` redefine sua senha. Ambos solicitam usuário e senha interativamente; a senha é oculta, confirmada e nunca deve ser passada como argumento. `make check` executa lint, verificação de formatação, análise estática e testes. `make e2e` está reservado para a Etapa 28 e ainda não executa testes de navegador.
+
+Os comandos equivalentes da CLI aceitam `--username` opcional, mas sempre leem a senha pelo terminal:
+
+```bash
+python -m app.cli create-admin
+python -m app.cli reset-password
+```
 
 ## Ambientes e configuração
 

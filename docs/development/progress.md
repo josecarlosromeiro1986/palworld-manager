@@ -9,10 +9,11 @@ Nenhuma etapa em andamento.
 - Etapa 1 — Bootstrap.
 - Etapa 2 — Configuração e ambientes.
 - Etapa 3 — Banco e migrations.
+- Etapa 4 — Administrador e Argon2id.
 
 ## Próxima etapa
 
-Etapa 4 — Administrador e Argon2id.
+Etapa 5 — Login, sessão e CSRF.
 
 ## Observações
 

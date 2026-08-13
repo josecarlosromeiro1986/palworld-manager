@@ -1,6 +1,6 @@
 # Segurança
 
-> Status: Planejado para a V1.
+> Status: Em desenvolvimento. O hash Argon2id e a administração inicial de credenciais por CLI estão implementados; sessões, brute force e CSRF permanecem planejados para as etapas correspondentes.
 
 A aplicação seguirá o princípio do menor privilégio. Em produção, será executada pelo usuário Linux dedicado `palmanager`, nunca como `root`. O `sudoers` permitirá somente comandos ou scripts estritamente necessários, com executáveis, serviços, caminhos e argumentos validados; não haverá permissão genérica.
 
@@ -8,7 +8,8 @@ A aplicação seguirá o princípio do menor privilégio. Em produção, será e
 
 - FastAPI escutará apenas em localhost e será publicado por Tailscale Serve com HTTPS.
 - Tailscale controlará os dispositivos autorizados, sem whitelist duplicada no Manager.
-- O Manager manterá autenticação própria, com senhas protegidas por Argon2id.
+- O Manager armazena somente hashes Argon2id. A senha deve ter ao menos 6 caracteres e nunca é aceita como argumento de linha de comando.
+- A criação do administrador inicial e a redefinição de senha estão disponíveis por CLI interativa, com entrada oculta e confirmação.
 - As sessões serão server-side no SQLite e o cookie conterá apenas um identificador opaco.
 - A sessão terá no máximo 8 horas e expirará após 1 hora de inatividade.
 - Cinco tentativas inválidas causarão bloqueio por 15 minutos e serão auditadas.
