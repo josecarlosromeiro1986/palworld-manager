@@ -1,0 +1,4 @@
+interface:
+  display_name: "Testing Quality"
+  short_description: "Testes e gates de qualidade do projeto"
+  default_prompt: "Use $testing-quality para planejar e validar os testes desta mudança."

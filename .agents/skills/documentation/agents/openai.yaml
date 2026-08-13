@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentation"
+  short_description: "Documentação técnica e operacional do projeto"
+  default_prompt: "Use $documentation para atualizar os documentos sem divergir da especificação da V1."

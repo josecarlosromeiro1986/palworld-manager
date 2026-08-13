@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Conventions"
+  short_description: "Convenções gerais de desenvolvimento do projeto"
+  default_prompt: "Use $project-conventions para implementar a mudança seguindo as convenções do Palworld Manager."

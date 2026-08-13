@@ -1,0 +1,4 @@
+interface:
+  display_name: "Backup Restore"
+  short_description: "Backups e restores seguros do servidor"
+  default_prompt: "Use $backup-restore para implementar este fluxo crítico de backup ou restauração."

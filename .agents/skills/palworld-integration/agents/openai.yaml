@@ -1,0 +1,4 @@
+interface:
+  display_name: "Palworld Integration"
+  short_description: "Integrações oficiais com o servidor Palworld"
+  default_prompt: "Use $palworld-integration para implementar esta integração com interfaces oficiais e fakes testáveis."
