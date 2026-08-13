@@ -236,7 +236,7 @@ V1 com um administrador, mas modelo preparado para múltiplos usuários futuros.
 - logout invalida sessão;
 - troca de senha invalida todas as sessões;
 - cookies `HttpOnly` e `SameSite=Strict` em todos os ambientes; o cookie de sessão usa `Secure` obrigatoriamente em produção e pode omiti-lo somente em development/test para permitir o acesso HTTP local;
-- 5 tentativas erradas → bloqueio por 15 minutos;
+- 5 tentativas erradas consecutivas para o mesmo usuário → bloqueio desse usuário por 15 minutos; um login bem-sucedido ou a expiração do bloqueio reinicia a contagem; o endereço de origem observado é registrado para auditoria, mas não compõe a chave do bloqueio;
 - tentativas/bloqueios auditados;
 - sem CAPTCHA;
 - CSRF obrigatório em toda operação que altera estado.

@@ -1,6 +1,6 @@
 # Segurança
 
-> Status: Em desenvolvimento. Credenciais Argon2id, sessões server-side, cookies e CSRF estão implementados; brute force e auditoria de login permanecem planejados para a etapa seguinte.
+> Status: Em desenvolvimento. Credenciais Argon2id, sessões server-side, cookies, CSRF e proteção contra brute force estão implementados; o restante do hardening será entregue nas etapas correspondentes.
 
 A aplicação seguirá o princípio do menor privilégio. Em produção, será executada pelo usuário Linux dedicado `palmanager`, nunca como `root`. O `sudoers` permitirá somente comandos ou scripts estritamente necessários, com executáveis, serviços, caminhos e argumentos validados; não haverá permissão genérica.
 
@@ -13,7 +13,8 @@ A aplicação seguirá o princípio do menor privilégio. Em produção, será e
 - As sessões são server-side no SQLite. Tokens de sessão e CSRF são aleatórios; somente seus hashes ficam no banco.
 - O cookie contém um identificador opaco. Sessões duram no máximo 8 horas e expiram após 1 hora de inatividade; logout e troca de senha as revogam.
 - Cookies de autenticação usam `HttpOnly` e `SameSite=Strict`. `Secure` é obrigatório em produção e omitido somente em development/test para permitir HTTP local.
-- Cinco tentativas inválidas causarão bloqueio por 15 minutos e serão auditadas.
+- Cinco tentativas inválidas consecutivas para o mesmo usuário causam bloqueio por 15 minutos. Login bem-sucedido ou expiração do bloqueio reinicia a contagem.
+- O endereço de origem observado é armazenado para auditoria, mas não compõe a chave do bloqueio. Tentativas e bloqueios são auditados sem registrar senhas.
 - Login e logout já validam CSRF; toda nova ação que alterar estado deverá aplicar a mesma proteção e controles contra double-submit.
 
 ## Secrets e registros

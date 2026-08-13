@@ -17,7 +17,7 @@ from app.auth.cookies import (
     set_session_cookies,
 )
 from app.auth.csrf import tokens_match
-from app.auth.service import authenticate_administrator
+from app.auth.login_protection import attempt_administrator_login
 from app.auth.sessions import (
     SessionPrincipal,
     issue_session,
@@ -41,6 +41,12 @@ def _session_factory(request: Request) -> sessionmaker[Session]:
 
 def _principal(request: Request) -> SessionPrincipal:
     return cast(SessionPrincipal, request.state.principal)
+
+
+def _source_address(request: Request) -> str | None:
+    if request.client is None:
+        return None
+    return request.client.host[:45]
 
 
 def _login_page(
@@ -83,8 +89,21 @@ def login(
         return PlainTextResponse("Token CSRF inválido.", status_code=403)
 
     with session_scope(_session_factory(request)) as session:
-        administrator = authenticate_administrator(session, username, password)
-        if administrator is None:
+        result = attempt_administrator_login(
+            session,
+            username,
+            password,
+            _source_address(request),
+        )
+        if result.blocked:
+            return _login_page(
+                request,
+                login_csrf_cookie,
+                status_code=429,
+                error="Muitas tentativas. Tente novamente mais tarde.",
+                username=username,
+            )
+        if result.user is None:
             return _login_page(
                 request,
                 login_csrf_cookie,
@@ -92,7 +111,7 @@ def login(
                 error="Usuário ou senha inválidos.",
                 username=username,
             )
-        issued = issue_session(session, administrator)
+        issued = issue_session(session, result.user)
 
     response = RedirectResponse("/", status_code=303)
     set_session_cookies(response, issued, _settings(request))

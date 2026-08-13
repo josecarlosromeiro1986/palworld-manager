@@ -4,6 +4,7 @@ from app.auth.passwords import (
     PasswordTooShortError,
     hash_password,
     verify_password,
+    verify_password_or_dummy,
 )
 
 
@@ -22,6 +23,10 @@ def test_password_verification_rejects_wrong_password_and_invalid_hash() -> None
 
     assert not verify_password("senha-incorreta", password_hash)
     assert not verify_password("senha-correta", "hash-invalido")
+
+
+def test_password_verification_uses_dummy_hash_for_unknown_user() -> None:
+    assert not verify_password_or_dummy("senha-ficticia", None)
 
 
 def test_password_requires_at_least_six_characters() -> None:

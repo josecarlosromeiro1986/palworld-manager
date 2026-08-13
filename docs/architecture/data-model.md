@@ -18,7 +18,7 @@ Mantém sessões server-side, seus prazos absoluto e de inatividade e o estado d
 
 ### `login_attempts`
 
-Registra informações mínimas para aplicar e auditar a proteção contra brute force. Pode ser associado a um usuário quando identificado, sem armazenar senhas ou cookies.
+Registra as informações mínimas usadas pela proteção contra brute force: usuário informado, resultado, horário, endereço de origem observado e prazo do bloqueio, quando houver. Pode ser associado a um usuário identificado, sem armazenar senhas ou cookies. A aplicação já usa esses registros para aplicar o limite transacionalmente no SQLite.
 
 ### `app_settings`
 
@@ -26,7 +26,7 @@ Armazena configurações operacionais seguras e editáveis pelo painel, como tim
 
 ### `audit_events`
 
-Registra a trilha do que aconteceu no sistema, quem ou qual origem executou e qual foi o resultado. Pode referenciar usuário e job responsáveis, além de ações como `UPDATE_SERVER`, `BACKUP`, `RESTORE`, `BAN`, `UNBAN` e `LOGIN_BLOCKED`.
+Registra a trilha do que aconteceu no sistema, quem ou qual origem executou e qual foi o resultado. Pode referenciar usuário e job responsáveis, além de ações como `UPDATE_SERVER`, `BACKUP`, `RESTORE`, `BAN`, `UNBAN` e `LOGIN_BLOCKED`. A fundação implementada já registra tentativas de login e o evento de bloqueio; consulta, retenção operacional e auditoria dos demais domínios pertencem às etapas posteriores.
 
 ### `notification_events`
 

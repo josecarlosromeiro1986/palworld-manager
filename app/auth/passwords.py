@@ -5,6 +5,7 @@ from argon2.low_level import Type
 MINIMUM_PASSWORD_LENGTH = 6
 
 _password_hasher = PasswordHasher(type=Type.ID)
+_dummy_password_hash = _password_hasher.hash("palworld-manager-dummy-password")
 
 
 class PasswordTooShortError(ValueError):
@@ -28,3 +29,9 @@ def verify_password(password: str, password_hash: str) -> bool:
         return _password_hasher.verify(password_hash, password)
     except (InvalidHashError, VerificationError):
         return False
+
+
+def verify_password_or_dummy(password: str, password_hash: str | None) -> bool:
+    candidate_hash = password_hash if password_hash is not None else _dummy_password_hash
+    verified = verify_password(password, candidate_hash)
+    return password_hash is not None and verified

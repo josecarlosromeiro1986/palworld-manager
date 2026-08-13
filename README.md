@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. O bootstrap, a configuração estrutural, a fundação SQLite/Alembic e a autenticação segura estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. O bootstrap, a configuração estrutural, a fundação SQLite/Alembic, a autenticação segura e a proteção contra brute force estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 

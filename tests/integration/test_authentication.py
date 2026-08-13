@@ -16,7 +16,7 @@ from app.auth.cookies import (
 from app.auth.service import create_administrator
 from app.config import AppEnvironment, Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import SessionRecord
+from app.db.models import AuditEvent, LoginAttempt, SessionRecord
 from app.main import create_app
 
 
@@ -100,6 +100,46 @@ def test_login_requires_csrf_and_uses_generic_credentials_error(
     assert credentials_failure.status_code == 401
     assert "Usuário ou senha inválidos." in credentials_failure.text
     assert "senha-incorreta" not in credentials_failure.text
+
+
+def test_login_route_blocks_the_fifth_failure_and_audits_attempts(
+    authentication_context: AuthenticationContext,
+) -> None:
+    client = authentication_context.client
+    csrf_token = _login_csrf(client)
+
+    responses = [
+        client.post(
+            "/login",
+            data={
+                "username": "admin",
+                "password": "senha-incorreta",
+                "csrf_token": csrf_token,
+            },
+        )
+        for _ in range(5)
+    ]
+    correct_password_while_blocked = client.post(
+        "/login",
+        data={
+            "username": "admin",
+            "password": "senha-ficticia",
+            "csrf_token": csrf_token,
+        },
+    )
+
+    assert [response.status_code for response in responses] == [401, 401, 401, 401, 429]
+    assert correct_password_while_blocked.status_code == 429
+    assert "Muitas tentativas." in correct_password_while_blocked.text
+
+    factory = create_session_factory(authentication_context.engine)
+    with session_scope(factory) as session:
+        attempts = list(session.scalars(select(LoginAttempt)))
+        block_events = list(
+            session.scalars(select(AuditEvent).where(AuditEvent.action == "LOGIN_BLOCKED"))
+        )
+    assert len(attempts) == 6
+    assert len(block_events) == 1
 
 
 def test_login_session_logout_and_csrf_flow(
