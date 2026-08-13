@@ -1,6 +1,6 @@
 # Segurança
 
-> Status: Em desenvolvimento. O hash Argon2id e a administração inicial de credenciais por CLI estão implementados; sessões, brute force e CSRF permanecem planejados para as etapas correspondentes.
+> Status: Em desenvolvimento. Credenciais Argon2id, sessões server-side, cookies e CSRF estão implementados; brute force e auditoria de login permanecem planejados para a etapa seguinte.
 
 A aplicação seguirá o princípio do menor privilégio. Em produção, será executada pelo usuário Linux dedicado `palmanager`, nunca como `root`. O `sudoers` permitirá somente comandos ou scripts estritamente necessários, com executáveis, serviços, caminhos e argumentos validados; não haverá permissão genérica.
 
@@ -10,10 +10,11 @@ A aplicação seguirá o princípio do menor privilégio. Em produção, será e
 - Tailscale controlará os dispositivos autorizados, sem whitelist duplicada no Manager.
 - O Manager armazena somente hashes Argon2id. A senha deve ter ao menos 6 caracteres e nunca é aceita como argumento de linha de comando.
 - A criação do administrador inicial e a redefinição de senha estão disponíveis por CLI interativa, com entrada oculta e confirmação.
-- As sessões serão server-side no SQLite e o cookie conterá apenas um identificador opaco.
-- A sessão terá no máximo 8 horas e expirará após 1 hora de inatividade.
+- As sessões são server-side no SQLite. Tokens de sessão e CSRF são aleatórios; somente seus hashes ficam no banco.
+- O cookie contém um identificador opaco. Sessões duram no máximo 8 horas e expiram após 1 hora de inatividade; logout e troca de senha as revogam.
+- Cookies de autenticação usam `HttpOnly` e `SameSite=Strict`. `Secure` é obrigatório em produção e omitido somente em development/test para permitir HTTP local.
 - Cinco tentativas inválidas causarão bloqueio por 15 minutos e serão auditadas.
-- Toda ação que altera estado exigirá proteção CSRF e controles contra double-submit.
+- Login e logout já validam CSRF; toda nova ação que alterar estado deverá aplicar a mesma proteção e controles contra double-submit.
 
 ## Secrets e registros
 

@@ -10,10 +10,11 @@ Nenhuma etapa em andamento.
 - Etapa 2 — Configuração e ambientes.
 - Etapa 3 — Banco e migrations.
 - Etapa 4 — Administrador e Argon2id.
+- Etapa 5 — Login, sessão e CSRF.
 
 ## Próxima etapa
 
-Etapa 5 — Login, sessão e CSRF.
+Etapa 6 — Brute force e auditoria básica.
 
 ## Observações
 

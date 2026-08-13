@@ -12,13 +12,16 @@ dependencies = [
     "alembic>=1.14,<2",
     "argon2-cffi>=25.1,<26",
     "fastapi>=0.115,<1",
+    "jinja2>=3.1,<4",
     "pydantic-settings>=2.7,<3",
+    "python-multipart>=0.0.20,<1",
     "sqlalchemy>=2.0,<3",
     "uvicorn[standard]>=0.32,<1",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "httpx2>=2.9,<3",
     "mypy>=1.13,<2",
     "pre-commit>=4,<5",
     "pytest>=8.3,<10",

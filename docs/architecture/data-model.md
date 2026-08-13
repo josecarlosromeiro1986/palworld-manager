@@ -14,7 +14,7 @@ Representa administradores, inicialmente um único usuário, com identidade e ha
 
 ### `sessions`
 
-Mantém sessões server-side, seus prazos e estado de invalidação. Cada sessão pertence a um usuário; o cliente recebe apenas um identificador opaco.
+Mantém sessões server-side, seus prazos absoluto e de inatividade e o estado de revogação. Cada sessão pertence a um usuário; o cliente recebe identificadores opacos, enquanto o SQLite guarda somente hashes dos tokens de sessão e CSRF. A coluna necessária ao CSRF foi adicionada pela revision `0002_session_csrf`.
 
 ### `login_attempts`
 

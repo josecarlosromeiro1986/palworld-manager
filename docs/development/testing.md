@@ -25,4 +25,6 @@ Testes de banco usam um `manager.db` temporário por caso e executam `alembic up
 
 Os testes de credenciais verificam o formato Argon2id, a senha mínima, rejeição de hashes inválidos, criação de um único administrador e redefinição pela CLI. Usam bancos temporários e confirmam que senhas em texto puro não são persistidas nem exibidas.
 
+Os testes de autenticação cobrem rotas privadas por padrão, login e logout, CSRF, atributos dos cookies, revogação por troca de senha e limites exatos de 8 horas totais e 1 hora de inatividade. O cliente ASGI usa `httpx2`, conforme a integração suportada pelo Starlette atual.
+
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

@@ -235,7 +235,7 @@ V1 com um administrador, mas modelo preparado para múltiplos usuários futuros.
 - inatividade máxima: 1 hora;
 - logout invalida sessão;
 - troca de senha invalida todas as sessões;
-- cookies `Secure`, `HttpOnly`, `SameSite` apropriado;
+- cookies `HttpOnly` e `SameSite=Strict` em todos os ambientes; o cookie de sessão usa `Secure` obrigatoriamente em produção e pode omiti-lo somente em development/test para permitir o acesso HTTP local;
 - 5 tentativas erradas → bloqueio por 15 minutos;
 - tentativas/bloqueios auditados;
 - sem CAPTCHA;

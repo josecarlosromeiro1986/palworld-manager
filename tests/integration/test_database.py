@@ -47,7 +47,7 @@ def test_new_database_is_created_only_by_migrations(migrated_engine: Engine) -> 
     with migrated_engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
 
-    assert revision == "0001_initial_schema"
+    assert revision == "0002_session_csrf"
 
 
 def test_sqlite_connections_enable_integrity_and_concurrency_pragmas(

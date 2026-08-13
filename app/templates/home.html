@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Palworld Manager</title>
+  </head>
+  <body>
+    <main>
+      <h1>Palworld Manager</h1>
+      <p>Usuário autenticado: {{ username }}</p>
+      <form method="post" action="/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Sair</button>
+      </form>
+    </main>
+  </body>
+</html>

@@ -13,8 +13,9 @@ from app.auth.service import (
     create_administrator,
     reset_administrator_password,
 )
+from app.auth.sessions import issue_session
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import User
+from app.db.models import SessionRecord, User
 
 
 @pytest.fixture
@@ -66,6 +67,7 @@ def test_reset_administrator_password_replaces_hash(migrated_engine: Engine) -> 
 
     with session_scope(factory) as session:
         administrator = create_administrator(session, "admin", "senha-antiga")
+        issue_session(session, administrator)
         old_hash = administrator.password_hash
 
     with session_scope(factory) as session:
@@ -77,6 +79,9 @@ def test_reset_administrator_password_replaces_hash(migrated_engine: Engine) -> 
         assert stored.password_hash != old_hash
         assert not verify_password("senha-antiga", stored.password_hash)
         assert verify_password("senha-nova", stored.password_hash)
+        stored_session = session.scalar(select(SessionRecord))
+        assert stored_session is not None
+        assert stored_session.revoked_at is not None
 
 
 def test_reset_rejects_unknown_administrator(migrated_engine: Engine) -> None:

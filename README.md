@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. O bootstrap, a configuração estrutural, a fundação SQLite/Alembic e a administração inicial de credenciais estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. O bootstrap, a configuração estrutural, a fundação SQLite/Alembic e a autenticação segura estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -31,7 +31,7 @@ Pré-requisitos: Git, Docker com Docker Compose e GNU Make. Python e as ferramen
 make dev
 ```
 
-A aplicação fica disponível em `http://127.0.0.1:8080` e o simulador mínimo em `http://127.0.0.1:8090`. Para encerrar os containers, execute `make down`.
+A aplicação fica disponível em `http://127.0.0.1:8080` e exige o administrador criado com `make admin-create`; o simulador mínimo fica em `http://127.0.0.1:8090`. Para encerrar os containers, execute `make down`.
 
 ```bash
 make test
