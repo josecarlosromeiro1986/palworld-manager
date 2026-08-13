@@ -1,0 +1,38 @@
+{% if error %}
+  <p class="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning" role="alert">
+    {{ error }}
+  </p>
+{% elif job %}
+  {% set action_labels = {"START": "Iniciar", "STOP": "Parar", "RESTART": "Reiniciar"} %}
+  {% set terminal = job.status in ["SUCCEEDED", "FAILED"] %}
+  <div
+    class="rounded-md border bg-surface-raised px-3 py-2 text-sm"
+    data-lifecycle-job="{{ job.id }}"
+    data-job-status="{{ job.status }}"
+    {% if not terminal %}
+      hx-get="/dashboard/lifecycle/jobs/{{ job.id }}"
+      hx-trigger="every 1s"
+      hx-swap="outerHTML"
+    {% endif %}
+  >
+    <div class="flex items-center justify-between gap-3">
+      <p class="font-medium text-ink">{{ action_labels[job.action.value] }} servidor</p>
+      {% if job.status == "SUCCEEDED" %}
+        <span class="font-semibold text-positive">CONCLUÍDO</span>
+      {% elif job.status == "FAILED" %}
+        <span class="font-semibold text-danger">FALHOU</span>
+      {% elif job.status == "RUNNING" %}
+        <span class="font-semibold text-accent">EM EXECUÇÃO</span>
+      {% else %}
+        <span class="font-semibold text-muted">PENDENTE</span>
+      {% endif %}
+    </div>
+    {% if job.timed_out %}
+      <p class="mt-1 text-xs text-danger">O timeout configurado foi atingido.</p>
+    {% elif job.final_state %}
+      <p class="mt-1 text-xs text-muted">Estado final: {{ job.final_state }}</p>
+    {% else %}
+      <p class="mt-1 text-xs text-muted">Job #{{ job.id }} · progresso {{ job.progress }}%</p>
+    {% endif %}
+  </div>
+{% endif %}

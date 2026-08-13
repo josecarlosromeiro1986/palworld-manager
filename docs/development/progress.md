@@ -16,10 +16,11 @@ Nenhuma etapa em andamento.
 - Etapa 8 — Métricas.
 - Etapa 9 — systemd Palworld.
 - Etapa 10 — Health check.
+- Etapa 11 — Controle Start/Stop/Restart.
 
 ## Próxima etapa
 
-Etapa 11 — Controle Start/Stop/Restart.
+Etapa 12 — Shutdown assistido/forçado.
 
 ## Observações
 

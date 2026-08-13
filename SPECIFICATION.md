@@ -304,8 +304,12 @@ O probe REST do health check consulta `GET /info` a partir de `PALWORLD_REST_BAS
 ### Start / Restart
 `systemctl` → aguardar processo → REST API → health check → ONLINE. Timeout 120 s.
 
+Start e Restart são jobs persistentes, exigem confirmação na UI e usam respectivamente `start_timeout_seconds` e `restart_timeout_seconds`. Apenas o worker executa o comando; FastAPI cria e acompanha o job.
+
 ### Stop
 Aviso assistido quando aplicável → `systemctl stop` → aguardar processo → confirmar `inactive` → confirmar portas relevantes fechadas → OFFLINE. Timeout 60 s.
+
+O Stop é um job persistente, exige confirmação na UI e usa `stop_timeout_seconds`. A conclusão requer health `OFFLINE` e a porta da REST API configurada fechada. A lógica de avisos a jogadores e encerramento forçado pertence à etapa de desligamento assistido.
 
 Nunca usar `kill -9` automaticamente.
 

@@ -1,6 +1,6 @@
 # Desenvolvimento com Docker
 
-> Status: Em desenvolvimento. Os três containers base e o fake do serviço Palworld estão implementados; jobs e integrações externas continuam planejados.
+> Status: Em desenvolvimento. Os três containers base, o fake compartilhado do Palworld e os jobs de ciclo de vida estão implementados; jobs e integrações adicionais continuam planejados.
 
 O Docker Compose de desenvolvimento possui três containers e preserva a separação entre aplicação web e worker usada em produção. Todos usam a mesma imagem de desenvolvimento com comandos diferentes.
 
@@ -8,11 +8,11 @@ O Docker Compose de desenvolvimento possui três containers e preserva a separa�
 
 ## `app`
 
-Compila os assets locais no startup, executa o FastAPI com reload, valida `APP_ENVIRONMENT`, host, porta e caminhos estruturais e publica a porta `8080` somente em `127.0.0.1`. Já fornece `/health`, autenticação, métricas, layout administrativo responsivo e consulta do estado do serviço Palworld por fake. A criação e o acompanhamento de jobs serão adicionados nas etapas correspondentes.
+Compila os assets locais no startup, executa o FastAPI com reload, valida `APP_ENVIRONMENT`, host, porta e caminhos estruturais e publica a porta `8080` somente em `127.0.0.1`. Já fornece `/health`, autenticação, métricas, layout administrativo responsivo, health do Palworld e criação/acompanhamento dos jobs de Start, Stop e Restart.
 
 ## `worker`
 
-Executa um processo Python separado, valida a mesma configuração estrutural e não possui servidor HTTP. Ele ainda é um processo de bootstrap com encerramento limpo; fila SQLite, heartbeat e execução de jobs pertencem à Etapa 17.
+Executa um processo Python separado, valida a mesma configuração estrutural e não possui servidor HTTP. Ele adquire e executa os jobs de ciclo de vida, permanecendo independente do processo web. Fila completa, heartbeat, recovery e maintenance lock geral pertencem à Etapa 17.
 
 ## `mock-services`
 
@@ -23,7 +23,7 @@ Development e test não dependerão de:
 - servidor Palworld real;
 - webhook real do Discord;
 - Google Drive real;
-- operações reais de systemd ou journald; o health check do Palworld usa fakes de serviço, processo e REST API em memória;
+- operações reais de systemd ou journald; web e worker compartilham pelo SQLite um fake do serviço, processo, porta e REST API;
 - alterações reais via SteamCMD.
 
 Os simuladores futuros devem permitir cenários de sucesso, timeout e falha sem expor credenciais nem alterar o host.

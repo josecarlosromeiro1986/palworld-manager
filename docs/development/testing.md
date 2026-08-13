@@ -35,4 +35,6 @@ Os testes da integração systemd usam executores gravadores e fakes do serviço
 
 Os testes do health check cobrem as combinações principais dos estados `ONLINE`, `INICIANDO`, `DEGRADADO`, `OFFLINE` e `FALHA`. O transporte REST é simulado para validar Basic Auth, timeout, parsing de `/info`, autenticação rejeitada, indisponibilidade, resposta inválida e falha inesperada sem abrir rede. Testes de startup confirmam que web e worker recusam production sem os secrets obrigatórios e que não há fallback para `admin`. O fragmento autenticado do Dashboard valida o estado agregado e seus três sinais.
 
+Os testes de ciclo de vida verificam os comandos fixos de Start, Stop e Restart, confirmação e CSRF, defaults 120/120/60 segundos, overrides operacionais, timeout exato, health final, fechamento da porta REST, auditoria, aquisição única e proteção transacional contra double-submit. Um fluxo de integração usa o fake SQLite compartilhado para confirmar que o worker conclui o job e que a web passa a exibir `ONLINE`, sem executar systemd ou acessar rede externa.
+
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

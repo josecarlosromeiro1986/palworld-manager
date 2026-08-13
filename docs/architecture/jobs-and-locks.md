@@ -1,6 +1,6 @@
 # Jobs e locks
 
-> Status: Planejado para a V1.
+> Status: Jobs de Start, Stop e Restart implementados; fila completa, heartbeat, recovery e maintenance lock geral permanecem planejados para a V1.
 
 Backups, uploads, restores, updates, desligamentos assistidos e outras operações críticas serão jobs persistentes no SQLite. Em produção, o worker será um processo independente da aplicação web.
 
@@ -13,6 +13,8 @@ SQLite                          → persistência, coordenação e fila
 O serviço web será responsável por autenticação, sessões, páginas Jinja2, HTMX, SSE, consultas, Dashboard e criação e acompanhamento de jobs. Ele não executará diretamente operações longas ou destrutivas destinadas ao worker.
 
 O worker executará backup, restore, update via SteamCMD, upload ao Google Drive, download de backup remoto, desligamento assistido e outras operações críticas ou demoradas.
+
+O primeiro consumidor implementado é o ciclo de vida do Palworld. A web cria jobs `PALWORLD_START`, `PALWORLD_STOP` e `PALWORLD_RESTART`; o worker os adquire e executa. Uma chave de coordenação com índice único parcial impede duas ações simultâneas, e cada job preserva o timeout vigente no momento da solicitação. Essa fundação é intencionalmente limitada: heartbeat, reconciliação após interrupção, logs textuais e o maintenance lock global serão concluídos na Etapa 17.
 
 Além dos jobs, o worker será o único processo que entrega `notification_events` a integrações externas. FastAPI e worker podem criar esses eventos no SQLite, mas FastAPI não chama o Discord diretamente. A entrega passa pelos estados `PENDING`, `SENDING`, `SENT` ou `FAILED`, usa semântica at least once e permite no máximo 3 tentativas totais para falhas transitórias, sem retry infinito.
 

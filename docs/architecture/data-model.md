@@ -65,6 +65,8 @@ A entidade de notificação não duplica toda a auditoria. O schema inicial já 
 
 Representa operações persistentes em background, incluindo tipo, estado, progresso e referência ao log textual. Pode se relacionar a eventos de auditoria e registros de backup.
 
+A revision `0003_lifecycle_job_guard` adiciona `coordination_key` e um índice único parcial para impedir mais de um job com a mesma chave em `PENDING` ou `RUNNING`. Os jobs de ciclo de vida usam `PALWORLD_LIFECYCLE`; estados terminais liberam a chave para uma nova ação.
+
 ### `backup_records`
 
 Cataloga backups gerenciados, sua localização, integridade e estado. Relaciona-se aos jobs que os criam, transferem ou restauram, sem guardar o conteúdo do backup no banco.

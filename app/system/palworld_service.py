@@ -7,13 +7,19 @@ from typing import Protocol
 from app.config import SERVICE_NAME_PATTERN, AppEnvironment, Settings
 
 SYSTEMCTL_PATH = "/usr/bin/systemctl"
+SUDO_PATH = "/usr/bin/sudo"
 SYSTEMCTL_QUERY_TIMEOUT_SECONDS = 5.0
+SYSTEMCTL_CONTROL_TIMEOUT_SECONDS = 15.0
 SERVICE_NAME_REGEX = re.compile(SERVICE_NAME_PATTERN)
 SYSTEMD_STATE_PATTERN = re.compile(r"^[a-z][a-z-]{0,63}$")
 
 
 class PalworldServiceQueryError(RuntimeError):
     """A consulta ao gerenciador de serviços não produziu um estado confiável."""
+
+
+class PalworldServiceControlError(RuntimeError):
+    """O systemd não confirmou uma ação de ciclo de vida do Palworld."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +30,14 @@ class PalworldServiceStatus:
 
 class PalworldService(Protocol):
     def get_status(self) -> PalworldServiceStatus: ...
+
+
+class PalworldServiceController(PalworldService, Protocol):
+    def start(self) -> None: ...
+
+    def stop(self) -> None: ...
+
+    def restart(self) -> None: ...
 
 
 class CommandRunner(Protocol):
@@ -57,14 +71,18 @@ class SystemdPalworldService:
         *,
         runner: CommandRunner = _run_command,
         timeout_seconds: float = SYSTEMCTL_QUERY_TIMEOUT_SECONDS,
+        control_timeout_seconds: float = SYSTEMCTL_CONTROL_TIMEOUT_SECONDS,
     ) -> None:
         if SERVICE_NAME_REGEX.fullmatch(service_name) is None:
             raise ValueError("nome de serviço systemd inválido")
         if timeout_seconds <= 0:
             raise ValueError("o timeout da consulta deve ser positivo")
+        if control_timeout_seconds <= 0:
+            raise ValueError("o timeout de controle deve ser positivo")
         self._service_name = service_name
         self._runner = runner
         self._timeout_seconds = timeout_seconds
+        self._control_timeout_seconds = control_timeout_seconds
 
     def get_status(self) -> PalworldServiceStatus:
         command = (
@@ -96,6 +114,35 @@ class SystemdPalworldService:
             source_state=source_state,
         )
 
+    def start(self) -> None:
+        self._control("start")
+
+    def stop(self) -> None:
+        self._control("stop")
+
+    def restart(self) -> None:
+        self._control("restart")
+
+    def _control(self, action: str) -> None:
+        if action not in {"start", "stop", "restart"}:
+            raise ValueError("ação de serviço inválida")
+        command = (
+            SUDO_PATH,
+            "--non-interactive",
+            SYSTEMCTL_PATH,
+            "--no-block",
+            action,
+            self._service_name,
+        )
+        try:
+            result = self._runner(command, timeout_seconds=self._control_timeout_seconds)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise PalworldServiceControlError(
+                "Não foi possível controlar o serviço Palworld."
+            ) from error
+        if result.returncode != 0:
+            raise PalworldServiceControlError("Não foi possível controlar o serviço Palworld.")
+
 
 class FakePalworldService:
     def __init__(self, *, active: bool = False) -> None:
@@ -110,8 +157,17 @@ class FakePalworldService:
     def set_active(self, active: bool) -> None:
         self._active = active
 
+    def start(self) -> None:
+        self._active = True
 
-def create_palworld_service(settings: Settings) -> PalworldService:
+    def stop(self) -> None:
+        self._active = False
+
+    def restart(self) -> None:
+        self._active = True
+
+
+def create_palworld_service(settings: Settings) -> PalworldServiceController:
     if settings.environment is AppEnvironment.PRODUCTION:
         return SystemdPalworldService(settings.palworld_service)
     return FakePalworldService()

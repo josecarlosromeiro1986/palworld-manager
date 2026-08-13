@@ -9,6 +9,7 @@ from app.config import AppEnvironment, Settings
 from app.system.palworld_service import (
     SYSTEMCTL_PATH,
     FakePalworldService,
+    PalworldServiceControlError,
     PalworldServiceQueryError,
     SystemdPalworldService,
     create_palworld_service,
@@ -142,6 +143,43 @@ def test_fake_service_is_controllable_without_systemd() -> None:
     assert service.get_status().active is False
     service.set_active(True)
     assert service.get_status().active is True
+    service.stop()
+    assert service.get_status().active is False
+    service.start()
+    assert service.get_status().active is True
+    service.restart()
+    assert service.get_status().active is True
+
+
+@pytest.mark.parametrize("action", ["start", "stop", "restart"])
+def test_systemd_adapter_runs_only_supported_lifecycle_commands(action: str) -> None:
+    runner = RecordingRunner(completed_process(stdout=""))
+    service = SystemdPalworldService("palworld.service", runner=runner)
+
+    getattr(service, action)()
+
+    assert runner.command == (
+        "/usr/bin/sudo",
+        "--non-interactive",
+        "/usr/bin/systemctl",
+        "--no-block",
+        action,
+        "palworld.service",
+    )
+    assert runner.timeout_seconds == 15.0
+
+
+def test_systemd_control_failure_does_not_expose_stderr() -> None:
+    private_detail = "detalhe-privado-do-host"
+    service = SystemdPalworldService(
+        "palworld.service",
+        runner=RecordingRunner(completed_process(stdout="", returncode=1, stderr=private_detail)),
+    )
+
+    with pytest.raises(PalworldServiceControlError) as error:
+        service.restart()
+
+    assert private_detail not in str(error.value)
 
 
 @pytest.mark.parametrize("environment", [AppEnvironment.DEVELOPMENT, AppEnvironment.TEST])
