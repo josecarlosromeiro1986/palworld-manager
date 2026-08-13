@@ -1,0 +1,50 @@
+{% from "components/icon.html" import icon with context %}
+
+{% set tones = {
+  "ONLINE": "text-positive",
+  "INICIANDO": "text-accent",
+  "DEGRADADO": "text-warning",
+  "OFFLINE": "text-muted",
+  "FALHA": "text-danger"
+} %}
+{% set dots = {
+  "ONLINE": "bg-positive",
+  "INICIANDO": "bg-accent",
+  "DEGRADADO": "bg-warning",
+  "OFFLINE": "bg-muted",
+  "FALHA": "bg-danger"
+} %}
+
+<article class="rounded-md border bg-surface p-3 sm:p-4" data-palworld-health>
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div class="flex items-center gap-3">
+      <span class="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-raised text-muted">
+        {{ icon("server-cog") }}
+      </span>
+      <div>
+        <h2 class="text-sm font-medium text-ink">Servidor Palworld</h2>
+        <p class="mt-0.5 text-xs text-muted">{{ description }}</p>
+      </div>
+    </div>
+
+    <p class="flex items-center gap-2 text-sm font-semibold {{ tones[health.state.value] }}" data-health-state="{{ health.state.value }}">
+      <span class="size-2 rounded-full {{ dots[health.state.value] }}" aria-hidden="true"></span>
+      {{ health.state.value }}
+    </p>
+  </div>
+
+  <dl class="mt-3 grid grid-cols-1 gap-2 border-t pt-3 text-xs sm:grid-cols-3">
+    <div class="flex items-center justify-between gap-2 sm:block">
+      <dt class="text-muted">systemd</dt>
+      <dd class="font-medium text-ink" data-health-service>{{ service_label }}</dd>
+    </div>
+    <div class="flex items-center justify-between gap-2 sm:block">
+      <dt class="text-muted">Processo</dt>
+      <dd class="font-medium text-ink" data-health-process>{{ process_label }}</dd>
+    </div>
+    <div class="flex items-center justify-between gap-2 sm:block">
+      <dt class="text-muted">REST API</dt>
+      <dd class="font-medium text-ink" data-health-rest>{{ rest_label }}</dd>
+    </div>
+  </dl>
+</article>

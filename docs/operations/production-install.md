@@ -22,6 +22,8 @@ Serviço worker:  palworld-manager-worker.service
 Secrets:         /etc/palworld-manager/secrets.env
 ```
 
+A configuração estrutural inclui `PALWORLD_REST_BASE_URL=http://127.0.0.1:8212/v1/api`. O arquivo protegido de secrets deve fornecer `PALWORLD_REST_USERNAME` e `PALWORLD_REST_PASSWORD`; ambos são obrigatórios, não têm valor padrão e não usam fallback para `admin`. Web e worker falham no startup com erro de configuração quando esses valores estão ausentes, vazios ou inválidos.
+
 Os serviços web e worker serão processos independentes configurados via systemd. Ambos serão executados pelo usuário `palmanager`, nunca como `root`, usarão a mesma configuração estrutural apropriada e acessarão o mesmo banco SQLite quando necessário.
 
 `palworld-manager.service` executará o FastAPI e escutará somente em `127.0.0.1`. Seu `/health` verificará exclusivamente a aplicação web. `palworld-manager-worker.service` consumirá os jobs persistidos, executará as operações demoradas ou críticas e será o único processo autorizado a entregar notificações externas.
@@ -30,7 +32,7 @@ O worker não terá servidor HTTP. Ele atualizará um heartbeat no SQLite a cada
 
 Tailscale Serve fornecerá acesso privado com HTTPS apenas ao serviço web; journald receberá os logs de ambos.
 
-A leitura do estado do Palworld já usa um adapter com executável e argumentos fixos, unidade validada e timeout. Ela não altera o serviço. Operações privilegiadas futuras continuarão limitadas por regras mínimas de `sudoers`, com comandos e argumentos validados.
+O health check do Palworld usa adapters com executáveis e argumentos fixos, unidade validada, `MainPID` confirmado por `psutil` e `GET /info` autenticado com timeout. Ele não altera o serviço. Operações privilegiadas futuras continuarão limitadas por regras mínimas de `sudoers`, com comandos e argumentos validados.
 
 Node.js e npm serão necessários apenas para o build de assets, não como serviço de produção. Permissões, arquivos de unidade do Manager, `sudoers`, scripts e configuração do Tailscale ainda serão implementados e validados na etapa de deploy; por isso, este documento não é um tutorial executável.
 

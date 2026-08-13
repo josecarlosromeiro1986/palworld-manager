@@ -152,6 +152,7 @@ Backend modular por domínio; evitar `main.py` gigante.
 
 ```text
 PALWORLD_SERVICE=palworld.service
+PALWORLD_REST_BASE_URL=http://127.0.0.1:8212/v1/api
 PALWORLD_DIR=/home/steam/palserver
 PALWORLD_SETTINGS=/home/steam/palserver/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini
 STEAMCMD=/usr/games/steamcmd
@@ -194,6 +195,15 @@ Produção:
 ```
 
 Permissão restrita ao `palmanager`. Exemplos: credencial da REST API do Palworld, Discord webhook e demais segredos. A UI pode testar/substituir, mas nunca revelar integralmente.
+
+As credenciais da REST API oficial são fornecidas exclusivamente pelos secrets:
+
+```text
+PALWORLD_REST_USERNAME
+PALWORLD_REST_PASSWORD
+```
+
+Ambas são obrigatórias em `production`; configuração ausente ou inválida deve impedir o startup com uma mensagem clara e sem revelar os valores. Não existe username padrão nem fallback para `admin`. Em `development` e `test`, toda a integração REST do Palworld é substituída por um fake e não exige credenciais.
 
 ## 7. Usuário Linux e privilégios
 
@@ -286,6 +296,8 @@ FALHA
 ```
 
 `systemctl active` sozinho não basta. Combinar systemd, processo e REST API. Reutilizar o health check em Start, Restart, Update, Restore e Diagnóstico.
+
+O probe REST do health check consulta `GET /info` a partir de `PALWORLD_REST_BASE_URL`, usando HTTP Basic Auth com `PALWORLD_REST_USERNAME` e `PALWORLD_REST_PASSWORD`. Credenciais nunca podem aparecer na URL, em logs ou em mensagens de erro.
 
 ## 13. Controle do serviço
 

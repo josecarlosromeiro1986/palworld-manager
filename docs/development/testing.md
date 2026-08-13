@@ -31,6 +31,8 @@ Os testes estruturais do layout verificam que login e Dashboard usam assets loca
 
 Os testes de métricas usam uma fonte determinística no lugar do host real. Eles verificam leituras atuais, cálculo da vazão de rede, reset de contadores, timestamps com timezone, expiração da janela de 15 minutos, autenticação do fragmento HTMX, integração do Chart.js local e ausência de persistência no SQLite.
 
-Os testes da integração systemd usam um executor gravador e o fake do serviço Palworld. Eles verificam comando e unidade exatos, timeout, rejeição de nomes que possam virar opções, erros sem vazamento de stderr, seleção do adapter somente em production e consulta autenticada dos estados ativo/inativo no Dashboard. Nenhum teste executa `systemctl` real.
+Os testes da integração systemd usam executores gravadores e fakes do serviço e do processo Palworld. Eles verificam comandos e unidade exatos, timeout, `MainPID`, rejeição de nomes que possam virar opções, erros sem vazamento de stderr e seleção dos adapters somente em production. Nenhum teste executa `systemctl` real.
+
+Os testes do health check cobrem as combinações principais dos estados `ONLINE`, `INICIANDO`, `DEGRADADO`, `OFFLINE` e `FALHA`. O transporte REST é simulado para validar Basic Auth, timeout, parsing de `/info`, autenticação rejeitada, indisponibilidade, resposta inválida e falha inesperada sem abrir rede. Testes de startup confirmam que web e worker recusam production sem os secrets obrigatórios e que não há fallback para `admin`. O fragmento autenticado do Dashboard valida o estado agregado e seus três sinais.
 
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

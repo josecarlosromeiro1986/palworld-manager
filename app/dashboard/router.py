@@ -7,7 +7,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
 
 from app.dashboard.metrics import HostMetricsService, MetricsSnapshot
-from app.system.palworld_service import PalworldService, PalworldServiceQueryError
+from app.health.palworld import PalworldHealthChecker, PalworldHealthState
+from app.integrations.palworld_rest import RestApiState
 
 router = APIRouter(prefix="/dashboard")
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
@@ -17,8 +18,8 @@ def _metrics_service(request: Request) -> HostMetricsService:
     return cast(HostMetricsService, request.app.state.metrics_service)
 
 
-def _palworld_service(request: Request) -> PalworldService:
-    return cast(PalworldService, request.app.state.palworld_service)
+def _palworld_health_check(request: Request) -> PalworldHealthChecker:
+    return cast(PalworldHealthChecker, request.app.state.palworld_health_check)
 
 
 def _format_bytes(value: float) -> str:
@@ -62,14 +63,39 @@ def metrics_fragment(request: Request) -> Response:
     )
 
 
-@router.get("/palworld-service", response_class=HTMLResponse, include_in_schema=False)
-def palworld_service_fragment(request: Request) -> Response:
-    try:
-        status = _palworld_service(request).get_status()
-    except PalworldServiceQueryError:
-        status = None
+@router.get("/palworld-health", response_class=HTMLResponse, include_in_schema=False)
+def palworld_health_fragment(request: Request) -> Response:
+    health = _palworld_health_check(request).check()
+    descriptions = {
+        PalworldHealthState.ONLINE: "systemd, processo e REST API saudáveis",
+        PalworldHealthState.STARTING: "o serviço ainda está iniciando",
+        PalworldHealthState.DEGRADED: "o servidor responde apenas parcialmente",
+        PalworldHealthState.OFFLINE: "o servidor está parado",
+        PalworldHealthState.FAILURE: "falha ou estado inconsistente detectado",
+    }
+    rest_labels = {
+        RestApiState.AVAILABLE: "DISPONÍVEL",
+        RestApiState.UNAUTHORIZED: "NÃO AUTORIZADA",
+        RestApiState.UNAVAILABLE: "INDISPONÍVEL",
+        RestApiState.INVALID_RESPONSE: "RESPOSTA INVÁLIDA",
+        RestApiState.FAILURE: "FALHA",
+    }
     return templates.TemplateResponse(
         request=request,
-        name="dashboard/_palworld_service_status.html",
-        context={"status": status},
+        name="dashboard/_palworld_health.html",
+        context={
+            "health": health,
+            "description": descriptions[health.state],
+            "service_label": health.service_state.upper()
+            if health.service_state is not None
+            else "INDISPONÍVEL",
+            "process_label": (
+                "ATIVO"
+                if health.process_running is True
+                else "INATIVO"
+                if health.process_running is False
+                else "INDISPONÍVEL"
+            ),
+            "rest_label": rest_labels[health.rest_api_state],
+        },
     )

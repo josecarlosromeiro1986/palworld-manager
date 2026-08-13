@@ -9,6 +9,9 @@ from app.config import AppEnvironment, Settings
 CONFIG_ENV_VARS = (
     "APP_ENVIRONMENT",
     "PALWORLD_SERVICE",
+    "PALWORLD_REST_BASE_URL",
+    "PALWORLD_REST_USERNAME",
+    "PALWORLD_REST_PASSWORD",
     "PALWORLD_DIR",
     "PALWORLD_SETTINGS",
     "STEAMCMD",
@@ -34,6 +37,9 @@ def test_structural_defaults() -> None:
 
     assert settings.environment is AppEnvironment.DEVELOPMENT
     assert settings.palworld_service == "palworld.service"
+    assert str(settings.palworld_rest_base_url) == "http://127.0.0.1:8212/v1/api"
+    assert settings.palworld_rest_username is None
+    assert settings.palworld_rest_password is None
     assert settings.palworld_dir == Path("/home/steam/palserver")
     assert settings.app_host.is_loopback
     assert settings.app_port == 8080
@@ -46,6 +52,9 @@ def test_supported_environments(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("APP_ENVIRONMENT", environment.value)
+    if environment is AppEnvironment.PRODUCTION:
+        monkeypatch.setenv("PALWORLD_REST_USERNAME", "usuario-ficticio")
+        monkeypatch.setenv("PALWORLD_REST_PASSWORD", "senha-ficticia")
 
     assert Settings().environment is environment
 
@@ -65,6 +74,75 @@ def test_production_requires_loopback(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_HOST", "0.0.0.0")
 
     with pytest.raises(ValidationError, match="loopback"):
+        Settings()
+
+
+@pytest.mark.parametrize(
+    ("missing_variable", "error_message"),
+    [
+        ("PALWORLD_REST_USERNAME", "PALWORLD_REST_USERNAME é obrigatório"),
+        ("PALWORLD_REST_PASSWORD", "PALWORLD_REST_PASSWORD é obrigatório"),
+    ],
+)
+def test_production_requires_each_rest_secret(
+    missing_variable: str,
+    error_message: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("APP_ENVIRONMENT", "production")
+    monkeypatch.setenv("PALWORLD_REST_USERNAME", "usuario-ficticio")
+    monkeypatch.setenv("PALWORLD_REST_PASSWORD", "senha-ficticia")
+    monkeypatch.delenv(missing_variable)
+
+    with pytest.raises(ValidationError, match=error_message):
+        Settings()
+
+
+def test_production_does_not_assume_admin_username(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENVIRONMENT", "production")
+    monkeypatch.setenv("PALWORLD_REST_PASSWORD", "senha-ficticia")
+
+    with pytest.raises(ValidationError, match="PALWORLD_REST_USERNAME"):
+        Settings()
+
+
+@pytest.mark.parametrize(
+    ("variable", "value"),
+    [
+        ("PALWORLD_REST_USERNAME", "usuario:invalido"),
+        ("PALWORLD_REST_USERNAME", "usuario\ninvalido"),
+        ("PALWORLD_REST_PASSWORD", "senha\ninvalida"),
+    ],
+)
+def test_production_rejects_invalid_rest_credentials(
+    variable: str,
+    value: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("APP_ENVIRONMENT", "production")
+    monkeypatch.setenv("PALWORLD_REST_USERNAME", "usuario-ficticio")
+    monkeypatch.setenv("PALWORLD_REST_PASSWORD", "senha-ficticia")
+    monkeypatch.setenv(variable, value)
+
+    with pytest.raises(ValidationError, match="formato inválido"):
+        Settings()
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "not-a-url",
+        "http://usuario:senha@127.0.0.1:8212/v1/api",
+        "http://127.0.0.1:8212/v1/api?secret=value",
+    ],
+)
+def test_rest_base_url_rejects_invalid_or_sensitive_parts(
+    base_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PALWORLD_REST_BASE_URL", base_url)
+
+    with pytest.raises(ValidationError, match=r"PALWORLD_REST_BASE_URL|URL"):
         Settings()
 
 

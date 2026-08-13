@@ -15,12 +15,9 @@ from app.auth.service import create_administrator
 from app.config import AppEnvironment, Settings
 from app.dashboard.metrics import HostMetricsService, RawHostMetrics
 from app.db.engine import create_database_engine, create_session_factory, session_scope
+from app.health.palworld import PalworldHealthSnapshot, PalworldHealthState
+from app.integrations.palworld_rest import RestApiState
 from app.main import create_app
-from app.system.palworld_service import (
-    FakePalworldService,
-    PalworldServiceQueryError,
-    PalworldServiceStatus,
-)
 
 
 class FixedMetricsSource:
@@ -39,9 +36,12 @@ class FixedMetricsSource:
         )
 
 
-class UnavailablePalworldService:
-    def get_status(self) -> PalworldServiceStatus:
-        raise PalworldServiceQueryError("falha simulada")
+class StaticHealthCheck:
+    def __init__(self, snapshot: PalworldHealthSnapshot) -> None:
+        self._snapshot = snapshot
+
+    def check(self) -> PalworldHealthSnapshot:
+        return self._snapshot
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ def login(client: TestClient) -> None:
     assert response.status_code == 303
 
 
-@pytest.mark.parametrize("path", ["/dashboard/metrics", "/dashboard/palworld-service"])
+@pytest.mark.parametrize("path", ["/dashboard/metrics", "/dashboard/palworld-health"])
 def test_dashboard_fragments_require_authentication(
     metrics_client: TestClient,
     path: str,
@@ -114,38 +114,52 @@ def test_dashboard_polls_and_renders_host_metrics(metrics_client: TestClient) ->
     assert '"cpu": [12.5]' in metrics.text
 
 
-def test_dashboard_polls_and_renders_fake_palworld_service_state(
+def test_dashboard_polls_and_renders_palworld_health_state(
     metrics_client: TestClient,
 ) -> None:
     login(metrics_client)
 
     dashboard = metrics_client.get("/")
-    inactive = metrics_client.get("/dashboard/palworld-service")
+    offline = metrics_client.get("/dashboard/palworld-health")
     application = cast(FastAPI, metrics_client.app)
-    fake_service = cast(FakePalworldService, application.state.palworld_service)
-    fake_service.set_active(True)
-    active = metrics_client.get("/dashboard/palworld-service")
+    application.state.palworld_health_check = StaticHealthCheck(
+        PalworldHealthSnapshot(
+            state=PalworldHealthState.ONLINE,
+            service_state="active",
+            process_running=True,
+            rest_api_state=RestApiState.AVAILABLE,
+        )
+    )
+    online = metrics_client.get("/dashboard/palworld-health")
 
     assert dashboard.status_code == 200
-    assert 'hx-get="/dashboard/palworld-service"' in dashboard.text
+    assert 'hx-get="/dashboard/palworld-health"' in dashboard.text
     assert 'hx-trigger="load, every 5s"' in dashboard.text
-    assert inactive.status_code == 200
-    assert 'data-service-state="inactive"' in inactive.text
-    assert "INATIVO" in inactive.text
-    assert active.status_code == 200
-    assert 'data-service-state="active"' in active.text
-    assert "ATIVO" in active.text
+    assert offline.status_code == 200
+    assert 'data-health-state="OFFLINE"' in offline.text
+    assert "o servidor está parado" in offline.text
+    assert online.status_code == 200
+    assert 'data-health-state="ONLINE"' in online.text
+    assert "data-health-process>ATIVO" in online.text
+    assert "data-health-rest>DISPONÍVEL" in online.text
 
 
-def test_dashboard_renders_unavailable_when_service_query_fails(
+def test_dashboard_renders_failure_without_exposing_internal_details(
     metrics_client: TestClient,
 ) -> None:
     login(metrics_client)
     application = cast(FastAPI, metrics_client.app)
-    application.state.palworld_service = UnavailablePalworldService()
+    application.state.palworld_health_check = StaticHealthCheck(
+        PalworldHealthSnapshot(
+            state=PalworldHealthState.FAILURE,
+            service_state=None,
+            process_running=None,
+            rest_api_state=RestApiState.FAILURE,
+        )
+    )
 
-    response = metrics_client.get("/dashboard/palworld-service")
+    response = metrics_client.get("/dashboard/palworld-health")
 
     assert response.status_code == 200
-    assert 'data-service-state="unavailable"' in response.text
-    assert "INDISPONÍVEL" in response.text
+    assert 'data-health-state="FALHA"' in response.text
+    assert response.text.count("INDISPONÍVEL") == 2

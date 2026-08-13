@@ -15,10 +15,11 @@ Nenhuma etapa em andamento.
 - Etapa 7 — Layout Dark.
 - Etapa 8 — Métricas.
 - Etapa 9 — systemd Palworld.
+- Etapa 10 — Health check.
 
 ## Próxima etapa
 
-Etapa 10 — Health check.
+Etapa 11 — Controle Start/Stop/Restart.
 
 ## Observações
 

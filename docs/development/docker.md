@@ -23,7 +23,7 @@ Development e test não dependerão de:
 - servidor Palworld real;
 - webhook real do Discord;
 - Google Drive real;
-- operações reais de systemd ou journald; a consulta de estado do Palworld usa um fake em memória;
+- operações reais de systemd ou journald; o health check do Palworld usa fakes de serviço, processo e REST API em memória;
 - alterações reais via SteamCMD.
 
 Os simuladores futuros devem permitir cenários de sucesso, timeout e falha sem expor credenciais nem alterar o host.

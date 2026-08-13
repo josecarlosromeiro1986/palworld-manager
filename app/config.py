@@ -3,7 +3,14 @@ from ipaddress import ip_address
 from pathlib import Path
 from typing import Annotated, Self
 
-from pydantic import Field, StringConstraints, field_validator, model_validator
+from pydantic import (
+    AnyHttpUrl,
+    Field,
+    SecretStr,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 from pydantic.networks import IPvAnyAddress
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,6 +44,18 @@ class Settings(BaseSettings):
         default="palworld.service",
         validation_alias="PALWORLD_SERVICE",
     )
+    palworld_rest_base_url: AnyHttpUrl = Field(
+        default=AnyHttpUrl("http://127.0.0.1:8212/v1/api"),
+        validation_alias="PALWORLD_REST_BASE_URL",
+    )
+    palworld_rest_username: SecretStr | None = Field(
+        default=None,
+        validation_alias="PALWORLD_REST_USERNAME",
+    )
+    palworld_rest_password: SecretStr | None = Field(
+        default=None,
+        validation_alias="PALWORLD_REST_PASSWORD",
+    )
     palworld_dir: Path = Field(
         default=Path("/home/steam/palserver"),
         validation_alias="PALWORLD_DIR",
@@ -67,7 +86,40 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def require_loopback_in_production(self) -> Self:
+    def validate_environment_requirements(self) -> Self:
+        rest_url = self.palworld_rest_base_url
+        if rest_url.username is not None or rest_url.password is not None:
+            raise ValueError(
+                "PALWORLD_REST_BASE_URL não pode conter credenciais; use os secrets dedicados"
+            )
+        if rest_url.query is not None or rest_url.fragment is not None:
+            raise ValueError("PALWORLD_REST_BASE_URL não pode conter query string ou fragmento")
+
         if self.environment is AppEnvironment.PRODUCTION and not self.app_host.is_loopback:
             raise ValueError("APP_HOST deve ser um endereço de loopback em production")
+
+        if self.environment is AppEnvironment.PRODUCTION:
+            username = (
+                self.palworld_rest_username.get_secret_value()
+                if self.palworld_rest_username is not None
+                else ""
+            )
+            password = (
+                self.palworld_rest_password.get_secret_value()
+                if self.palworld_rest_password is not None
+                else ""
+            )
+            missing_secrets = []
+            if not username.strip():
+                missing_secrets.append("PALWORLD_REST_USERNAME")
+            if not password.strip():
+                missing_secrets.append("PALWORLD_REST_PASSWORD")
+            if missing_secrets:
+                names = " e ".join(missing_secrets)
+                agreement = "é obrigatório" if len(missing_secrets) == 1 else "são obrigatórios"
+                raise ValueError(f"{names} {agreement} em production")
+            if ":" in username or "\r" in username or "\n" in username:
+                raise ValueError("PALWORLD_REST_USERNAME possui formato inválido")
+            if "\r" in password or "\n" in password:
+                raise ValueError("PALWORLD_REST_PASSWORD possui formato inválido")
         return self

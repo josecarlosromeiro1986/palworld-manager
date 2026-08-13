@@ -11,6 +11,7 @@ from app.config import Settings
 from app.dashboard.metrics import HostMetricsService
 from app.dashboard.router import router as dashboard_router
 from app.db.engine import create_database_engine, create_session_factory
+from app.health.palworld import create_palworld_health_check
 from app.health.router import router as health_router
 from app.system.palworld_service import create_palworld_service
 
@@ -35,7 +36,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.settings = resolved_settings
     application.state.session_factory = session_factory
     application.state.metrics_service = HostMetricsService()
-    application.state.palworld_service = create_palworld_service(resolved_settings)
+    palworld_service = create_palworld_service(resolved_settings)
+    application.state.palworld_service = palworld_service
+    application.state.palworld_health_check = create_palworld_health_check(
+        resolved_settings,
+        palworld_service,
+    )
     application.add_middleware(AuthenticationMiddleware, session_factory=session_factory)
     application.mount(
         "/static",

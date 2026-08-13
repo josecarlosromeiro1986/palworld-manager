@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from ipaddress import ip_address
 
 import pytest
+from pydantic import SecretStr
 
 from app.config import AppEnvironment, Settings
 from app.system.palworld_service import (
@@ -152,7 +153,12 @@ def test_non_production_environments_use_fake_service(environment: AppEnvironmen
 
 def test_production_uses_systemd_adapter() -> None:
     service = create_palworld_service(
-        Settings(environment=AppEnvironment.PRODUCTION, app_host=ip_address("127.0.0.1"))
+        Settings(
+            environment=AppEnvironment.PRODUCTION,
+            app_host=ip_address("127.0.0.1"),
+            palworld_rest_username=SecretStr("usuario-ficticio"),
+            palworld_rest_password=SecretStr("senha-ficticia"),
+        )
     )
 
     assert isinstance(service, SystemdPalworldService)

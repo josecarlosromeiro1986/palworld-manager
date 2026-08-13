@@ -3,6 +3,7 @@ from ipaddress import ip_address
 from pathlib import Path
 
 from fastapi import Response
+from pydantic import SecretStr
 
 from app.auth.cookies import SESSION_COOKIE_NAME, set_session_cookies
 from app.auth.middleware import _is_public_path
@@ -16,6 +17,8 @@ def test_production_session_cookie_is_secure_httponly_and_strict() -> None:
         environment=AppEnvironment.PRODUCTION,
         app_host=ip_address("127.0.0.1"),
         manager_database=Path("/var/lib/palworld-manager/manager.db"),
+        palworld_rest_username=SecretStr("usuario-ficticio"),
+        palworld_rest_password=SecretStr("senha-ficticia"),
     )
     issued = IssuedSession(
         session_token="token-ficticio",
