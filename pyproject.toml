@@ -13,6 +13,7 @@ dependencies = [
     "argon2-cffi>=25.1,<26",
     "fastapi>=0.115,<1",
     "jinja2>=3.1,<4",
+    "psutil>=6.1,<8",
     "pydantic-settings>=2.7,<3",
     "python-multipart>=0.0.20,<1",
     "sqlalchemy>=2.0,<3",
@@ -26,6 +27,7 @@ dev = [
     "pre-commit>=4,<5",
     "pytest>=8.3,<10",
     "ruff>=0.8,<1",
+    "types-psutil>=6.1,<8",
 ]
 
 [tool.setuptools.packages.find]

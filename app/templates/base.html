@@ -8,6 +8,7 @@
     <title>{% block title %}Palworld Manager{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/dist/app.css') }}">
     <script src="{{ url_for('static', path='/dist/vendor/htmx.min.js') }}" defer></script>
+    <script src="{{ url_for('static', path='/dist/vendor/chart.umd.js') }}" defer></script>
     <script src="{{ url_for('static', path='/dist/app.js') }}" defer></script>
   </head>
   {% block body %}{% endblock %}

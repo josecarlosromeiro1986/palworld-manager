@@ -4,6 +4,7 @@ import { icons } from "lucide";
 
 const assets = [
   ["node_modules/htmx.org/dist/htmx.min.js", "app/static/dist/vendor/htmx.min.js"],
+  ["node_modules/chart.js/dist/chart.umd.js", "app/static/dist/vendor/chart.umd.js"],
   ["app/static/src/app.js", "app/static/dist/app.js"],
 ];
 

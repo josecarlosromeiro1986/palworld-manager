@@ -7,6 +7,9 @@
     "build:assets": "node scripts/build-frontend-assets.mjs",
     "check": "npm run build && node --check app/static/src/app.js && node --check scripts/build-frontend-assets.mjs"
   },
+  "dependencies": {
+    "chart.js": "4.5.0"
+  },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",
     "htmx.org": "2.0.10",

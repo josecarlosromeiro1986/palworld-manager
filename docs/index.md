@@ -7,6 +7,7 @@ Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **
 ## Arquitetura
 
 - [Visão geral](architecture/overview.md): componentes, integrações e topologia dos serviços web e worker.
+- [Métricas](architecture/metrics.md): coleta do host, atualização do Dashboard e retenção somente em memória.
 - [Segurança](architecture/security.md): modelo de acesso, privilégios, sessões, secrets e execução segura.
 - [Modelo de dados](architecture/data-model.md): responsabilidades das entidades persistidas previstas.
 - [Jobs e locks](architecture/jobs-and-locks.md): coordenação via SQLite, concorrência, cancelamento e recuperação do worker.

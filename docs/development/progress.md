@@ -13,10 +13,11 @@ Nenhuma etapa em andamento.
 - Etapa 5 — Login, sessão e CSRF.
 - Etapa 6 — Brute force e auditoria básica.
 - Etapa 7 — Layout Dark.
+- Etapa 8 — Métricas.
 
 ## Próxima etapa
 
-Etapa 8 — Métricas.
+Etapa 9 — systemd Palworld.
 
 ## Observações
 
