@@ -2,7 +2,7 @@
 {% from "components/icon.html" import icon with context %}
 
 {% block body %}
-<body class="min-h-screen bg-canvas font-sans text-ink antialiased">
+<body class="min-h-screen overflow-x-hidden bg-canvas font-sans text-ink antialiased">
   <div
     data-sidebar-backdrop
     class="fixed inset-0 z-40 hidden bg-black/70 lg:hidden"
@@ -62,7 +62,7 @@
     </div>
   </aside>
 
-  <div class="min-h-screen lg:pl-64">
+  <div class="min-h-screen min-w-0 lg:pl-64">
     <header class="sticky top-0 z-30 flex h-14 items-center border-b bg-canvas/95 px-4 backdrop-blur lg:hidden">
       <button
         type="button"
