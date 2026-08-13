@@ -16,6 +16,7 @@ Identificadores planejados:
 ```text
 Usuário:         palmanager
 Aplicação:       /opt/palworld-manager
+Banco SQLite:    /var/lib/palworld-manager/manager.db
 Serviço web:     palworld-manager.service
 Serviço worker:  palworld-manager-worker.service
 Secrets:         /etc/palworld-manager/secrets.env

@@ -55,8 +55,12 @@ class Settings(BaseSettings):
         validation_alias="APP_HOST",
     )
     app_port: Port = Field(default=8080, validation_alias="APP_PORT")
+    manager_database: Path = Field(
+        default=Path("/var/lib/palworld-manager/manager.db"),
+        validation_alias="MANAGER_DATABASE",
+    )
 
-    @field_validator("palworld_dir", "palworld_settings", "steamcmd")
+    @field_validator("palworld_dir", "palworld_settings", "steamcmd", "manager_database")
     @classmethod
     def require_absolute_path(cls, value: Path) -> Path:
         if not value.is_absolute():

@@ -1,8 +1,10 @@
 # Modelo de dados
 
-> Status: Planejado para a V1.
+> Status: Em desenvolvimento. O schema inicial e a infraestrutura de migrations estão implementados; regras de domínio serão adicionadas nas etapas correspondentes.
 
-O modelo usará SQLite e SQLAlchemy. As descrições abaixo são conceituais: colunas, índices e constraints serão definidos durante a implementação. **Alembic será responsável por todas as migrations do banco.** Secrets não serão armazenados nessas entidades.
+O modelo usa SQLite e SQLAlchemy 2.x. A migration inicial cria as nove entidades previstas abaixo, com chaves estrangeiras, índices e constraints básicos. As descrições permanecem conceituais: o schema evoluirá somente por migrations conforme cada domínio for implementado. **Alembic é responsável por todas as migrations do banco; a aplicação não usa `create_all` para criar o schema.** Secrets não são armazenados nessas entidades.
+
+Em produção, o arquivo persistente é `/var/lib/palworld-manager/manager.db`; em desenvolvimento, `app` e `worker` compartilham um volume montado nesse caminho. Conexões habilitam foreign keys, WAL e timeout de espera para concorrência local.
 
 ## Entidades previstas
 
@@ -57,7 +59,7 @@ channel: DISCORD
 status: SENT
 ```
 
-A entidade de notificação não duplica toda a auditoria.
+A entidade de notificação não duplica toda a auditoria. O schema inicial já restringe estados e o máximo de três tentativas; a lógica de aquisição e entrega pertence às etapas de jobs e Discord.
 
 ### `jobs`
 
@@ -71,4 +73,4 @@ Cataloga backups gerenciados, sua localização, integridade e estado. Relaciona
 
 Mantém o histórico administrativo de Ban e Unban, incluindo alvo, motivo e resultado. Complementa a auditoria, mas não substitui o estado mantido pelo Palworld.
 
-O detalhamento futuro deve preservar transações, integridade referencial e preparação para múltiplos usuários. Consulte os requisitos de banco e auditoria em [SPECIFICATION.md](../../SPECIFICATION.md).
+O detalhamento futuro deve preservar transações, integridade referencial e preparação para múltiplos usuários. A migration atual está em `migrations/versions/` e deve ser aplicada com `make db-upgrade`. Consulte os requisitos de banco e auditoria em [SPECIFICATION.md](../../SPECIFICATION.md).

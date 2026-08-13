@@ -4,6 +4,8 @@
 
 O Docker Compose de desenvolvimento possui três containers e preserva a separação entre aplicação web e worker usada em produção. Todos usam a mesma imagem de desenvolvimento com comandos diferentes.
 
+`app` e `worker` compartilham o volume nomeado `manager-data`, montado em `/var/lib/palworld-manager`. `mock-services` não recebe acesso ao banco do Manager.
+
 ## `app`
 
 Executa o FastAPI com reload, valida `APP_ENVIRONMENT`, host, porta e caminhos estruturais no startup e publica a porta `8080` somente em `127.0.0.1`. Nesta etapa, fornece apenas o `/health` mínimo. A criação e o acompanhamento de jobs serão adicionados nas etapas correspondentes.

@@ -157,9 +157,12 @@ PALWORLD_SETTINGS=/home/steam/palserver/Pal/Saved/Config/LinuxServer/PalWorldSet
 STEAMCMD=/usr/games/steamcmd
 APP_HOST=127.0.0.1
 APP_PORT=8080
+MANAGER_DATABASE=/var/lib/palworld-manager/manager.db
 ```
 
 Usar Pydantic Settings para tipagem e validação no startup.
+
+O banco SQLite persistente fica em `/var/lib/palworld-manager/manager.db` em produção, separado do código em `/opt/palworld-manager` e dos secrets em `/etc/palworld-manager`. Web e worker acessam o mesmo arquivo. Em desenvolvimento, um volume Docker persistente é montado no mesmo caminho dentro dos containers `app` e `worker`.
 
 ### Operacional — SQLite e editável no painel
 

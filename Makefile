@@ -6,13 +6,19 @@ else
 RUN := $(COMPOSE) run --build --rm app
 endif
 
-.PHONY: dev down test lint format format-check typecheck precommit check e2e
+.PHONY: dev down db-upgrade db-current test lint format format-check typecheck precommit check e2e
 
 dev:
 	$(COMPOSE) up --build
 
 down:
 	$(COMPOSE) down --remove-orphans
+
+db-upgrade:
+	$(RUN) alembic upgrade head
+
+db-current:
+	$(RUN) alembic current
 
 test:
 	$(RUN) env APP_ENVIRONMENT=test pytest

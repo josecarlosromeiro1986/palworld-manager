@@ -14,6 +14,7 @@ CONFIG_ENV_VARS = (
     "STEAMCMD",
     "APP_HOST",
     "APP_PORT",
+    "MANAGER_DATABASE",
 )
 
 
@@ -36,6 +37,7 @@ def test_structural_defaults() -> None:
     assert settings.palworld_dir == Path("/home/steam/palserver")
     assert settings.app_host.is_loopback
     assert settings.app_port == 8080
+    assert settings.manager_database == Path("/var/lib/palworld-manager/manager.db")
 
 
 @pytest.mark.parametrize("environment", list(AppEnvironment))

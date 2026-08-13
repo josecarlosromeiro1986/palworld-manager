@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. O bootstrap, o health check mínimo e a configuração estrutural por ambiente estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. O bootstrap, a configuração estrutural e a fundação SQLite/Alembic estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -38,7 +38,7 @@ make test
 make check
 ```
 
-Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker e os serviços simulados ainda são estruturas mínimas, sem jobs ou integrações reais.
+O schema local é criado e atualizado explicitamente com `make db-upgrade`. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker e os serviços simulados ainda são estruturas mínimas, sem jobs ou integrações reais.
 
 ## Documentação
 

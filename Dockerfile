@@ -12,6 +12,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 palmanager \
     && useradd --create-home --gid palmanager --uid 10001 palmanager \
+    && install --directory --owner=palmanager --group=palmanager /var/lib/palworld-manager \
     && git config --system --add safe.directory /workspace
 
 COPY pyproject.toml README.md ./

@@ -17,6 +17,8 @@ Não é necessário instalar localmente SQLite, servidores Palworld, rclone, Dis
 
 ```bash
 make dev
+make db-upgrade
+make db-current
 make test
 make lint
 make format
@@ -26,7 +28,7 @@ make check
 make down
 ```
 
-`make dev` mantém os serviços em primeiro plano. `make check` executa lint, verificação de formatação, análise estática e testes. `make e2e` está reservado para a Etapa 28 e ainda não executa testes de navegador.
+`make dev` mantém os serviços em primeiro plano. `make db-upgrade` aplica migrations pendentes ao SQLite configurado; `make db-current` mostra a revisão atual. `make check` executa lint, verificação de formatação, análise estática e testes. `make e2e` está reservado para a Etapa 28 e ainda não executa testes de navegador.
 
 ## Ambientes e configuração
 
@@ -42,11 +44,14 @@ PALWORLD_SETTINGS
 STEAMCMD
 APP_HOST
 APP_PORT
+MANAGER_DATABASE
 ```
 
 Use [`.env.example`](../../.env.example) como referência para desenvolvimento e nunca versione `.env`. Variáveis do processo têm precedência sobre o arquivo. O Compose usa `APP_HOST=0.0.0.0` apenas dentro do container e publica a porta somente em `127.0.0.1` no host.
 
 Web e worker validam a configuração antes de iniciar. Portas inválidas, caminhos relativos, ambientes desconhecidos e bind de produção fora de loopback impedem o startup sem incluir o valor recebido na mensagem de validação.
+
+`MANAGER_DATABASE` deve apontar para um caminho absoluto. O default é `/var/lib/palworld-manager/manager.db`; no Compose, esse caminho usa o volume persistente compartilhado entre web e worker. Testes de integração substituem o valor por arquivos SQLite temporários e isolados.
 
 Configurações operacionais persistidas no SQLite e secrets de integrações serão adicionados nas etapas correspondentes. Em produção, secrets serão injetados no ambiente a partir do arquivo protegido definido na especificação, não por um `.env` versionado.
 

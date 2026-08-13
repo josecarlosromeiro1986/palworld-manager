@@ -1,0 +1,1 @@
+"""Persistência do Palworld Manager."""

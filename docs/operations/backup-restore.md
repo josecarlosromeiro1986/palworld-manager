@@ -14,7 +14,7 @@ O conteúdo previsto inclui:
 
 - mundo completo, inclusive `Players/` e demais dados persistentes;
 - configurações relevantes do Palworld;
-- cópia consistente do SQLite do Manager;
+- cópia consistente de `/var/lib/palworld-manager/manager.db`;
 - configurações não sensíveis do Manager;
 - manifest com os metadados necessários à validação.
 

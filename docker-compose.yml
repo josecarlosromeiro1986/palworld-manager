@@ -7,8 +7,10 @@ x-app-service: &app-service
     IN_CONTAINER: "1"
     PYTHONPATH: /workspace
   init: true
-  volumes:
-    - .:/workspace
+
+x-manager-volumes: &manager-volumes
+  - .:/workspace
+  - manager-data:/var/lib/palworld-manager
 
 services:
   app:
@@ -16,6 +18,7 @@ services:
     build:
       context: .
     command: ["python", "-m", "app.web"]
+    volumes: *manager-volumes
     ports:
       - "127.0.0.1:8080:8080"
     healthcheck:
@@ -32,6 +35,7 @@ services:
   worker:
     <<: *app-service
     command: ["python", "-m", "app.worker"]
+    volumes: *manager-volumes
 
   mock-services:
     <<: *app-service
@@ -45,6 +49,8 @@ services:
       - --port
       - "8090"
       - --reload
+    volumes:
+      - .:/workspace
     ports:
       - "127.0.0.1:8090:8090"
     healthcheck:
@@ -57,3 +63,6 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+
+volumes:
+  manager-data:
