@@ -1,20 +1,20 @@
 # Desenvolvimento com Docker
 
-> Status: Planejado para a V1.
+> Status: Em desenvolvimento. Os três containers base estão implementados; jobs e integrações continuam planejados.
 
-O Docker Compose de desenvolvimento terá três containers planejados, preservando a separação entre aplicação web e worker usada em produção.
+O Docker Compose de desenvolvimento possui três containers e preserva a separação entre aplicação web e worker usada em produção. Todos usam a mesma imagem de desenvolvimento com comandos diferentes.
 
 ## `app`
 
-Executará o FastAPI e suas ferramentas de desenvolvimento. Criará e acompanhará jobs, sem executar diretamente operações longas ou destrutivas destinadas ao worker.
+Executa o FastAPI com reload e publica a porta `8080` somente em `127.0.0.1`. Nesta etapa, fornece apenas o `/health` mínimo. A criação e o acompanhamento de jobs serão adicionados nas etapas correspondentes.
 
 ## `worker`
 
-Consumirá e executará os jobs persistidos no SQLite. Poderá usar a mesma imagem do container `app`, iniciada com um comando diferente. `app` e `worker` compartilharão o SQLite e o volume apropriado ao ambiente de desenvolvimento.
+Executa um processo Python separado, sem servidor HTTP. Na Etapa 1 ele é apenas um processo de bootstrap com encerramento limpo; fila SQLite, heartbeat e execução de jobs pertencem à Etapa 17.
 
 ## `mock-services`
 
-Simulará integrações externas com respostas controláveis para desenvolvimento e testes, incluindo a REST API do Palworld, Discord e serviços equivalentes necessários aos fluxos.
+Publica na porta `8090` um serviço mínimo com `/health`. Os contratos simulados da REST API do Palworld, Discord e demais integrações serão adicionados somente quando seus comportamentos forem implementados e confirmados.
 
 Development e test não dependerão de:
 
@@ -24,4 +24,11 @@ Development e test não dependerão de:
 - operações reais de systemd ou journald;
 - alterações reais via SteamCMD.
 
-Os simuladores devem permitir cenários de sucesso, timeout e falha sem expor credenciais nem alterar o host. A configuração e os comandos exatos serão documentados quando `docker-compose.yml` e o `Makefile` existirem.
+Os simuladores futuros devem permitir cenários de sucesso, timeout e falha sem expor credenciais nem alterar o host.
+
+```bash
+make dev
+make down
+```
+
+Consulte [preparação do ambiente](setup.md) para testes e gates de qualidade.

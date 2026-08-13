@@ -1,6 +1,6 @@
 # Estilo de código
 
-> Status: Planejado para a V1.
+> Status: Em desenvolvimento. As ferramentas base estão configuradas e serão ampliadas conforme o projeto crescer.
 
 ## Ferramentas e práticas
 
@@ -27,4 +27,4 @@ uma etapa
 → commit
 ```
 
-O fluxo passa a ser executável após a criação das ferramentas correspondentes. Até lá, não se deve tratar `make check` como disponível. Consulte o plano incremental em [SPECIFICATION.md](../../SPECIFICATION.md).
+O fluxo base é executável por `make check`. Use `make format` para formatar e `make precommit` para executar os hooks sobre os arquivos rastreados. Consulte o plano incremental em [SPECIFICATION.md](../../SPECIFICATION.md).

@@ -1,6 +1,6 @@
 # Palworld Manager
 
-Aplicação web planejada para administrar um servidor dedicado de Palworld com segurança, interface privada e baixa dependência de operações rotineiras via terminal.
+Aplicação web em desenvolvimento para administrar um servidor dedicado de Palworld com segurança, interface privada e baixa dependência de operações rotineiras via terminal.
 
 ## Objetivos principais
 
@@ -21,11 +21,24 @@ Aplicação web planejada para administrar um servidor dedicado de Palworld com 
 
 ## Status
 
-> Status: Em desenvolvimento. As funcionalidades da V1 estão planejadas, mas ainda não estão implementadas.
+> Status: Em desenvolvimento. O bootstrap e o health check mínimo estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
-O repositório ainda não possui comandos de desenvolvimento ou validação executáveis. Os comandos `make dev`, `make test` e `make check` serão adicionados durante as etapas de implementação definidas em [SPECIFICATION.md](SPECIFICATION.md).
+Pré-requisitos: Git, Docker com Docker Compose e GNU Make. Python e as ferramentas de qualidade são fornecidos pela imagem de desenvolvimento.
+
+```bash
+make dev
+```
+
+A aplicação fica disponível em `http://127.0.0.1:8080` e o simulador mínimo em `http://127.0.0.1:8090`. Para encerrar os containers, execute `make down`.
+
+```bash
+make test
+make check
+```
+
+Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker e os serviços simulados ainda são estruturas mínimas, sem jobs ou integrações reais.
 
 ## Documentação
 

@@ -2,15 +2,15 @@
 
 ## Etapa atual
 
-Ainda não iniciada.
+Nenhuma etapa em andamento.
 
 ## Etapas concluídas
 
-Nenhuma.
+- Etapa 1 — Bootstrap.
 
 ## Próxima etapa
 
-Etapa 1 — Bootstrap.
+Etapa 2 — Configuração e ambientes.
 
 ## Observações
 

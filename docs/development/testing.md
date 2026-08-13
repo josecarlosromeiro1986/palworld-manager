@@ -1,6 +1,6 @@
 # Testes
 
-> Status: Planejado para a V1.
+> Status: Em desenvolvimento. Pytest e o gate base estão implementados; a suíte crescerá por etapa.
 
 Pytest será a base da suíte automatizada.
 
@@ -10,10 +10,13 @@ Pytest será a base da suíte automatizada.
 
 Playwright não deve cobrir cada botão. A maior parte do comportamento deve ser validada por testes rápidos e determinísticos abaixo da camada de interface.
 
-O objetivo futuro é que:
+Comandos disponíveis:
 
 ```bash
+make test
 make check
 ```
 
-execute o gate completo de qualidade antes de commit e deploy. Esse comando ainda não existe no repositório. Quando for implementado, esta página deverá listar exatamente as verificações reais e como executar testes específicos.
+`make check` executa Ruff, verificação de formatação, Mypy e Pytest dentro do container. A configuração de pre-commit pode ser executada com `make precommit`.
+
+`make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.
