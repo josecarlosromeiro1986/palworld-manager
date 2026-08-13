@@ -1,6 +1,6 @@
 # Desenvolvimento com Docker
 
-> Status: Em desenvolvimento. Os três containers base estão implementados; jobs e integrações continuam planejados.
+> Status: Em desenvolvimento. Os três containers base e o fake do serviço Palworld estão implementados; jobs e integrações externas continuam planejados.
 
 O Docker Compose de desenvolvimento possui três containers e preserva a separação entre aplicação web e worker usada em produção. Todos usam a mesma imagem de desenvolvimento com comandos diferentes.
 
@@ -8,7 +8,7 @@ O Docker Compose de desenvolvimento possui três containers e preserva a separa�
 
 ## `app`
 
-Compila os assets locais no startup, executa o FastAPI com reload, valida `APP_ENVIRONMENT`, host, porta e caminhos estruturais e publica a porta `8080` somente em `127.0.0.1`. Já fornece `/health`, autenticação e o layout administrativo responsivo. A criação e o acompanhamento de jobs serão adicionados nas etapas correspondentes.
+Compila os assets locais no startup, executa o FastAPI com reload, valida `APP_ENVIRONMENT`, host, porta e caminhos estruturais e publica a porta `8080` somente em `127.0.0.1`. Já fornece `/health`, autenticação, métricas, layout administrativo responsivo e consulta do estado do serviço Palworld por fake. A criação e o acompanhamento de jobs serão adicionados nas etapas correspondentes.
 
 ## `worker`
 
@@ -23,7 +23,7 @@ Development e test não dependerão de:
 - servidor Palworld real;
 - webhook real do Discord;
 - Google Drive real;
-- operações reais de systemd ou journald;
+- operações reais de systemd ou journald; a consulta de estado do Palworld usa um fake em memória;
 - alterações reais via SteamCMD.
 
 Os simuladores futuros devem permitir cenários de sucesso, timeout e falha sem expor credenciais nem alterar o host.

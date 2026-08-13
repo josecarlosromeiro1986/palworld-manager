@@ -30,8 +30,8 @@ O worker não terá servidor HTTP. Ele atualizará um heartbeat no SQLite a cada
 
 Tailscale Serve fornecerá acesso privado com HTTPS apenas ao serviço web; journald receberá os logs de ambos.
 
-Operações privilegiadas continuarão limitadas por regras mínimas de `sudoers`, com comandos e argumentos validados.
+A leitura do estado do Palworld já usa um adapter com executável e argumentos fixos, unidade validada e timeout. Ela não altera o serviço. Operações privilegiadas futuras continuarão limitadas por regras mínimas de `sudoers`, com comandos e argumentos validados.
 
-Node.js e npm serão necessários apenas para o build de assets, não como serviço de produção. Permissões, unidades systemd, `sudoers`, scripts e configuração do Tailscale ainda serão implementados e validados na etapa de deploy; por isso, este documento não é um tutorial executável.
+Node.js e npm serão necessários apenas para o build de assets, não como serviço de produção. Permissões, arquivos de unidade do Manager, `sudoers`, scripts e configuração do Tailscale ainda serão implementados e validados na etapa de deploy; por isso, este documento não é um tutorial executável.
 
 Consulte [Segurança](../architecture/security.md) e os requisitos completos em [SPECIFICATION.md](../../SPECIFICATION.md).

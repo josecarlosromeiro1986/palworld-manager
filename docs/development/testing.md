@@ -31,4 +31,6 @@ Os testes estruturais do layout verificam que login e Dashboard usam assets loca
 
 Os testes de métricas usam uma fonte determinística no lugar do host real. Eles verificam leituras atuais, cálculo da vazão de rede, reset de contadores, timestamps com timezone, expiração da janela de 15 minutos, autenticação do fragmento HTMX, integração do Chart.js local e ausência de persistência no SQLite.
 
+Os testes da integração systemd usam um executor gravador e o fake do serviço Palworld. Eles verificam comando e unidade exatos, timeout, rejeição de nomes que possam virar opções, erros sem vazamento de stderr, seleção do adapter somente em production e consulta autenticada dos estados ativo/inativo no Dashboard. Nenhum teste executa `systemctl` real.
+
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

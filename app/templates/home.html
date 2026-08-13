@@ -13,6 +13,28 @@
 </header>
 
 <section
+  data-palworld-service-panel
+  hx-get="/dashboard/palworld-service"
+  hx-trigger="load, every 5s"
+  hx-swap="innerHTML"
+  aria-label="Estado do serviço Palworld"
+  class="mb-3"
+>
+  <article class="animate-pulse rounded-md border bg-surface p-3 sm:p-4" aria-busy="true">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="size-9 rounded-md bg-surface-raised" aria-hidden="true"></span>
+        <div>
+          <h2 class="text-sm font-medium text-ink">Serviço Palworld</h2>
+          <p class="mt-0.5 text-xs text-muted">Consultando estado</p>
+        </div>
+      </div>
+      <p class="status-placeholder text-xs">Carregando</p>
+    </div>
+  </article>
+</section>
+
+<section
   data-metrics-panel
   hx-get="/dashboard/metrics"
   hx-trigger="load, every 5s"

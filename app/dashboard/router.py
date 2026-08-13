@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
 
 from app.dashboard.metrics import HostMetricsService, MetricsSnapshot
+from app.system.palworld_service import PalworldService, PalworldServiceQueryError
 
 router = APIRouter(prefix="/dashboard")
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
@@ -14,6 +15,10 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates"
 
 def _metrics_service(request: Request) -> HostMetricsService:
     return cast(HostMetricsService, request.app.state.metrics_service)
+
+
+def _palworld_service(request: Request) -> PalworldService:
+    return cast(PalworldService, request.app.state.palworld_service)
 
 
 def _format_bytes(value: float) -> str:
@@ -54,4 +59,17 @@ def metrics_fragment(request: Request) -> Response:
             "network_sent": _format_bytes(current.network_sent_bytes_per_second),
             "chart_data": _chart_data(snapshot),
         },
+    )
+
+
+@router.get("/palworld-service", response_class=HTMLResponse, include_in_schema=False)
+def palworld_service_fragment(request: Request) -> Response:
+    try:
+        status = _palworld_service(request).get_status()
+    except PalworldServiceQueryError:
+        status = None
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard/_palworld_service_status.html",
+        context={"status": status},
     )

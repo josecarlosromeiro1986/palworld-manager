@@ -1,10 +1,12 @@
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import inspect
 
@@ -14,6 +16,11 @@ from app.config import AppEnvironment, Settings
 from app.dashboard.metrics import HostMetricsService, RawHostMetrics
 from app.db.engine import create_database_engine, create_session_factory, session_scope
 from app.main import create_app
+from app.system.palworld_service import (
+    FakePalworldService,
+    PalworldServiceQueryError,
+    PalworldServiceStatus,
+)
 
 
 class FixedMetricsSource:
@@ -30,6 +37,11 @@ class FixedMetricsSource:
             network_received_bytes=1_000,
             network_sent_bytes=500,
         )
+
+
+class UnavailablePalworldService:
+    def get_status(self) -> PalworldServiceStatus:
+        raise PalworldServiceQueryError("falha simulada")
 
 
 @pytest.fixture
@@ -71,8 +83,12 @@ def login(client: TestClient) -> None:
     assert response.status_code == 303
 
 
-def test_metrics_fragment_requires_authentication(metrics_client: TestClient) -> None:
-    response = metrics_client.get("/dashboard/metrics", follow_redirects=False)
+@pytest.mark.parametrize("path", ["/dashboard/metrics", "/dashboard/palworld-service"])
+def test_dashboard_fragments_require_authentication(
+    metrics_client: TestClient,
+    path: str,
+) -> None:
+    response = metrics_client.get(path, follow_redirects=False)
 
     assert response.status_code == 303
     assert response.headers["location"] == "/login"
@@ -96,3 +112,40 @@ def test_dashboard_polls_and_renders_host_metrics(metrics_client: TestClient) ->
     assert "data-resource-chart" in metrics.text
     assert "data-network-chart" in metrics.text
     assert '"cpu": [12.5]' in metrics.text
+
+
+def test_dashboard_polls_and_renders_fake_palworld_service_state(
+    metrics_client: TestClient,
+) -> None:
+    login(metrics_client)
+
+    dashboard = metrics_client.get("/")
+    inactive = metrics_client.get("/dashboard/palworld-service")
+    application = cast(FastAPI, metrics_client.app)
+    fake_service = cast(FakePalworldService, application.state.palworld_service)
+    fake_service.set_active(True)
+    active = metrics_client.get("/dashboard/palworld-service")
+
+    assert dashboard.status_code == 200
+    assert 'hx-get="/dashboard/palworld-service"' in dashboard.text
+    assert 'hx-trigger="load, every 5s"' in dashboard.text
+    assert inactive.status_code == 200
+    assert 'data-service-state="inactive"' in inactive.text
+    assert "INATIVO" in inactive.text
+    assert active.status_code == 200
+    assert 'data-service-state="active"' in active.text
+    assert "ATIVO" in active.text
+
+
+def test_dashboard_renders_unavailable_when_service_query_fails(
+    metrics_client: TestClient,
+) -> None:
+    login(metrics_client)
+    application = cast(FastAPI, metrics_client.app)
+    application.state.palworld_service = UnavailablePalworldService()
+
+    response = metrics_client.get("/dashboard/palworld-service")
+
+    assert response.status_code == 200
+    assert 'data-service-state="unavailable"' in response.text
+    assert "INDISPONÍVEL" in response.text

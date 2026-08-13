@@ -7,10 +7,9 @@ from pydantic import Field, StringConstraints, field_validator, model_validator
 from pydantic.networks import IPvAnyAddress
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ServiceName = Annotated[
-    str,
-    StringConstraints(pattern=r"^[A-Za-z0-9_.@-]+\.service$"),
-]
+SERVICE_NAME_PATTERN = r"^[A-Za-z0-9_][A-Za-z0-9_.@-]*\.service$"
+
+ServiceName = Annotated[str, StringConstraints(pattern=SERVICE_NAME_PATTERN)]
 Port = Annotated[int, Field(ge=1, le=65535)]
 
 

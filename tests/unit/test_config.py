@@ -75,6 +75,20 @@ def test_paths_must_be_absolute(monkeypatch: pytest.MonkeyPatch) -> None:
         Settings()
 
 
+@pytest.mark.parametrize(
+    "service_name",
+    ["--all.service", "palworld.service --no-pager", "../palworld.service", "palworld"],
+)
+def test_palworld_service_name_rejects_command_options(
+    service_name: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PALWORLD_SERVICE", service_name)
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
 def test_validation_error_hides_input(monkeypatch: pytest.MonkeyPatch) -> None:
     sensitive_value = "valor-privado-nao-exibir"
     monkeypatch.setenv("APP_PORT", sensitive_value)

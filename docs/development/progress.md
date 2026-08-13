@@ -14,10 +14,11 @@ Nenhuma etapa em andamento.
 - Etapa 6 — Brute force e auditoria básica.
 - Etapa 7 — Layout Dark.
 - Etapa 8 — Métricas.
+- Etapa 9 — systemd Palworld.
 
 ## Próxima etapa
 
-Etapa 9 — systemd Palworld.
+Etapa 10 — Health check.
 
 ## Observações
 

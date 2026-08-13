@@ -27,6 +27,7 @@ A configuração estrutural já é validada com Pydantic Settings no startup de 
 
 - Usar chamadas de processo com argumentos separados e `shell=False`; evitar `shell=True`.
 - Aceitar somente comandos, serviços e caminhos previamente permitidos.
+- A consulta implementada do Palworld usa o executável fixo `/usr/bin/systemctl`, aceita somente a unidade configurada com nome validado e aplica timeout. Development e test usam um fake e nunca chamam o systemd do host.
 - Normalizar e validar caminhos contra path traversal e acesso por symlink.
 - Ao criar ou extrair `.tar.gz`, rejeitar caminhos absolutos, `..`, links perigosos e conteúdo fora do destino autorizado.
 - Validar formato, tamanho e integridade antes de usar um backup.

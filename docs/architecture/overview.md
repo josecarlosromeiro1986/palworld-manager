@@ -1,6 +1,6 @@
 # Visão geral da arquitetura
 
-> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, as métricas efêmeras e os processos web/worker estão implementados; integrações e regras operacionais permanecem planejadas.
+> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, as métricas efêmeras, a consulta systemd do Palworld e os processos web/worker estão implementados; integrações e regras operacionais adicionais permanecem planejadas.
 
 O Palworld Manager é uma aplicação Python leve e modular por domínio. FastAPI coordena as rotas e os serviços da aplicação; Jinja2 renderiza as páginas no servidor; HTMX atualiza as métricas e atualizará outros formulários e fragmentos; e SSE entregará logs e progresso que se beneficiem de atualização contínua. Tailwind CSS fornece o layout administrativo responsivo; Chart.js exibe o histórico de 15 minutos mantido somente em memória.
 
@@ -29,4 +29,6 @@ Qualquer componente pode persistir um `notification_event`; somente o worker mud
 
 O worker não terá servidor HTTP. Sua saúde será derivada do systemd e de um heartbeat gravado no SQLite a cada 10 segundos. Enquanto o serviço estiver ativo e ainda não houver heartbeat, ficará `STARTING` com menos de 30 segundos desde a ativação e `UNRESPONSIVE` a partir de 30 segundos. Com heartbeat, idade inferior a 30 segundos é `HEALTHY` e idade igual ou superior é `UNRESPONSIVE`; serviço inativo é `OFFLINE`. O `/health` pertence exclusivamente à aplicação web.
 
-Dev e testes usarão serviços simulados em vez das integrações reais. Consulte a [especificação da V1](../../SPECIFICATION.md) para os requisitos e a [documentação Docker](../development/docker.md) para o ambiente planejado.
+Dev e testes usam fakes nas integrações já implementadas e usarão serviços simulados nas próximas fronteiras externas. Consulte a [especificação da V1](../../SPECIFICATION.md) para os requisitos e a [documentação Docker](../development/docker.md) para o ambiente planejado.
+
+A consulta do serviço Palworld fica atrás de uma interface única. Em produção, o adapter executa somente `/usr/bin/systemctl show --property=ActiveState --value` para a unidade estrutural validada; em development e test, um fake controlável substitui integralmente o systemd. Esta etapa informa apenas se o serviço está ativo ou inativo. A combinação com processo e REST API pertence ao health check completo.

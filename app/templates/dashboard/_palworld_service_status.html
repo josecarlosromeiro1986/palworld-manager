@@ -1,0 +1,32 @@
+{% from "components/icon.html" import icon with context %}
+
+<article class="rounded-md border bg-surface p-3 sm:p-4" data-palworld-service-status>
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex items-center gap-3">
+      <span class="flex size-9 items-center justify-center rounded-md bg-surface-raised text-muted">
+        {{ icon("server-cog") }}
+      </span>
+      <div>
+        <h2 class="text-sm font-medium text-ink">Serviço Palworld</h2>
+        <p class="mt-0.5 text-xs text-muted">Estado do gerenciador de serviços</p>
+      </div>
+    </div>
+
+    {% if status is none %}
+      <p class="flex items-center gap-2 text-sm font-semibold text-warning" data-service-state="unavailable">
+        <span class="size-2 rounded-full bg-warning" aria-hidden="true"></span>
+        INDISPONÍVEL
+      </p>
+    {% elif status.active %}
+      <p class="flex items-center gap-2 text-sm font-semibold text-positive" data-service-state="active">
+        <span class="size-2 rounded-full bg-positive" aria-hidden="true"></span>
+        ATIVO
+      </p>
+    {% else %}
+      <p class="flex items-center gap-2 text-sm font-semibold text-muted" data-service-state="inactive">
+        <span class="size-2 rounded-full bg-muted" aria-hidden="true"></span>
+        INATIVO
+      </p>
+    {% endif %}
+  </div>
+</article>
