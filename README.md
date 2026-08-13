@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. O bootstrap e o health check mínimo estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. O bootstrap, o health check mínimo e a configuração estrutural por ambiente estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 

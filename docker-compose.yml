@@ -1,6 +1,9 @@
 x-app-service: &app-service
   image: palworld-manager:dev
   environment:
+    APP_ENVIRONMENT: development
+    APP_HOST: 0.0.0.0
+    APP_PORT: "8080"
     IN_CONTAINER: "1"
     PYTHONPATH: /workspace
   init: true
@@ -12,14 +15,7 @@ services:
     <<: *app-service
     build:
       context: .
-    command:
-      - uvicorn
-      - app.main:app
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8080"
-      - --reload
+    command: ["python", "-m", "app.web"]
     ports:
       - "127.0.0.1:8080:8080"
     healthcheck:

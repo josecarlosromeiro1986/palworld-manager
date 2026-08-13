@@ -18,6 +18,8 @@ A aplicação seguirá o princípio do menor privilégio. Em produção, será e
 
 Secrets ficarão fora do SQLite, em arquivo de ambiente com acesso restrito em produção. Senhas, tokens, webhooks, cookies e credenciais não podem aparecer completos na interface, em logs, auditorias, fixtures, backups ou diagnósticos. Logs devem mascarar valores sensíveis e evitar registrar headers ou ambientes indiscriminadamente.
 
+A configuração estrutural já é validada com Pydantic Settings no startup de web e worker. Erros de validação ocultam os valores recebidos, e o ambiente `production` rejeita `APP_HOST` que não seja loopback. O carregamento de secrets reais será implementado junto às integrações e ao deploy, sempre por variáveis de processo provenientes do arquivo protegido previsto para produção.
+
 ## Comandos, caminhos e arquivos
 
 - Usar chamadas de processo com argumentos separados e `shell=False`; evitar `shell=True`.

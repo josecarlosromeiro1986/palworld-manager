@@ -7,10 +7,11 @@ Nenhuma etapa em andamento.
 ## Etapas concluídas
 
 - Etapa 1 — Bootstrap.
+- Etapa 2 — Configuração e ambientes.
 
 ## Próxima etapa
 
-Etapa 2 — Configuração e ambientes.
+Etapa 3 — Banco e migrations.
 
 ## Observações
 

@@ -15,7 +15,7 @@ down:
 	$(COMPOSE) down --remove-orphans
 
 test:
-	$(RUN) pytest
+	$(RUN) env APP_ENVIRONMENT=test pytest
 
 lint:
 	$(RUN) ruff check .
