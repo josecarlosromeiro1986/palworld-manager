@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. O bootstrap, a configuração estrutural, a fundação SQLite/Alembic, a autenticação segura e a proteção contra brute force estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, a autenticação segura e o layout administrativo responsivo estão implementados; as funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -38,7 +38,7 @@ make test
 make check
 ```
 
-O schema local é criado e atualizado explicitamente com `make db-upgrade`. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker e os serviços simulados ainda são estruturas mínimas, sem jobs ou integrações reais.
+O schema local é criado e atualizado explicitamente com `make db-upgrade`. Assets Tailwind, HTMX e ícones são compilados localmente pela imagem; `make frontend-build` permite reconstruí-los separadamente. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker e os serviços simulados ainda são estruturas mínimas, sem jobs ou integrações reais.
 
 ## Documentação
 

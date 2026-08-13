@@ -1,0 +1,32 @@
+{% from "components/icon.html" import icon with context %}
+{% set navigation = [
+  ("Dashboard", "layout-dashboard", true),
+  ("Jogadores", "users", false),
+  ("Logs", "scroll-text", false),
+  ("Backups", "archive", false),
+  ("Atualizações", "refresh-cw", false),
+  ("Configurações do Palworld", "sliders", false),
+  ("Configurações do Painel", "settings", false),
+  ("Diagnóstico", "stethoscope", false),
+  ("Histórico / Auditoria", "history", false)
+] %}
+
+<nav aria-label="Navegação principal" class="flex-1 overflow-y-auto px-3 py-4">
+  <ul class="space-y-1">
+    {% for label, icon_name, enabled in navigation %}
+      <li>
+        {% if enabled %}
+          <a href="/" class="nav-item" aria-current="page">
+            {{ icon(icon_name) }}
+            <span>{{ label }}</span>
+          </a>
+        {% else %}
+          <span class="nav-item" aria-disabled="true">
+            {{ icon(icon_name) }}
+            <span>{{ label }}</span>
+          </span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</nav>

@@ -1,7 +1,9 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.auth.middleware import AuthenticationMiddleware
 from app.auth.router import router as auth_router
@@ -30,6 +32,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.settings = resolved_settings
     application.state.session_factory = session_factory
     application.add_middleware(AuthenticationMiddleware, session_factory=session_factory)
+    application.mount(
+        "/static",
+        StaticFiles(directory=Path(__file__).parent / "static"),
+        name="static",
+    )
     application.include_router(health_router)
     application.include_router(auth_router)
     return application

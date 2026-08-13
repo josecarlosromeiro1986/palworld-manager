@@ -1,22 +1,84 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Entrar - Palworld Manager</title>
-  </head>
-  <body>
-    <main>
-      <h1>Palworld Manager</h1>
-      {% if error %}<p role="alert">{{ error }}</p>{% endif %}
-      <form method="post" action="/login">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <label for="username">Usuário</label>
-        <input id="username" name="username" value="{{ username }}" autocomplete="username" required autofocus>
-        <label for="password">Senha</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
-        <button type="submit">Entrar</button>
-      </form>
-    </main>
-  </body>
-</html>
+{% extends "base.html" %}
+{% from "components/icon.html" import icon with context %}
+
+{% block title %}Entrar - Palworld Manager{% endblock %}
+
+{% block body %}
+<body class="min-h-screen bg-canvas font-sans text-ink antialiased">
+  <main class="flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
+    <div class="w-full max-w-sm">
+      <header class="mb-7 flex items-center gap-3">
+        <span class="flex size-10 items-center justify-center rounded-md border border-accent/30 bg-accent/10 text-accent">
+          {{ icon("server-cog", "size-6 fill-none stroke-current stroke-[1.8]") }}
+        </span>
+        <div>
+          <h1 class="text-lg font-semibold text-ink">Palworld Manager</h1>
+          <p class="text-sm text-muted">Painel administrativo</p>
+        </div>
+      </header>
+
+      <section class="rounded-md border bg-surface p-5 shadow-2xl shadow-black/20 sm:p-6" aria-labelledby="login-title">
+        <div class="mb-5">
+          <h2 id="login-title" class="text-base font-semibold">Entrar</h2>
+          <p class="mt-1 text-sm text-muted">Use sua conta de administrador.</p>
+        </div>
+
+        {% if error %}
+          <div class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger" role="alert" aria-live="polite">
+            {{ error }}
+          </div>
+        {% endif %}
+
+        <form method="post" action="/login" class="space-y-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div>
+            <label for="username" class="mb-1.5 block text-sm font-medium text-ink">Usuário</label>
+            <input
+              class="field"
+              id="username"
+              name="username"
+              value="{{ username }}"
+              autocomplete="username"
+              required
+              autofocus
+            >
+          </div>
+          <div>
+            <label for="password" class="mb-1.5 block text-sm font-medium text-ink">Senha</label>
+            <div class="relative">
+              <input
+                class="field pr-11"
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                required
+              >
+              <button
+                type="button"
+                data-password-toggle
+                aria-controls="password"
+                aria-label="Mostrar senha"
+                aria-pressed="false"
+                title="Mostrar senha"
+                class="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted hover:text-ink"
+              >
+                {{ icon("eye") }}
+              </button>
+            </div>
+          </div>
+          <button
+            type="submit"
+            class="flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-accent-strong px-4 text-sm font-semibold text-canvas hover:bg-accent focus-visible:outline-offset-2"
+          >
+            {{ icon("log-in") }}
+            <span>Entrar</span>
+          </button>
+        </form>
+      </section>
+
+      <p class="mt-5 text-center text-xs text-muted">Acesso privado e restrito.</p>
+    </div>
+  </main>
+</body>
+{% endblock %}

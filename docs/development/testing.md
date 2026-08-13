@@ -17,7 +17,7 @@ make test
 make check
 ```
 
-`make check` executa Ruff, verificação de formatação, Mypy e Pytest dentro do container. A configuração de pre-commit pode ser executada com `make precommit`.
+`make check` recompila e valida os assets de frontend, executa Ruff, verificação de formatação, Mypy e Pytest dentro do container. A configuração de pre-commit pode ser executada com `make precommit` e inclui o mesmo gate de frontend.
 
 Os testes de configuração isolam variáveis de ambiente e arquivos locais. A suíte de integração também verifica que uma configuração inválida impede o startup sem reproduzir o valor recebido na saída de erro.
 
@@ -26,5 +26,7 @@ Testes de banco usam um `manager.db` temporário por caso e executam `alembic up
 Os testes de credenciais verificam o formato Argon2id, a senha mínima, rejeição de hashes inválidos, criação de um único administrador e redefinição pela CLI. Usam bancos temporários e confirmam que senhas em texto puro não são persistidas nem exibidas.
 
 Os testes de autenticação cobrem rotas privadas por padrão, login e logout, CSRF, atributos dos cookies, revogação por troca de senha e limites exatos de 8 horas totais e 1 hora de inatividade. Também verificam o bloqueio na quinta falha consecutiva, reset por sucesso ou expiração, separação por usuário, aquisição transacional sob concorrência e auditoria sem senhas. O cliente ASGI usa `httpx2`, conforme a integração suportada pelo Starlette atual.
+
+Os testes estruturais do layout verificam que login e Dashboard usam assets locais, controles acessíveis, navegação prevista e arquivos estáticos públicos sem liberar páginas privadas. A inspeção visual automatizada com Playwright permanece reservada aos fluxos E2E críticos da Etapa 28.
 
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

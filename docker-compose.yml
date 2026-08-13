@@ -11,13 +11,14 @@ x-app-service: &app-service
 x-manager-volumes: &manager-volumes
   - .:/workspace
   - manager-data:/var/lib/palworld-manager
+  - /workspace/node_modules
 
 services:
   app:
     <<: *app-service
     build:
       context: .
-    command: ["python", "-m", "app.web"]
+    command: ["sh", "-c", "npm run build && python -m app.web"]
     volumes: *manager-volumes
     ports:
       - "127.0.0.1:8080:8080"

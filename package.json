@@ -1,0 +1,16 @@
+{
+  "name": "palworld-manager-frontend",
+  "private": true,
+  "scripts": {
+    "build": "npm run build:css && npm run build:assets",
+    "build:css": "tailwindcss -i app/static/src/app.css -o app/static/dist/app.css --minify",
+    "build:assets": "node scripts/build-frontend-assets.mjs",
+    "check": "npm run build && node --check app/static/src/app.js && node --check scripts/build-frontend-assets.mjs"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "htmx.org": "2.0.10",
+    "lucide": "1.31.0",
+    "tailwindcss": "4.3.3"
+  }
+}

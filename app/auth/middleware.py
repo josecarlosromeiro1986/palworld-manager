@@ -13,6 +13,10 @@ PUBLIC_PATHS = frozenset({"/health", "/login"})
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
+def _is_public_path(path: str) -> bool:
+    return path in PUBLIC_PATHS or path.startswith("/static/")
+
+
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, session_factory: sessionmaker[Session]) -> None:
         super().__init__(app)
@@ -27,7 +31,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: RequestResponseEndpoint,
     ) -> Response:
-        if request.url.path in PUBLIC_PATHS:
+        if _is_public_path(request.url.path):
             return await call_next(request)
 
         principal = await run_in_threadpool(

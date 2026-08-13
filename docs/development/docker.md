@@ -8,7 +8,7 @@ O Docker Compose de desenvolvimento possui três containers e preserva a separa�
 
 ## `app`
 
-Executa o FastAPI com reload, valida `APP_ENVIRONMENT`, host, porta e caminhos estruturais no startup e publica a porta `8080` somente em `127.0.0.1`. Nesta etapa, fornece apenas o `/health` mínimo. A criação e o acompanhamento de jobs serão adicionados nas etapas correspondentes.
+Compila os assets locais no startup, executa o FastAPI com reload, valida `APP_ENVIRONMENT`, host, porta e caminhos estruturais e publica a porta `8080` somente em `127.0.0.1`. Já fornece `/health`, autenticação e o layout administrativo responsivo. A criação e o acompanhamento de jobs serão adicionados nas etapas correspondentes.
 
 ## `worker`
 

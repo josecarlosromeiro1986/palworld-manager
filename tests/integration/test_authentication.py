@@ -81,6 +81,26 @@ def test_private_routes_require_session_but_health_and_login_are_public(
     assert client.get("/login").status_code == 200
 
 
+def test_login_page_loads_local_frontend_assets_and_accessible_controls(
+    authentication_context: AuthenticationContext,
+) -> None:
+    response = authentication_context.client.get("/login")
+
+    assert response.status_code == 200
+    assert "/static/dist/app.css" in response.text
+    assert "/static/dist/vendor/htmx.min.js" in response.text
+    assert "data-password-toggle" in response.text
+    assert 'aria-controls="password"' in response.text
+    assert "https://" not in response.text
+    assert (
+        authentication_context.client.get(
+            "/static/dist/app.css",
+            follow_redirects=False,
+        ).status_code
+        == 200
+    )
+
+
 def test_login_requires_csrf_and_uses_generic_credentials_error(
     authentication_context: AuthenticationContext,
 ) -> None:
@@ -163,6 +183,12 @@ def test_login_session_logout_and_csrf_flow(
     assert home_response.status_code == 200
     assert "admin" in home_response.text
     assert csrf_token in home_response.text
+    assert "data-sidebar" in home_response.text
+    assert 'aria-label="Navegação principal"' in home_response.text
+    assert 'aria-current="page"' in home_response.text
+    assert "Dashboard" in home_response.text
+    assert "Jogadores" in home_response.text
+    assert "Histórico / Auditoria" in home_response.text
     assert invalid_logout.status_code == 403
     assert logout_response.status_code == 303
     assert logout_response.headers["location"] == "/login"

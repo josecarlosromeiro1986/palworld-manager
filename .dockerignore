@@ -13,5 +13,6 @@ __pycache__
 .env.*
 !.env.example
 node_modules
+app/static/dist
 build
 dist

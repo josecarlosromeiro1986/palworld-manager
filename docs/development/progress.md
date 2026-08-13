@@ -12,10 +12,11 @@ Nenhuma etapa em andamento.
 - Etapa 4 — Administrador e Argon2id.
 - Etapa 5 — Login, sessão e CSRF.
 - Etapa 6 — Brute force e auditoria básica.
+- Etapa 7 — Layout Dark.
 
 ## Próxima etapa
 
-Etapa 7 — Layout base e design system.
+Etapa 8 — Métricas.
 
 ## Observações
 

@@ -16,3 +16,8 @@ repos:
         entry: mypy
         language: system
         pass_filenames: false
+      - id: frontend-check
+        name: Frontend assets
+        entry: npm run check
+        language: system
+        pass_filenames: false

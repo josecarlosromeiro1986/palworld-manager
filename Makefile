@@ -6,7 +6,7 @@ else
 RUN := $(COMPOSE) run --build --rm app
 endif
 
-.PHONY: dev down db-upgrade db-current admin-create admin-reset-password test lint format format-check typecheck precommit check e2e
+.PHONY: dev down db-upgrade db-current admin-create admin-reset-password frontend-build frontend-check test lint format format-check typecheck precommit check e2e
 
 dev:
 	$(COMPOSE) up --build
@@ -26,6 +26,12 @@ admin-create:
 admin-reset-password:
 	$(RUN) python -m app.cli reset-password
 
+frontend-build:
+	$(RUN) npm run build
+
+frontend-check:
+	$(RUN) npm run check
+
 test:
 	$(RUN) env APP_ENVIRONMENT=test pytest
 
@@ -44,7 +50,7 @@ typecheck:
 precommit:
 	$(RUN) pre-commit run --all-files
 
-check: lint format-check typecheck test
+check: frontend-check lint format-check typecheck test
 
 e2e:
 	@echo "Os testes E2E serão adicionados na Etapa 28."

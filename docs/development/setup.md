@@ -1,15 +1,15 @@
 # Preparação do ambiente
 
-> Status: Em desenvolvimento. O ambiente base e a configuração estrutural estão implementados.
+> Status: Em desenvolvimento. O ambiente base, a configuração estrutural e o pipeline de frontend estão implementados.
 
-O desenvolvimento principal usa Docker Compose. A imagem fornece Python, FastAPI, Ruff, Mypy, Pytest e pre-commit, sem exigir instalação local dessas ferramentas.
+O desenvolvimento principal usa Docker Compose. A imagem fornece Python, FastAPI, Node.js, npm, Ruff, Mypy, Pytest e pre-commit, sem exigir instalação local dessas ferramentas.
 
 ## Requisitos
 
 - Git para versionamento.
 - Docker com Docker Compose.
 - GNU Make para os atalhos do projeto.
-- Node.js e npm somente quando a etapa de frontend passar a compilar assets.
+- Node.js e npm são necessários para compilar assets, mas já são fornecidos pela imagem de desenvolvimento.
 
 Não é necessário instalar localmente SQLite, servidores Palworld, rclone, Discord ou serviços systemd usados apenas dentro dos containers ou simuladores.
 
@@ -21,6 +21,8 @@ make db-upgrade
 make db-current
 make admin-create
 make admin-reset-password
+make frontend-build
+make frontend-check
 make test
 make lint
 make format
@@ -30,7 +32,7 @@ make check
 make down
 ```
 
-`make dev` mantém os serviços em primeiro plano. `make db-upgrade` aplica migrations pendentes ao SQLite configurado; `make db-current` mostra a revisão atual. Depois da migration, `make admin-create` cria o único administrador da V1 e `make admin-reset-password` redefine sua senha. Ambos solicitam usuário e senha interativamente; a senha é oculta, confirmada e nunca deve ser passada como argumento. `make check` executa lint, verificação de formatação, análise estática e testes. `make e2e` está reservado para a Etapa 28 e ainda não executa testes de navegador.
+`make dev` compila os assets e mantém os serviços em primeiro plano. `make frontend-build` recompila Tailwind, HTMX e o sprite de ícones; `make frontend-check` também valida os arquivos JavaScript. `make db-upgrade` aplica migrations pendentes ao SQLite configurado; `make db-current` mostra a revisão atual. Depois da migration, `make admin-create` cria o único administrador da V1 e `make admin-reset-password` redefine sua senha. Ambos solicitam usuário e senha interativamente; a senha é oculta, confirmada e nunca deve ser passada como argumento. `make check` executa o gate de frontend, lint, verificação de formatação, análise estática e testes. `make e2e` está reservado para a Etapa 28 e ainda não executa testes de navegador.
 
 Os comandos equivalentes da CLI aceitam `--username` opcional, mas sempre leem a senha pelo terminal:
 
