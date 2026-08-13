@@ -67,7 +67,7 @@ def _login_page(
 
 @router.get("/login", response_class=HTMLResponse, include_in_schema=False)
 def login_page(request: Request) -> Response:
-    csrf_token = new_login_csrf_token()
+    csrf_token = request.cookies.get(LOGIN_CSRF_COOKIE_NAME) or new_login_csrf_token()
     response = _login_page(request, csrf_token)
     set_login_csrf_cookie(response, csrf_token, _settings(request))
     return response

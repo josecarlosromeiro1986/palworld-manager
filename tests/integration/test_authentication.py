@@ -101,6 +101,27 @@ def test_login_page_loads_local_frontend_assets_and_accessible_controls(
     )
 
 
+def test_automatic_browser_requests_do_not_invalidate_login_csrf(
+    authentication_context: AuthenticationContext,
+) -> None:
+    client = authentication_context.client
+    csrf_token = _login_csrf(client)
+
+    client.get("/favicon.ico")
+    client.get("/.well-known/appspecific/com.chrome.devtools.json")
+    response = client.post(
+        "/login",
+        data={
+            "username": "usuario-inexistente",
+            "password": "senha-ficticia",
+            "csrf_token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 401
+    assert client.cookies.get(LOGIN_CSRF_COOKIE_NAME) == csrf_token
+
+
 def test_login_requires_csrf_and_uses_generic_credentials_error(
     authentication_context: AuthenticationContext,
 ) -> None:
