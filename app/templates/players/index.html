@@ -88,7 +88,18 @@
       <p class="mb-4 rounded-md border border-positive/40 bg-positive/10 px-3 py-2 text-sm text-positive" role="status">{{ announcement_success }}</p>
     {% endif %}
 
-    <form method="post" action="/players/announce" data-announcement-form class="space-y-4">
+    <form
+      method="post"
+      action="/players/announce"
+      data-announcement-form
+      data-confirm
+      data-confirm-title="Enviar anúncio?"
+      data-confirm-description="Esta mensagem será enviada imediatamente aos jogadores online."
+      data-confirm-source="announcement-message"
+      data-confirm-preview-label="Mensagem exata"
+      data-confirm-button="Enviar anúncio"
+      class="space-y-4"
+    >
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div>
         <div class="mb-1 flex items-center justify-between gap-3">
@@ -106,41 +117,6 @@
         Confirmar e enviar anúncio
       </button>
     </form>
-
-    <dialog
-      data-announcement-modal
-      class="confirmation-modal w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-lg border bg-surface p-0 text-ink shadow-2xl"
-      aria-labelledby="announcement-modal-title"
-      aria-describedby="announcement-modal-description"
-    >
-      <div class="border-b px-5 py-4">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Confirmação final</p>
-        <h3 id="announcement-modal-title" class="mt-1 text-lg font-semibold">Enviar anúncio?</h3>
-        <p id="announcement-modal-description" class="mt-1 text-sm text-muted">
-          Esta mensagem será enviada imediatamente aos jogadores online.
-        </p>
-      </div>
-      <div class="px-5 py-4">
-        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Mensagem exata</p>
-        <pre data-announcement-preview class="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-canvas p-3 font-sans text-sm text-ink"></pre>
-      </div>
-      <div class="flex flex-col-reverse gap-2 border-t bg-canvas/40 px-5 py-4 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          data-announcement-modal-cancel
-          class="min-h-10 rounded-md border px-4 text-sm font-semibold text-muted hover:bg-surface-raised hover:text-ink"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          data-announcement-modal-confirm
-          class="min-h-10 rounded-md bg-accent px-4 text-sm font-semibold text-canvas hover:bg-accent-strong"
-        >
-          Enviar anúncio
-        </button>
-      </div>
-    </dialog>
   </section>
 </div>
 {% endblock %}

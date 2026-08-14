@@ -47,7 +47,7 @@ O resultado tipado e seu timestamp ficam em um snapshot protegido para acesso co
 
 ## Anúncios
 
-Anúncios aceitam texto livre e não têm agendamento. O formulário mostra o contador de caracteres, exige sessão e CSRF e só envia quando o campo de confirmação repete exatamente a mensagem, incluindo espaços, acentos, pontuação e quebras de linha. Antes do submit, um modal acessível do próprio painel apresenta o texto exato e exige a confirmação final de envio.
+Anúncios aceitam texto livre e não têm agendamento. O formulário mostra o contador de caracteres, exige sessão e CSRF e só envia quando o campo de confirmação repete exatamente a mensagem, incluindo espaços, acentos, pontuação e quebras de linha. Antes do submit, o modal acessível compartilhado do painel apresenta o texto exato e exige a confirmação final de envio.
 
 Cada tentativa validada é auditada como `PALWORLD_ANNOUNCEMENT`, com usuário, mensagem, destino e resultado. Falhas externas registram somente a categoria segura; credenciais e detalhes de transporte nunca são persistidos.
 

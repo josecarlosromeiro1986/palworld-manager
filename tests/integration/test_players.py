@@ -199,11 +199,12 @@ def test_announcement_confirmation_uses_accessible_application_modal(
 
     assert page.status_code == 200
     assert "<dialog" in page.text
-    assert "data-announcement-modal" in page.text
-    assert 'aria-labelledby="announcement-modal-title"' in page.text
-    assert "data-announcement-preview" in page.text
-    assert "data-announcement-modal-cancel" in page.text
-    assert "data-announcement-modal-confirm" in page.text
+    assert "data-confirmation-modal" in page.text
+    assert 'aria-labelledby="confirmation-modal-title"' in page.text
+    assert 'data-confirm-source="announcement-message"' in page.text
+    assert "data-confirmation-modal-preview" in page.text
+    assert "data-confirmation-modal-cancel" in page.text
+    assert "data-confirmation-modal-confirm" in page.text
     assert script.status_code == 200
     assert "modal.showModal()" in script.text
     assert "form.requestSubmit()" in script.text

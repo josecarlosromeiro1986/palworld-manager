@@ -275,6 +275,8 @@ Menu:
 
 Interface Dark, compacta, técnica, responsiva, prioridade desktop e utilizável no celular.
 
+Confirmações visuais usam um modal acessível e compartilhado do próprio painel, inclusive em formulários HTMX carregados dinamicamente. Não usar `window.alert`, `window.confirm`, `window.prompt` nem `hx-confirm`. Confirmações digitadas e CSRF continuam obrigatoriamente validados no backend; mensagens de erro e sucesso permanecem inline quando não exigem decisão do usuário.
+
 ## 11. Dashboard
 
 Mostrar status do Palworld, CPU host/processo, RAM, disco, uptime Ubuntu/serviço, versão Palworld, versão Manager + commit Git, último backup, Drive, rede, IP/estado Tailscale, Serve, trecho de log e último resultado conhecido de jogadores.

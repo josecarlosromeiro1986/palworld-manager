@@ -75,8 +75,11 @@ def test_dashboard_renders_confirmed_lifecycle_actions(
     ):
         assert f'hx-post="/dashboard/lifecycle/{action}"' in response.text
         assert f'value="{action}"' in response.text
-        assert f'hx-confirm="{question}"' in response.text
+        assert "data-confirm" in response.text
+        assert f'data-confirm-message="{question}"' in response.text
     assert 'hx-post="/dashboard/shutdown"' in response.text
+    assert "hx-confirm" not in response.text
+    assert 'data-confirm-tone="danger"' in response.text
     assert '<option value="5" selected>5 min</option>' in response.text
     assert csrf_token in response.text
 

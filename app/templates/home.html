@@ -50,7 +50,11 @@
           hx-post="/dashboard/lifecycle/{{ action }}"
           hx-target="#lifecycle-feedback"
           hx-swap="innerHTML"
-          hx-confirm="{{ question }}"
+          data-confirm
+          data-confirm-title="{{ label }} servidor?"
+          data-confirm-message="{{ question }}"
+          data-confirm-button="{{ label }}"
+          {% if action == "RESTART" %}data-confirm-tone="warning"{% endif %}
         >
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="hidden" name="confirmation" value="{{ action }}">
@@ -67,7 +71,11 @@
         hx-post="/dashboard/shutdown"
         hx-target="#lifecycle-feedback"
         hx-swap="innerHTML"
-        hx-confirm="Iniciar o desligamento assistido do servidor Palworld?"
+        data-confirm
+        data-confirm-title="Iniciar desligamento assistido?"
+        data-confirm-message="Iniciar o desligamento assistido do servidor Palworld?"
+        data-confirm-button="Iniciar desligamento"
+        data-confirm-tone="danger"
       >
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="confirmation" value="STOP">

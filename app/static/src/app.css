@@ -164,6 +164,23 @@
     background: rgb(0 0 0 / 75%);
     backdrop-filter: blur(2px);
   }
+
+  .confirmation-modal-confirm {
+    background: var(--color-accent);
+    color: var(--color-canvas);
+  }
+
+  .confirmation-modal-confirm:hover {
+    background: var(--color-accent-strong);
+  }
+
+  .confirmation-modal-confirm[data-tone="warning"] {
+    background: var(--color-warning);
+  }
+
+  .confirmation-modal-confirm[data-tone="danger"] {
+    background: var(--color-danger);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

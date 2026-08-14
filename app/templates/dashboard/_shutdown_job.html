@@ -35,11 +35,11 @@
     {% endif %}
     {% if job.is_cancellable %}
       <div class="mt-2 flex flex-wrap gap-2">
-        <form hx-post="/dashboard/shutdown/jobs/{{ job.id }}/cancel" hx-target="closest div[data-shutdown-job]" hx-swap="outerHTML" hx-confirm="Cancelar o desligamento assistido?">
+        <form hx-post="/dashboard/shutdown/jobs/{{ job.id }}/cancel" hx-target="closest div[data-shutdown-job]" hx-swap="outerHTML" data-confirm data-confirm-title="Cancelar desligamento?" data-confirm-message="Cancelar o desligamento assistido?" data-confirm-button="Cancelar desligamento" data-confirm-tone="warning">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="rounded-md border px-2 py-1 text-xs text-muted" type="submit">Cancelar</button>
         </form>
-        <form hx-post="/dashboard/shutdown/jobs/{{ job.id }}/now" hx-target="closest div[data-shutdown-job]" hx-swap="outerHTML" hx-confirm="Ignorar a contagem e executar o Stop normal agora?">
+        <form hx-post="/dashboard/shutdown/jobs/{{ job.id }}/now" hx-target="closest div[data-shutdown-job]" hx-swap="outerHTML" data-confirm data-confirm-title="Executar Stop agora?" data-confirm-message="Ignorar a contagem e executar o Stop normal agora?" data-confirm-button="Executar agora" data-confirm-tone="warning">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="rounded-md border px-2 py-1 text-xs text-warning" type="submit">Forçar agora</button>
         </form>
@@ -52,7 +52,7 @@
         <button class="rounded-md border px-2 py-1 text-sm text-danger" type="submit">Tentar SIGTERM</button>
       </form>
     {% elif job.status == "FAILED" and job.kind.value == "PALWORLD_FORCE_SIGTERM" %}
-      <form class="mt-3 flex flex-wrap gap-2" hx-post="/dashboard/shutdown/jobs/{{ job.id }}/force/SIGKILL" hx-target="#lifecycle-feedback" hx-swap="innerHTML" hx-confirm="SIGKILL é o último recurso e pode causar perda de dados. Continuar?">
+      <form class="mt-3 flex flex-wrap gap-2" hx-post="/dashboard/shutdown/jobs/{{ job.id }}/force/SIGKILL" hx-target="#lifecycle-feedback" hx-swap="innerHTML" data-confirm data-confirm-title="Executar SIGKILL?" data-confirm-message="SIGKILL é o último recurso e pode causar perda de dados. Continuar?" data-confirm-button="Executar SIGKILL" data-confirm-tone="danger">
         <label class="sr-only" for="force-kill-{{ job.id }}">Digite SIGKILL</label>
         <input id="force-kill-{{ job.id }}" class="rounded-md border bg-surface px-2 py-1 text-sm text-ink" name="confirmation" placeholder="Digite SIGKILL" required>
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

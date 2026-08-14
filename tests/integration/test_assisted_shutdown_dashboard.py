@@ -95,6 +95,9 @@ def test_shutdown_can_be_enqueued_and_cancelled_from_htmx_fragment(
     assert 'data-job-status="PENDING"' in accepted.text
     assert ">Cancelar</button>" in accepted.text
     assert ">Forçar agora</button>" in accepted.text
+    assert "hx-confirm" not in accepted.text
+    assert 'data-confirm-title="Cancelar desligamento?"' in accepted.text
+    assert 'data-confirm-title="Executar Stop agora?"' in accepted.text
 
     cancelled = client.post(
         "/dashboard/shutdown/jobs/1/cancel",
@@ -185,6 +188,10 @@ def test_forced_routes_require_exact_two_level_confirmations(
         term.status = "FAILED"
         term.finished_at = term.created_at
         term_id = term.id
+    kill_confirmation = client.get(f"/dashboard/shutdown/jobs/{term_id}")
+    assert "hx-confirm" not in kill_confirmation.text
+    assert 'data-confirm-title="Executar SIGKILL?"' in kill_confirmation.text
+    assert 'data-confirm-tone="danger"' in kill_confirmation.text
     invalid_kill = client.post(
         f"/dashboard/shutdown/jobs/{term_id}/force/SIGKILL",
         data={"confirmation": "FORCAR", "csrf_token": csrf},

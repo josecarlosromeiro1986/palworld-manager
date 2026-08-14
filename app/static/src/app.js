@@ -439,11 +439,6 @@ function initializePlayersPage(root = document) {
   root.querySelectorAll("[data-announcement-form]").forEach((form) => {
     const message = form.querySelector("[data-announcement-message]");
     const count = form.querySelector("[data-announcement-count]");
-    const modal = root.querySelector("[data-announcement-modal]");
-    const preview = modal?.querySelector("[data-announcement-preview]");
-    const cancelButton = modal?.querySelector("[data-announcement-modal-cancel]");
-    const confirmButton = modal?.querySelector("[data-announcement-modal-confirm]");
-    const submitButton = form.querySelector('button[type="submit"]');
     if (!(message instanceof HTMLTextAreaElement)) {
       return;
     }
@@ -455,34 +450,100 @@ function initializePlayersPage(root = document) {
     };
     message.addEventListener("input", updateCount);
     updateCount();
-
-    if (!(modal instanceof HTMLDialogElement) || !preview || !confirmButton) {
-      return;
-    }
-
-    form.addEventListener("submit", (event) => {
-      if (form.dataset.modalConfirmed === "true") {
-        delete form.dataset.modalConfirmed;
-        return;
-      }
-      event.preventDefault();
-      preview.textContent = message.value;
-      modal.showModal();
-    });
-
-    cancelButton?.addEventListener("click", () => modal.close());
-    confirmButton.addEventListener("click", () => {
-      modal.close();
-      form.dataset.modalConfirmed = "true";
-      form.requestSubmit();
-    });
-    modal.addEventListener("click", (event) => {
-      if (event.target === modal) {
-        modal.close();
-      }
-    });
-    modal.addEventListener("close", () => submitButton?.focus());
   });
 }
 
 initializePlayersPage();
+
+function initializeConfirmationModal(root = document) {
+  const modal = root.querySelector("[data-confirmation-modal]");
+  const title = modal?.querySelector("[data-confirmation-modal-title]");
+  const description = modal?.querySelector("[data-confirmation-modal-description]");
+  const previewLabel = modal?.querySelector("[data-confirmation-modal-preview-label]");
+  const preview = modal?.querySelector("[data-confirmation-modal-preview]");
+  const cancelButton = modal?.querySelector("[data-confirmation-modal-cancel]");
+  const confirmButton = modal?.querySelector("[data-confirmation-modal-confirm]");
+  if (
+    !(modal instanceof HTMLDialogElement) ||
+    !title ||
+    !description ||
+    !previewLabel ||
+    !preview ||
+    !(confirmButton instanceof HTMLButtonElement)
+  ) {
+    return;
+  }
+
+  let pendingForm = null;
+  let pendingSubmitter = null;
+
+  document.addEventListener(
+    "submit",
+    (event) => {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement) || !form.hasAttribute("data-confirm")) {
+        return;
+      }
+      if (form.dataset.confirmed === "true") {
+        delete form.dataset.confirmed;
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const sourceId = form.dataset.confirmSource;
+      const source = sourceId ? document.getElementById(sourceId) : null;
+      const sourceValue =
+        source instanceof HTMLInputElement ||
+        source instanceof HTMLTextAreaElement ||
+        source instanceof HTMLSelectElement
+          ? source.value
+          : null;
+
+      title.textContent = form.dataset.confirmTitle || "Confirmar ação?";
+      description.textContent =
+        form.dataset.confirmDescription || "Revise os detalhes antes de continuar.";
+      previewLabel.textContent = form.dataset.confirmPreviewLabel || "Ação solicitada";
+      preview.textContent = sourceValue ?? form.dataset.confirmMessage ?? "";
+      confirmButton.textContent = form.dataset.confirmButton || "Confirmar";
+      confirmButton.dataset.tone = form.dataset.confirmTone || "default";
+      pendingForm = form;
+      pendingSubmitter = event.submitter;
+      modal.showModal();
+    },
+    true,
+  );
+
+  cancelButton?.addEventListener("click", () => modal.close());
+  confirmButton.addEventListener("click", () => {
+    const form = pendingForm;
+    const submitter = pendingSubmitter;
+    modal.close();
+    if (!(form instanceof HTMLFormElement) || !form.isConnected) {
+      return;
+    }
+    form.dataset.confirmed = "true";
+    if (
+      submitter instanceof HTMLButtonElement ||
+      submitter instanceof HTMLInputElement
+    ) {
+      form.requestSubmit(submitter);
+    } else {
+      form.requestSubmit();
+    }
+  });
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      modal.close();
+    }
+  });
+  modal.addEventListener("close", () => {
+    if (pendingSubmitter instanceof HTMLElement) {
+      pendingSubmitter.focus();
+    }
+    pendingForm = null;
+    pendingSubmitter = null;
+  });
+}
+
+initializeConfirmationModal();

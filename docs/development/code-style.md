@@ -16,6 +16,26 @@
 
 Evite concentrar regras em views ou em um `main.py` grande. Código que manipula caminhos, processos, permissões ou arquivos de backup exige testes dos casos adversos.
 
+## Confirmações na interface
+
+O componente compartilhado `templates/components/confirmation_modal.html`, incluído pelo layout autenticado, é o padrão para toda confirmação visual. Não use `window.alert`, `window.confirm`, `window.prompt` ou `hx-confirm`; mensagens informativas e erros que não exigem escolha permanecem inline com semântica acessível.
+
+Formulários que exigem confirmação declaram `data-confirm` e configuram o conteúdo sem JavaScript específico da página:
+
+```html
+<form
+  data-confirm
+  data-confirm-title="Reiniciar servidor?"
+  data-confirm-message="Reiniciar o servidor Palworld?"
+  data-confirm-button="Reiniciar"
+  data-confirm-tone="warning"
+>
+```
+
+`data-confirm-description` altera a explicação, `data-confirm-preview-label` altera o rótulo do conteúdo revisado e `data-confirm-source` aponta para o `id` de um input ou textarea cujo valor deve aparecer no modal. Os tons aceitos pelo padrão são `default`, `warning` e `danger`. O controlador usa delegação de evento para abranger fragmentos HTMX inseridos depois do carregamento e preserva o botão que originou o submit.
+
+O modal é apenas a confirmação visual. CSRF, palavras digitadas, valores exatos e demais regras de segurança continuam validados no backend.
+
 ## Fluxo por etapa
 
 ```text
