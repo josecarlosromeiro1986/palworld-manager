@@ -195,6 +195,7 @@ def test_announcement_confirmation_uses_accessible_application_modal(
 
     page = players_context.client.get("/players")
     script = players_context.client.get("/static/dist/app.js")
+    stylesheet = players_context.client.get("/static/dist/app.css")
 
     assert page.status_code == 200
     assert "<dialog" in page.text
@@ -207,6 +208,8 @@ def test_announcement_confirmation_uses_accessible_application_modal(
     assert "modal.showModal()" in script.text
     assert "form.requestSubmit()" in script.text
     assert "window.confirm" not in script.text
+    assert stylesheet.status_code == 200
+    assert ".confirmation-modal{margin:auto}" in stylesheet.text
 
 
 def test_failed_announcement_is_safe_and_audited(players_context: PlayersContext) -> None:

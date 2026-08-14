@@ -156,6 +156,10 @@
     font-weight: 600;
   }
 
+  .confirmation-modal {
+    margin: auto;
+  }
+
   .confirmation-modal::backdrop {
     background: rgb(0 0 0 / 75%);
     backdrop-filter: blur(2px);
