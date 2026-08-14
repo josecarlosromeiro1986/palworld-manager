@@ -132,6 +132,7 @@ def home(request: Request) -> Response:
         context={
             "username": principal.username,
             "csrf_token": csrf_token,
+            "active_navigation": "dashboard",
             "assisted_shutdown_default_minutes": shutdown_default,
         },
     )

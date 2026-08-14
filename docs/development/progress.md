@@ -18,10 +18,11 @@ Nenhuma etapa em andamento.
 - Etapa 10 — Health check.
 - Etapa 11 — Controle Start/Stop/Restart.
 - Etapa 12 — Shutdown assistido/forçado.
+- Etapa 13 — Logs.
 
 ## Próxima etapa
 
-Etapa 13 — Logs.
+Etapa 14 — REST API Palworld.
 
 ## Observações
 

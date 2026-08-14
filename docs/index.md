@@ -10,6 +10,7 @@ Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **
 - [Métricas](architecture/metrics.md): coleta do host, atualização do Dashboard e retenção somente em memória.
 - [Health check do Palworld](architecture/palworld-health.md): combinação de systemd, processo e REST API nos cinco estados do servidor.
 - [Controle do servidor](operations/server-lifecycle.md): Start, Restart, desligamento assistido, cancelamento e escalada manual.
+- [Logs do servidor](operations/server-logs.md): histórico do journald, filtros e streaming SSE retomável.
 - [Segurança](architecture/security.md): modelo de acesso, privilégios, sessões, secrets e execução segura.
 - [Modelo de dados](architecture/data-model.md): responsabilidades das entidades persistidas previstas.
 - [Jobs e locks](architecture/jobs-and-locks.md): coordenação via SQLite, concorrência, cancelamento e recuperação do worker.

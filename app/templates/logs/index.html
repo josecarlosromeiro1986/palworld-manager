@@ -1,0 +1,87 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Logs - Palworld Manager{% endblock %}
+
+{% block content %}
+<section
+  data-log-viewer
+  data-stream-url="/logs/stream"
+  data-last-cursor="{{ last_cursor }}"
+  data-max-entries="1000"
+>
+  <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="mb-1 text-xs font-medium text-accent">SERVIDOR PALWORLD</p>
+      <h1 class="text-xl font-semibold text-ink sm:text-2xl">Logs</h1>
+      <p class="mt-1 text-sm text-muted">Histórico do journald e eventos em tempo real, somente leitura.</p>
+    </div>
+    <span data-stream-status class="inline-flex items-center gap-2 text-xs text-warning" role="status">
+      Conectando ao streaming…
+    </span>
+  </header>
+
+  {% if error %}
+    <div class="mb-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  <div class="mb-4 grid gap-3 rounded-md border bg-surface p-3 lg:grid-cols-[auto_minmax(14rem,1fr)_auto_auto] lg:items-end">
+    <form method="get" action="/logs" class="flex items-end gap-2">
+      <label class="block text-xs font-medium text-muted" for="log-lines">
+        Histórico
+        <select id="log-lines" name="lines" class="field mt-1 min-h-10 min-w-28 py-2" data-log-lines>
+          {% for value in [100, 500, 1000] %}
+            <option value="{{ value }}" {% if value == line_limit %}selected{% endif %}>{{ value }} linhas</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="min-h-10 rounded-md border bg-surface-raised px-3 text-sm text-ink hover:border-accent">Carregar</button>
+    </form>
+
+    <label class="block text-xs font-medium text-muted" for="log-search">
+      Pesquisar
+      <input id="log-search" type="search" class="field mt-1 min-h-10 py-2" placeholder="Texto original do log" data-log-search>
+    </label>
+
+    <label class="block text-xs font-medium text-muted" for="log-category">
+      Categoria
+      <select id="log-category" class="field mt-1 min-h-10 py-2" data-log-category-filter>
+        <option value="ALL">Todas</option>
+        <option value="ERROR">Erros</option>
+        <option value="WARNING">Avisos</option>
+        <option value="CONNECTION">Conexões</option>
+        <option value="SYSTEM">Sistema</option>
+        <option value="NORMAL">Normal</option>
+      </select>
+    </label>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" class="min-h-10 rounded-md border bg-surface-raised px-3 text-sm text-ink hover:border-accent" data-log-pause aria-pressed="false">Pausar</button>
+      <button type="button" class="min-h-10 rounded-md border bg-surface-raised px-3 text-sm text-ink hover:border-accent" data-log-copy>Copiar trecho</button>
+    </div>
+  </div>
+
+  <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+    <label class="inline-flex items-center gap-2">
+      <input type="checkbox" checked class="size-4 accent-accent" data-log-autoscroll>
+      Rolagem automática
+    </label>
+    <span data-log-summary aria-live="polite">{{ entries | length }} registros exibidos</span>
+  </div>
+
+  <div data-log-viewport class="h-[62vh] min-h-80 overflow-auto rounded-md border bg-canvas p-2 font-mono text-xs leading-5" tabindex="0" aria-label="Registros do servidor Palworld">
+    <ol data-log-list class="space-y-0.5">
+      {% for entry in entries %}
+        <li data-log-entry data-log-category="{{ entry.category.value }}" data-log-message="{{ entry.message | lower }}" class="log-entry grid grid-cols-[5.75rem_5.5rem_minmax(0,1fr)] gap-2 border-l-2 px-2 py-1">
+          <time datetime="{{ entry.occurred_at.isoformat() }}" data-log-time class="text-muted">{{ entry.occurred_at.strftime("%H:%M:%S") }}</time>
+          <span class="log-category">{{ category_labels[entry.category.value] }}</span>
+          <span data-log-message-text class="min-w-0 whitespace-pre-wrap break-words text-ink">{{ entry.message }}</span>
+        </li>
+      {% endfor %}
+    </ol>
+    <p data-log-empty class="{% if entries %}hidden {% endif %}px-3 py-8 text-center text-sm text-muted">Nenhum registro corresponde aos filtros.</p>
+  </div>
+  <p data-copy-feedback class="mt-2 min-h-5 text-xs text-muted" aria-live="polite"></p>
+</section>
+{% endblock %}

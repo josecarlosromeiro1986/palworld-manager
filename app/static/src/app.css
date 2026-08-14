@@ -127,6 +127,34 @@
     background: #646c77;
     content: "";
   }
+
+  .log-entry {
+    border-left-color: var(--color-line-strong);
+  }
+
+  .log-entry[data-log-category="ERROR"] {
+    border-left-color: var(--color-danger);
+    background: rgb(251 113 133 / 7%);
+  }
+
+  .log-entry[data-log-category="WARNING"] {
+    border-left-color: var(--color-warning);
+    background: rgb(251 191 36 / 6%);
+  }
+
+  .log-entry[data-log-category="CONNECTION"] {
+    border-left-color: var(--color-positive);
+  }
+
+  .log-entry[data-log-category="SYSTEM"] {
+    border-left-color: var(--color-accent);
+  }
+
+  .log-category {
+    color: var(--color-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

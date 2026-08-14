@@ -31,6 +31,7 @@ A configuração estrutural já é validada com Pydantic Settings no startup de 
 - Start, Stop e Restart são executados somente pelo worker através de `/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block <ação> <unidade>`. A ação pertence a uma enum fechada, a unidade é validada e `shell=False` permanece obrigatório. A regra mínima de sudoers pertence ao deploy; `sudo ALL` é proibido.
 - SIGTERM e SIGKILL usam `systemctl kill --kill-whom=main --signal=<sinal>` somente para a unidade validada. SIGTERM exige `FORCAR` após falha real do Stop; SIGKILL exige falha do SIGTERM e a confirmação `SIGKILL`. Não existe escalada automática.
 - A verificação do processo consulta somente o `MainPID` da mesma unidade validada. O probe REST usa URL estrutural validada, timeout, limite de resposta e Basic Auth; credenciais não são incluídas na URL ou em mensagens de erro.
+- A leitura de logs usa `/usr/bin/journalctl` sem `sudo`, somente para a unidade validada, com limites fechados, campos mínimos, argumentos separados e `shell=False`. Cursores de reconexão são validados, stderr não é exibido e valores sensíveis conhecidos são mascarados antes do SSE.
 - Normalizar e validar caminhos contra path traversal e acesso por symlink.
 - Ao criar ou extrair `.tar.gz`, rejeitar caminhos absolutos, `..`, links perigosos e conteúdo fora do destino autorizado.
 - Validar formato, tamanho e integridade antes de usar um backup.

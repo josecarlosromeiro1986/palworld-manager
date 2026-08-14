@@ -39,4 +39,6 @@ Os testes de ciclo de vida verificam os comandos fixos de Start, Stop e Restart,
 
 Os testes de desligamento cobrem as opções Agora/1/5/10, default operacional, avisos oficiais simulados, progresso, cancelamento antes do ponto irreversível e antecipação pelo Stop normal. A escalada valida a cadeia Stop falho → `FORCAR`/SIGTERM falho → `SIGKILL`, os comandos systemd exatos, auditoria, evento de notificação e a ausência de qualquer SIGKILL automático.
 
+Os testes de logs validam os argumentos read-only e allowlisted do `journalctl`, parsing, classificação, proteção de secrets, fake completo, autenticação, histórico de 100/500/1000 linhas, filtros e ausência de persistência no SQLite. O aceite de reconexão abre o SSE com o cursor do histórico, simula nova conexão com `Last-Event-ID` e confirma que a entrega continua no evento seguinte sem repetir o último recebido.
+
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

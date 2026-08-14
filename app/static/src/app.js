@@ -213,3 +213,213 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
     initializeMetricsCharts(event.detail.target);
   }
 });
+
+function initializeLogViewer(root = document) {
+  const viewer = root.querySelector("[data-log-viewer]");
+  if (!viewer || viewer.dataset.initialized === "true") {
+    return;
+  }
+  viewer.dataset.initialized = "true";
+
+  const list = viewer.querySelector("[data-log-list]");
+  const viewport = viewer.querySelector("[data-log-viewport]");
+  const search = viewer.querySelector("[data-log-search]");
+  const categoryFilter = viewer.querySelector("[data-log-category-filter]");
+  const pauseButton = viewer.querySelector("[data-log-pause]");
+  const autoscroll = viewer.querySelector("[data-log-autoscroll]");
+  const copyButton = viewer.querySelector("[data-log-copy]");
+  const copyFeedback = viewer.querySelector("[data-copy-feedback]");
+  const summary = viewer.querySelector("[data-log-summary]");
+  const empty = viewer.querySelector("[data-log-empty]");
+  const streamStatus = viewer.querySelector("[data-stream-status]");
+  if (!list || !viewport) {
+    return;
+  }
+
+  let paused = false;
+  const pendingEntries = [];
+  const maxEntries = Number.parseInt(viewer.dataset.maxEntries || "1000", 10);
+  const categoryLabels = {
+    ERROR: "ERRO",
+    WARNING: "AVISO",
+    CONNECTION: "CONEXÃO",
+    SYSTEM: "SISTEMA",
+    NORMAL: "NORMAL",
+  };
+
+  function localizedTime(isoTimestamp) {
+    const date = new Date(isoTimestamp);
+    if (Number.isNaN(date.getTime())) {
+      return "--:--:--";
+    }
+    return date.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }
+
+  function localizeExistingTimes() {
+    viewer.querySelectorAll("[data-log-time]").forEach((element) => {
+      const timestamp = element.getAttribute("datetime");
+      if (timestamp) {
+        element.textContent = localizedTime(timestamp);
+      }
+    });
+  }
+
+  function updateFilters() {
+    const query = (search?.value || "").trim().toLocaleLowerCase("pt-BR");
+    const category = categoryFilter?.value || "ALL";
+    let visibleCount = 0;
+    list.querySelectorAll("[data-log-entry]").forEach((entry) => {
+      const categoryMatches = category === "ALL" || entry.dataset.logCategory === category;
+      const textMatches = !query || (entry.dataset.logMessage || "").includes(query);
+      const visible = categoryMatches && textMatches;
+      entry.classList.toggle("hidden", !visible);
+      if (visible) {
+        visibleCount += 1;
+      }
+    });
+    empty?.classList.toggle("hidden", visibleCount !== 0);
+    if (summary) {
+      const pendingLabel = pendingEntries.length ? ` • ${pendingEntries.length} em pausa` : "";
+      summary.textContent = `${visibleCount} registros exibidos${pendingLabel}`;
+    }
+  }
+
+  function createEntry(payload) {
+    const entry = document.createElement("li");
+    entry.dataset.logEntry = "";
+    entry.dataset.logCategory = payload.category;
+    entry.dataset.logMessage = payload.message.toLocaleLowerCase("pt-BR");
+    entry.className =
+      "log-entry grid grid-cols-[5.75rem_5.5rem_minmax(0,1fr)] gap-2 border-l-2 px-2 py-1";
+
+    const timestamp = document.createElement("time");
+    timestamp.dateTime = payload.occurred_at;
+    timestamp.dataset.logTime = "";
+    timestamp.className = "text-muted";
+    timestamp.textContent = localizedTime(payload.occurred_at);
+
+    const category = document.createElement("span");
+    category.className = "log-category";
+    category.textContent = categoryLabels[payload.category] || payload.category;
+
+    const message = document.createElement("span");
+    message.dataset.logMessageText = "";
+    message.className = "min-w-0 whitespace-pre-wrap break-words text-ink";
+    message.textContent = payload.message;
+    entry.append(timestamp, category, message);
+    return entry;
+  }
+
+  function appendPayload(payload) {
+    list.append(createEntry(payload));
+    while (list.children.length > maxEntries) {
+      list.firstElementChild?.remove();
+    }
+    updateFilters();
+    if (autoscroll?.checked) {
+      viewport.scrollTop = viewport.scrollHeight;
+    }
+  }
+
+  function receivePayload(payload) {
+    if (
+      typeof payload?.occurred_at !== "string" ||
+      typeof payload?.message !== "string" ||
+      typeof payload?.category !== "string"
+    ) {
+      return;
+    }
+    if (paused) {
+      pendingEntries.push(payload);
+      if (pendingEntries.length > maxEntries) {
+        pendingEntries.shift();
+      }
+      updateFilters();
+      return;
+    }
+    appendPayload(payload);
+  }
+
+  search?.addEventListener("input", updateFilters);
+  categoryFilter?.addEventListener("change", updateFilters);
+  pauseButton?.addEventListener("click", () => {
+    paused = !paused;
+    pauseButton.setAttribute("aria-pressed", String(paused));
+    pauseButton.textContent = paused ? "Retomar" : "Pausar";
+    if (!paused) {
+      pendingEntries.splice(0).forEach(appendPayload);
+    }
+    updateFilters();
+  });
+
+  copyButton?.addEventListener("click", async () => {
+    const text = [...list.querySelectorAll("[data-log-entry]:not(.hidden)")]
+      .map((entry) => {
+        const timestamp = entry.querySelector("[data-log-time]")?.textContent || "";
+        const technicalCategory = entry.dataset.logCategory || "NORMAL";
+        const category = categoryLabels[technicalCategory] || technicalCategory;
+        const message = entry.querySelector("[data-log-message-text]")?.textContent || "";
+        return `${timestamp} ${category} ${message}`.trim();
+      })
+      .join("\n");
+    if (!text) {
+      if (copyFeedback) {
+        copyFeedback.textContent = "Nenhum registro visível para copiar.";
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      if (copyFeedback) {
+        copyFeedback.textContent = "Trecho visível copiado.";
+      }
+    } catch {
+      if (copyFeedback) {
+        copyFeedback.textContent = "Não foi possível copiar automaticamente.";
+      }
+    }
+  });
+
+  localizeExistingTimes();
+  updateFilters();
+
+  if (typeof window.EventSource === "undefined") {
+    if (streamStatus) {
+      streamStatus.textContent = "Streaming indisponível neste navegador";
+    }
+    return;
+  }
+  const streamUrl = new URL(viewer.dataset.streamUrl || "/logs/stream", window.location.origin);
+  if (viewer.dataset.lastCursor) {
+    streamUrl.searchParams.set("cursor", viewer.dataset.lastCursor);
+  }
+  const eventSource = new EventSource(streamUrl);
+  eventSource.addEventListener("open", () => {
+    if (streamStatus) {
+      streamStatus.textContent = "Streaming conectado";
+      streamStatus.classList.remove("text-warning", "text-danger");
+      streamStatus.classList.add("text-positive");
+    }
+  });
+  eventSource.addEventListener("log", (event) => {
+    try {
+      receivePayload(JSON.parse(event.data));
+    } catch {
+      // Eventos inválidos são ignorados sem inserir HTML ou detalhes internos na página.
+    }
+  });
+  eventSource.addEventListener("error", () => {
+    if (streamStatus) {
+      streamStatus.textContent = "Reconectando ao streaming…";
+      streamStatus.classList.remove("text-positive");
+      streamStatus.classList.add("text-warning");
+    }
+  });
+  window.addEventListener("beforeunload", () => eventSource.close(), { once: true });
+}
+
+initializeLogViewer();

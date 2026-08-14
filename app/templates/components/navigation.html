@@ -1,22 +1,22 @@
 {% from "components/icon.html" import icon with context %}
 {% set navigation = [
-  ("Dashboard", "layout-dashboard", true),
-  ("Jogadores", "users", false),
-  ("Logs", "scroll-text", false),
-  ("Backups", "archive", false),
-  ("Atualizações", "refresh-cw", false),
-  ("Configurações do Palworld", "sliders", false),
-  ("Configurações do Painel", "settings", false),
-  ("Diagnóstico", "stethoscope", false),
-  ("Histórico / Auditoria", "history", false)
+  ("Dashboard", "layout-dashboard", "/", "dashboard", true),
+  ("Jogadores", "users", "", "players", false),
+  ("Logs", "scroll-text", "/logs", "logs", true),
+  ("Backups", "archive", "", "backups", false),
+  ("Atualizações", "refresh-cw", "", "updates", false),
+  ("Configurações do Palworld", "sliders", "", "palworld-settings", false),
+  ("Configurações do Painel", "settings", "", "manager-settings", false),
+  ("Diagnóstico", "stethoscope", "", "diagnostics", false),
+  ("Histórico / Auditoria", "history", "", "audit", false)
 ] %}
 
 <nav aria-label="Navegação principal" class="flex-1 overflow-y-auto px-3 py-4">
   <ul class="space-y-1">
-    {% for label, icon_name, enabled in navigation %}
+    {% for label, icon_name, href, section, enabled in navigation %}
       <li>
         {% if enabled %}
-          <a href="/" class="nav-item" aria-current="page">
+          <a href="{{ href }}" class="nav-item" {% if active_navigation == section %}aria-current="page"{% endif %}>
             {{ icon(icon_name) }}
             <span>{{ label }}</span>
           </a>

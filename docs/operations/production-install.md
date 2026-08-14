@@ -32,6 +32,8 @@ O worker não terá servidor HTTP. Ele atualizará um heartbeat no SQLite a cada
 
 Tailscale Serve fornecerá acesso privado com HTTPS apenas ao serviço web; journald receberá os logs de ambos.
 
+O visualizador de logs do Palworld já usa `journalctl` somente leitura, sem `sudo`, com argumentos fixos para `PALWORLD_SERVICE`. A etapa de deploy deverá conceder ao usuário `palmanager` apenas o acesso de leitura necessário ao journal e validar esse acesso sem executar a aplicação como root.
+
 O health check do Palworld usa adapters com executáveis e argumentos fixos, unidade validada, `MainPID` confirmado por `psutil` e `GET /info` autenticado com timeout. Start, Stop e Restart já são executados pelo worker com `/usr/bin/sudo --non-interactive`, `systemctl --no-block`, ação fechada e unidade validada. A escalada manual usa somente `systemctl kill --kill-whom=main` com SIGTERM ou SIGKILL fixos. A etapa de deploy ainda deve instalar e validar regras de sudoers exclusivas para esses cinco comandos, nunca `sudo ALL`.
 
 Node.js e npm serão necessários apenas para o build de assets, não como serviço de produção. Permissões, arquivos de unidade do Manager, `sudoers`, scripts e configuração do Tailscale ainda serão implementados e validados na etapa de deploy; por isso, este documento não é um tutorial executável.
