@@ -47,4 +47,6 @@ Os testes da REST API administrativa validam os campos oficiais tipados de jogad
 
 Kick, Ban e Unban têm testes dos endpoints e payloads oficiais exatos, fake sem rede, CSRF, modal compartilhado, motivo opcional apenas para Kick e motivo obrigatório para Ban/Unban. A integração verifica sucesso e falha segura tanto em `ban_history` quanto em `audit_events`, incluindo alvo, `userId`, administrador, motivo e resultado.
 
+O editor do INI tem testes unitários do parser conservador, tipos, limites documentados, estruturas aninhadas, backup idêntico ao original, modo `0600`, substituição atômica, conflito por versão e rejeição de symlink. A integração web cobre autenticação, CSRF, fake sem filesystem real, ocultação de campos sensíveis, preservação de desconhecidos, falha segura, auditoria apenas com nomes de campos e oferta do Restart pelo modal compartilhado.
+
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

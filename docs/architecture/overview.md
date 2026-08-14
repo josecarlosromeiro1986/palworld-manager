@@ -1,6 +1,6 @@
 # Visão geral da arquitetura
 
-> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, as métricas efêmeras, o health check, os controles de ciclo de vida, o desligamento assistido, os logs via journald/SSE e a integração REST para jogadores, anúncios, Kick, Ban e Unban estão implementados; integrações e regras operacionais adicionais permanecem planejadas.
+> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, as métricas efêmeras, o health check, os controles de ciclo de vida, o desligamento assistido, os logs via journald/SSE, a integração REST administrativa e o editor conservador do PalWorldSettings.ini estão implementados; integrações e regras operacionais adicionais permanecem planejadas.
 
 O Palworld Manager é uma aplicação Python leve e modular por domínio. FastAPI coordena as rotas e os serviços da aplicação; Jinja2 renderiza as páginas no servidor; HTMX atualiza as métricas e atualizará outros formulários e fragmentos; e SSE já entrega logs em tempo real com reconexão por cursor. Tailwind CSS fornece o layout administrativo responsivo; Chart.js exibe o histórico de 15 minutos mantido somente em memória.
 
@@ -15,6 +15,7 @@ flowchart TD
     Web -->|jobs e notification_events| SQLite
     Worker["palworld-manager-worker.service<br/>Worker"] -->|jobs, heartbeat e notificações| SQLite
     Web --> PalAPI["REST API do Palworld"]
+    Web --> PalIni["PalWorldSettings.ini"]
     Worker --> PalAPI
     Web --> Systemd["systemd / journald"]
     Worker --> Systemd
@@ -34,3 +35,5 @@ Dev e testes usam fakes nas integrações implementadas. O cliente fake da REST 
 A saúde do Palworld fica atrás de uma interface única. Em produção, combina `ActiveState`, o processo associado ao `MainPID` e o endpoint oficial autenticado `GET /info`; somente os três sinais saudáveis produzem `ONLINE`. Em development e test, fakes controláveis substituem integralmente systemd, processo e REST API. A matriz completa está em [Health check do Palworld](palworld-health.md).
 
 A consulta administrativa usa o mesmo contrato REST tipado, sem compartilhar segredos com a UI. `GET /players` só é chamado após ação manual ou por uma operação que realmente precise da lista; a página apenas lê um snapshot com timestamp mantido na memória do processo web. `POST /announce` exige sessão, CSRF e confirmação literal do texto antes de enviar. Kick, Ban e Unban também exigem sessão, CSRF e o modal compartilhado; Ban e Unban recusam motivo vazio. Essas ações persistem histórico administrativo e auditoria, sem tratar o SQLite como autoridade sobre o estado de Ban do Palworld.
+
+O editor do `PalWorldSettings.ini` mantém parsing, validação tipada e storage atrás de interfaces próprias. Production lê o arquivo estrutural configurado, rejeita symlinks, exige uma versão ainda atual, cria uma cópia protegida antes de salvar e substitui o conteúdo atomicamente; development e test usam somente memória. Valores sensíveis e desconhecidos nunca chegam aos campos editáveis. O comportamento completo está em [Editor do PalWorldSettings.ini](../integrations/palworld-settings-ini.md).

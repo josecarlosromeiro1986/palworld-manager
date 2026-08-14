@@ -21,10 +21,11 @@ Nenhuma etapa em andamento.
 - Etapa 13 — Logs.
 - Etapa 14 — REST API Palworld.
 - Etapa 15 — Kick/Ban/Unban.
+- Etapa 16 — Editor INI.
 
 ## Próxima etapa
 
-Etapa 16 — Editor INI.
+Etapa 17 — Jobs/lock completos.
 
 ## Observações
 

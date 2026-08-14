@@ -2,7 +2,7 @@
 
 > Status: Start, Stop, Restart, desligamento assistido e encerramento forçado manual implementados.
 
-O Dashboard oferece **Iniciar**, **Parar** e **Reiniciar**. Parar permite escolher Agora, 1, 5 ou 10 minutos, com 5 minutos selecionados por padrão. Toda alteração exige sessão autenticada, CSRF válido e confirmação exata.
+O Dashboard oferece **Iniciar**, **Parar** e **Reiniciar**. Parar permite escolher Agora, 1, 5 ou 10 minutos, com 5 minutos selecionados por padrão. O editor do `PalWorldSettings.ini` também oferece o mesmo job de Restart depois de salvar uma alteração. Toda ação exige sessão autenticada, CSRF válido e confirmação.
 
 A web não executa comandos privilegiados. Ela persiste um job no SQLite, registra a solicitação na auditoria e retorna um fragmento HTMX que acompanha o estado do job. O processo `palworld-manager-worker.service` adquire e executa o job.
 

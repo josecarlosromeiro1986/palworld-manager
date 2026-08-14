@@ -15,11 +15,11 @@ A aplicação seguirá o princípio do menor privilégio. Em produção, será e
 - Cookies de autenticação usam `HttpOnly` e `SameSite=Strict`. `Secure` é obrigatório em produção e omitido somente em development/test para permitir HTTP local.
 - Cinco tentativas inválidas consecutivas para o mesmo usuário causam bloqueio por 15 minutos. Login bem-sucedido ou expiração do bloqueio reinicia a contagem.
 - O endereço de origem observado é armazenado para auditoria, mas não compõe a chave do bloqueio. Tentativas e bloqueios são auditados sem registrar senhas.
-- Login, logout, controles do servidor e anúncios já validam CSRF. O anúncio também exige que a confirmação repita literalmente o texto livre que será enviado.
+- Login, logout, controles do servidor, anúncios e gravação do `PalWorldSettings.ini` já validam CSRF. O anúncio também exige que a confirmação repita literalmente o texto livre que será enviado.
 
 ## Secrets e registros
 
-Secrets ficarão fora do SQLite, em arquivo de ambiente com acesso restrito em produção. Senhas, tokens, webhooks, cookies e credenciais não podem aparecer completos na interface, em logs, auditorias, fixtures, backups ou diagnósticos. Logs devem mascarar valores sensíveis e evitar registrar headers ou ambientes indiscriminadamente.
+Secrets ficarão fora do SQLite, em arquivo de ambiente com acesso restrito em produção. Senhas, tokens, webhooks, cookies e credenciais não podem aparecer completos na interface, em logs, auditorias, fixtures, diagnósticos ou backups gerenciados/exportados. A cópia técnica pré-save do INI é local, exata e restrita a modo `0600`: ela pode conter os valores que já existiam no arquivo porque precisa permitir recuperação fiel, mas não é exibida, persistida no SQLite nem transferida nesta etapa. Logs devem mascarar valores sensíveis e evitar registrar headers ou ambientes indiscriminadamente.
 
 A configuração estrutural já é validada com Pydantic Settings no startup de web e worker. Erros de validação ocultam os valores recebidos, e o ambiente `production` rejeita `APP_HOST` que não seja loopback. `PALWORLD_REST_USERNAME` e `PALWORLD_REST_PASSWORD` são secrets obrigatórios em production; não existe username padrão nem fallback para `admin`. Eles serão fornecidos por variáveis de processo provenientes do arquivo protegido previsto para produção.
 
@@ -32,6 +32,7 @@ A configuração estrutural já é validada com Pydantic Settings no startup de 
 - SIGTERM e SIGKILL usam `systemctl kill --kill-whom=main --signal=<sinal>` somente para a unidade validada. SIGTERM exige `FORCAR` após falha real do Stop; SIGKILL exige falha do SIGTERM e a confirmação `SIGKILL`. Não existe escalada automática.
 - A verificação do processo consulta somente o `MainPID` da mesma unidade validada. O cliente REST usa URL estrutural validada, timeout, limites de resposta e Basic Auth; credenciais não são incluídas na URL, interface, auditoria ou mensagens de erro. Autenticação rejeitada, timeout, servidor offline, API indisponível, resposta inválida e falha inesperada recebem classificações seguras.
 - A leitura de logs usa `/usr/bin/journalctl` sem `sudo`, somente para a unidade validada, com limites fechados, campos mínimos, argumentos separados e `shell=False`. Cursores de reconexão são validados, stderr não é exibido e valores sensíveis conhecidos são mascarados antes do SSE.
+- O editor do INI usa somente o caminho estrutural `PALWORLD_SETTINGS`, rejeita arquivos não regulares e qualquer componente symlink, limita a leitura a 1 MiB e detecta alterações concorrentes por SHA-256. A cópia pré-save é criada com modo `0600`; a gravação usa arquivo temporário no mesmo diretório e substituição atômica. Senhas presentes no INI são preservadas, mas nunca exibidas ou incluídas na auditoria.
 - Normalizar e validar caminhos contra path traversal e acesso por symlink.
 - Ao criar ou extrair `.tar.gz`, rejeitar caminhos absolutos, `..`, links perigosos e conteúdo fora do destino autorizado.
 - Validar formato, tamanho e integridade antes de usar um backup.

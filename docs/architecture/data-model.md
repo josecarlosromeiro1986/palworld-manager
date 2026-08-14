@@ -26,7 +26,7 @@ Armazena configurações operacionais seguras e editáveis pelo painel, como tim
 
 ### `audit_events`
 
-Registra a trilha do que aconteceu no sistema, quem ou qual origem executou e qual foi o resultado. Pode referenciar usuário e job responsáveis, além de ações como `UPDATE_SERVER`, `BACKUP`, `RESTORE`, `BAN`, `UNBAN` e `LOGIN_BLOCKED`. A fundação implementada já registra tentativas de login e o evento de bloqueio; consulta, retenção operacional e auditoria dos demais domínios pertencem às etapas posteriores.
+Registra a trilha do que aconteceu no sistema, quem ou qual origem executou e qual foi o resultado. Pode referenciar usuário e job responsáveis, além de ações como `UPDATE_SERVER`, `BACKUP`, `RESTORE`, `BAN`, `UNBAN` e `LOGIN_BLOCKED`. A fundação implementada já recebe eventos de autenticação, ciclo de vida, desligamento, anúncios, administração de jogadores e salvamento do INI. `PALWORLD_SETTINGS_UPDATE` registra apenas nomes das chaves, versão do schema, nome da cópia pré-save e categoria segura de erro; valores do arquivo e caminhos absolutos não entram no SQLite. Consulta completa e retenção operacional pertencem à Etapa 26.
 
 ### `notification_events`
 
