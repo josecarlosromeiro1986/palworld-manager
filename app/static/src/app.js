@@ -476,6 +476,66 @@ function initializeConfirmationModal(root = document) {
 
   let pendingForm = null;
   let pendingSubmitter = null;
+  let pendingFormKey = null;
+  let pendingFormValues = new Map();
+
+  function captureFormValues(form) {
+    const values = new Map();
+    for (const [name, value] of new FormData(form).entries()) {
+      if (typeof value !== "string") {
+        continue;
+      }
+      const fieldValues = values.get(name) || [];
+      fieldValues.push(value);
+      values.set(name, fieldValues);
+    }
+    return values;
+  }
+
+  function restoreFormValues(form, values) {
+    for (const control of form.elements) {
+      if (
+        !(
+          control instanceof HTMLInputElement ||
+          control instanceof HTMLTextAreaElement ||
+          control instanceof HTMLSelectElement
+        ) ||
+        !control.name
+      ) {
+        continue;
+      }
+      const fieldValues = values.get(control.name);
+      if (!fieldValues) {
+        continue;
+      }
+      if (
+        control instanceof HTMLInputElement &&
+        (control.type === "checkbox" || control.type === "radio")
+      ) {
+        control.checked = fieldValues.includes(control.value);
+      } else if (control instanceof HTMLSelectElement && control.multiple) {
+        for (const option of control.options) {
+          option.selected = fieldValues.includes(option.value);
+        }
+      } else {
+        control.value = fieldValues[0];
+      }
+    }
+  }
+
+  function resolvePendingForm(form, key) {
+    if (form instanceof HTMLFormElement && form.isConnected) {
+      return form;
+    }
+    if (!key) {
+      return null;
+    }
+    return (
+      [...document.querySelectorAll("form[data-confirm-key]")].find(
+        (candidate) => candidate.dataset.confirmKey === key,
+      ) || null
+    );
+  }
 
   document.addEventListener(
     "submit",
@@ -509,6 +569,8 @@ function initializeConfirmationModal(root = document) {
       confirmButton.dataset.tone = form.dataset.confirmTone || "default";
       pendingForm = form;
       pendingSubmitter = event.submitter;
+      pendingFormKey = form.dataset.confirmKey || null;
+      pendingFormValues = captureFormValues(form);
       modal.showModal();
     },
     true,
@@ -516,16 +578,22 @@ function initializeConfirmationModal(root = document) {
 
   cancelButton?.addEventListener("click", () => modal.close());
   confirmButton.addEventListener("click", () => {
-    const form = pendingForm;
-    const submitter = pendingSubmitter;
+    const form = resolvePendingForm(pendingForm, pendingFormKey);
+    const submitter =
+      pendingSubmitter instanceof HTMLElement && pendingSubmitter.isConnected
+        ? pendingSubmitter
+        : null;
+    const formValues = pendingFormValues;
     modal.close();
-    if (!(form instanceof HTMLFormElement) || !form.isConnected) {
+    if (!(form instanceof HTMLFormElement)) {
       return;
     }
+    restoreFormValues(form, formValues);
     form.dataset.confirmed = "true";
     if (
-      submitter instanceof HTMLButtonElement ||
-      submitter instanceof HTMLInputElement
+      (submitter instanceof HTMLButtonElement ||
+        submitter instanceof HTMLInputElement) &&
+      submitter.form === form
     ) {
       form.requestSubmit(submitter);
     } else {
@@ -543,6 +611,8 @@ function initializeConfirmationModal(root = document) {
     }
     pendingForm = null;
     pendingSubmitter = null;
+    pendingFormKey = null;
+    pendingFormValues = new Map();
   });
 }
 

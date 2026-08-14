@@ -34,6 +34,12 @@ Formulários que exigem confirmação declaram `data-confirm` e configuram o con
 
 `data-confirm-description` altera a explicação, `data-confirm-preview-label` altera o rótulo do conteúdo revisado e `data-confirm-source` aponta para o `id` de um input ou textarea cujo valor deve aparecer no modal. Os tons aceitos pelo padrão são `default`, `warning` e `danger`. O controlador usa delegação de evento para abranger fragmentos HTMX inseridos depois do carregamento e preserva o botão que originou o submit.
 
+Formulários dentro de fragmentos HTMX que se atualizam enquanto o modal pode estar aberto também devem declarar um `data-confirm-key` estável e único. O controlador usa essa chave para localizar a versão atual do formulário depois de um swap e restaura os valores capturados antes de enviar a ação confirmada:
+
+```html
+<form data-confirm data-confirm-key="shutdown-now-123" hx-post="/acao">
+```
+
 O modal é apenas a confirmação visual. CSRF, palavras digitadas, valores exatos e demais regras de segurança continuam validados no backend.
 
 ## Fluxo por etapa

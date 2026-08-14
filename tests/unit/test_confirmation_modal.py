@@ -15,3 +15,6 @@ def test_frontend_uses_shared_confirmation_modal_instead_of_native_dialogs() -> 
     assert "window.prompt" not in script
     assert 'form.hasAttribute("data-confirm")' in script
     assert 'document.addEventListener(\n    "submit"' in script
+    assert "new FormData(form)" in script
+    assert 'document.querySelectorAll("form[data-confirm-key]")' in script
+    assert "restoreFormValues(form, formValues)" in script
