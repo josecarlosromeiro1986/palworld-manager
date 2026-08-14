@@ -71,12 +71,13 @@ def test_dashboard_renders_confirmed_lifecycle_actions(
     assert response.status_code == 200
     for action, question in (
         ("START", "Iniciar o servidor Palworld?"),
-        ("STOP", "Parar o servidor Palworld?"),
         ("RESTART", "Reiniciar o servidor Palworld?"),
     ):
         assert f'hx-post="/dashboard/lifecycle/{action}"' in response.text
         assert f'value="{action}"' in response.text
         assert f'hx-confirm="{question}"' in response.text
+    assert 'hx-post="/dashboard/shutdown"' in response.text
+    assert '<option value="5" selected>5 min</option>' in response.text
     assert csrf_token in response.text
 
 
@@ -123,8 +124,8 @@ def test_lifecycle_action_enqueues_job_and_prevents_double_submit(
         data={"confirmation": "RESTART", "csrf_token": csrf_token},
     )
     conflict = client.post(
-        "/dashboard/lifecycle/STOP",
-        data={"confirmation": "STOP", "csrf_token": csrf_token},
+        "/dashboard/shutdown",
+        data={"countdown_minutes": "5", "confirmation": "STOP", "csrf_token": csrf_token},
     )
 
     assert accepted.status_code == 202

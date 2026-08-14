@@ -2,6 +2,7 @@ import re
 import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Protocol
 
 from app.config import SERVICE_NAME_PATTERN, AppEnvironment, Settings
@@ -22,6 +23,11 @@ class PalworldServiceControlError(RuntimeError):
     """O systemd não confirmou uma ação de ciclo de vida do Palworld."""
 
 
+class PalworldSignal(StrEnum):
+    TERM = "SIGTERM"
+    KILL = "SIGKILL"
+
+
 @dataclass(frozen=True, slots=True)
 class PalworldServiceStatus:
     active: bool
@@ -38,6 +44,10 @@ class PalworldServiceController(PalworldService, Protocol):
     def stop(self) -> None: ...
 
     def restart(self) -> None: ...
+
+
+class PalworldSignalController(Protocol):
+    def send_signal(self, signal: PalworldSignal) -> None: ...
 
 
 class CommandRunner(Protocol):
@@ -123,6 +133,25 @@ class SystemdPalworldService:
     def restart(self) -> None:
         self._control("restart")
 
+    def send_signal(self, signal: PalworldSignal) -> None:
+        command = (
+            SUDO_PATH,
+            "--non-interactive",
+            SYSTEMCTL_PATH,
+            "kill",
+            "--kill-whom=main",
+            f"--signal={signal.value}",
+            self._service_name,
+        )
+        try:
+            result = self._runner(command, timeout_seconds=self._control_timeout_seconds)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise PalworldServiceControlError(
+                "Não foi possível sinalizar o serviço Palworld."
+            ) from error
+        if result.returncode != 0:
+            raise PalworldServiceControlError("Não foi possível sinalizar o serviço Palworld.")
+
     def _control(self, action: str) -> None:
         if action not in {"start", "stop", "restart"}:
             raise ValueError("ação de serviço inválida")
@@ -165,6 +194,10 @@ class FakePalworldService:
 
     def restart(self) -> None:
         self._active = True
+
+    def send_signal(self, signal: PalworldSignal) -> None:
+        del signal
+        self._active = False
 
 
 def create_palworld_service(settings: Settings) -> PalworldServiceController:

@@ -7,10 +7,14 @@ import pytest
 from app.config import AppEnvironment, Settings
 from app.integrations.palworld_rest import (
     FakePalworldRestHealthProbe,
+    FakePalworldShutdownCommunicator,
     HttpResponse,
     OfficialPalworldRestHealthProbe,
+    OfficialPalworldShutdownCommunicator,
+    PalworldRestOperationError,
     RestApiState,
     create_palworld_rest_health_probe,
+    create_palworld_shutdown_communicator,
 )
 
 
@@ -25,6 +29,7 @@ class RecordingTransport:
         self.url: str | None = None
         self.headers: dict[str, str] | None = None
         self.timeout_seconds: float | None = None
+        self.body: bytes | None = None
 
     def get(self, url: str, *, headers: dict[str, str], timeout_seconds: float) -> HttpResponse:
         self.url = url
@@ -34,6 +39,17 @@ class RecordingTransport:
             raise self.error
         assert self.response is not None
         return self.response
+
+    def post(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str],
+        body: bytes,
+        timeout_seconds: float,
+    ) -> HttpResponse:
+        self.body = body
+        return self.get(url, headers=headers, timeout_seconds=timeout_seconds)
 
 
 def valid_response() -> HttpResponse:
@@ -144,3 +160,53 @@ def test_non_production_environments_use_complete_rest_fake(
 
     assert isinstance(probe, FakePalworldRestHealthProbe)
     assert probe.probe().state is RestApiState.UNAVAILABLE
+
+
+def test_shutdown_communicator_uses_official_players_and_announce_endpoints() -> None:
+    transport = RecordingTransport(HttpResponse(200, b'{"players": [{}, {}]}'))
+    communicator = OfficialPalworldShutdownCommunicator(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=transport,
+    )
+
+    assert communicator.online_player_count() == 2
+    assert transport.url == "http://127.0.0.1:8212/v1/api/players"
+
+    communicator.announce("Aviso de teste")
+    assert transport.url == "http://127.0.0.1:8212/v1/api/announce"
+    assert transport.body == b'{"message": "Aviso de teste"}'
+    assert transport.headers is not None
+    assert transport.headers["Content-Type"] == "application/json"
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        HttpResponse(401, b"{}"),
+        HttpResponse(200, b"not-json"),
+        HttpResponse(200, b'{"players": {}}'),
+    ],
+)
+def test_shutdown_communicator_rejects_untrusted_player_responses(
+    response: HttpResponse,
+) -> None:
+    communicator = OfficialPalworldShutdownCommunicator(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=RecordingTransport(response),
+    )
+
+    with pytest.raises(PalworldRestOperationError):
+        communicator.online_player_count()
+
+
+@pytest.mark.parametrize("environment", [AppEnvironment.DEVELOPMENT, AppEnvironment.TEST])
+def test_non_production_shutdown_communication_is_fully_fake(
+    environment: AppEnvironment,
+) -> None:
+    communicator = create_palworld_shutdown_communicator(Settings(environment=environment))
+
+    assert isinstance(communicator, FakePalworldShutdownCommunicator)

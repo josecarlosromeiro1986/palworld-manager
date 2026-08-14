@@ -21,6 +21,16 @@ from app.lifecycle.jobs import (
     lifecycle_job_view,
 )
 from app.lifecycle.service import LifecycleAction
+from app.shutdown.jobs import (
+    InvalidForcedShutdownError,
+    ShutdownJobConflictError,
+    enqueue_assisted_shutdown,
+    enqueue_forced_shutdown,
+    request_shutdown_cancel,
+    request_shutdown_now,
+    shutdown_job_view,
+)
+from app.system.palworld_service import PalworldSignal
 
 router = APIRouter(prefix="/dashboard")
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
@@ -137,6 +147,8 @@ def request_lifecycle_action(
     confirmation: Annotated[str, Form()],
     csrf_token: Annotated[str | None, Form()] = None,
 ) -> Response:
+    if action is LifecycleAction.STOP:
+        raise HTTPException(status_code=404)
     if not _valid_session_csrf(request, csrf_token):
         return PlainTextResponse("Token CSRF inválido.", status_code=403)
     if confirmation != action.value:
@@ -151,14 +163,140 @@ def request_lifecycle_action(
         return templates.TemplateResponse(
             request=request,
             name="dashboard/_lifecycle_job.html",
-            context={"job": None, "error": "Já existe uma ação do servidor em andamento."},
+            context={
+                "job": None,
+                "error": "Já existe uma ação do servidor em andamento.",
+                "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
+            },
         )
     return templates.TemplateResponse(
         request=request,
         name="dashboard/_lifecycle_job.html",
-        context={"job": view, "error": None},
+        context={
+            "job": view,
+            "error": None,
+            "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
+        },
         status_code=202,
     )
+
+
+def _shutdown_response(
+    request: Request,
+    job: Job | None,
+    *,
+    error: str | None = None,
+    status_code: int = 200,
+) -> Response:
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard/_shutdown_job.html",
+        context={
+            "job": shutdown_job_view(job) if job is not None else None,
+            "error": error,
+            "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
+        },
+        status_code=status_code,
+    )
+
+
+@router.post("/shutdown", response_class=HTMLResponse, include_in_schema=False)
+def request_assisted_shutdown(
+    request: Request,
+    countdown_minutes: Annotated[int, Form()],
+    confirmation: Annotated[str, Form()],
+    csrf_token: Annotated[str | None, Form()] = None,
+) -> Response:
+    if not _valid_session_csrf(request, csrf_token):
+        return PlainTextResponse("Token CSRF inválido.", status_code=403)
+    if confirmation != "STOP":
+        return PlainTextResponse("Confirmação inválida.", status_code=400)
+    try:
+        with session_scope(_session_factory(request)) as session:
+            job = enqueue_assisted_shutdown(
+                session,
+                countdown_minutes,
+                user_id=_principal(request).user_id,
+            )
+            return _shutdown_response(request, job, status_code=202)
+    except ValueError:
+        return PlainTextResponse("Duração de desligamento inválida.", status_code=400)
+    except ShutdownJobConflictError:
+        return _shutdown_response(
+            request, None, error="Já existe uma ação do servidor em andamento."
+        )
+
+
+@router.get("/shutdown/jobs/{job_id}", response_class=HTMLResponse, include_in_schema=False)
+def shutdown_job_status(request: Request, job_id: int) -> Response:
+    with session_scope(_session_factory(request)) as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            raise HTTPException(status_code=404)
+        try:
+            return _shutdown_response(request, job)
+        except ValueError as error:
+            raise HTTPException(status_code=404) from error
+
+
+@router.post("/shutdown/jobs/{job_id}/cancel", response_class=HTMLResponse, include_in_schema=False)
+def cancel_assisted_shutdown(
+    request: Request,
+    job_id: int,
+    csrf_token: Annotated[str | None, Form()] = None,
+) -> Response:
+    if not _valid_session_csrf(request, csrf_token):
+        return PlainTextResponse("Token CSRF inválido.", status_code=403)
+    with session_scope(_session_factory(request)) as session:
+        if not request_shutdown_cancel(session, job_id, user_id=_principal(request).user_id):
+            return PlainTextResponse("O job não pode mais ser cancelado.", status_code=409)
+        job = session.get_one(Job, job_id)
+        return _shutdown_response(request, job)
+
+
+@router.post("/shutdown/jobs/{job_id}/now", response_class=HTMLResponse, include_in_schema=False)
+def execute_assisted_shutdown_now(
+    request: Request,
+    job_id: int,
+    csrf_token: Annotated[str | None, Form()] = None,
+) -> Response:
+    if not _valid_session_csrf(request, csrf_token):
+        return PlainTextResponse("Token CSRF inválido.", status_code=403)
+    with session_scope(_session_factory(request)) as session:
+        if not request_shutdown_now(session, job_id, user_id=_principal(request).user_id):
+            return PlainTextResponse("O job não pode mais ser antecipado.", status_code=409)
+        job = session.get_one(Job, job_id)
+        return _shutdown_response(request, job)
+
+
+@router.post(
+    "/shutdown/jobs/{source_job_id}/force/{signal}",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+def request_forced_shutdown(
+    request: Request,
+    source_job_id: int,
+    signal: PalworldSignal,
+    confirmation: Annotated[str, Form()],
+    csrf_token: Annotated[str | None, Form()] = None,
+) -> Response:
+    if not _valid_session_csrf(request, csrf_token):
+        return PlainTextResponse("Token CSRF inválido.", status_code=403)
+    expected = "FORCAR" if signal is PalworldSignal.TERM else "SIGKILL"
+    if confirmation != expected:
+        return PlainTextResponse(f"Digite {expected} para confirmar.", status_code=400)
+    try:
+        with session_scope(_session_factory(request)) as session:
+            job = enqueue_forced_shutdown(
+                session,
+                source_job_id,
+                signal,
+                user_id=_principal(request).user_id,
+            )
+            return _shutdown_response(request, job, status_code=202)
+    except (InvalidForcedShutdownError, ShutdownJobConflictError) as error:
+        return _shutdown_response(request, None, error=str(error), status_code=409)
 
 
 @router.get("/lifecycle/jobs/{job_id}", response_class=HTMLResponse, include_in_schema=False)
@@ -174,5 +312,9 @@ def lifecycle_job_status(request: Request, job_id: int) -> Response:
     return templates.TemplateResponse(
         request=request,
         name="dashboard/_lifecycle_job.html",
-        context={"job": view, "error": None},
+        context={
+            "job": view,
+            "error": None,
+            "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
+        },
     )

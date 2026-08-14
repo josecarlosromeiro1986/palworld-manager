@@ -37,4 +37,6 @@ Os testes do health check cobrem as combinações principais dos estados `ONLINE
 
 Os testes de ciclo de vida verificam os comandos fixos de Start, Stop e Restart, confirmação e CSRF, defaults 120/120/60 segundos, overrides operacionais, timeout exato, health final, fechamento da porta REST, auditoria, aquisição única e proteção transacional contra double-submit. Um fluxo de integração usa o fake SQLite compartilhado para confirmar que o worker conclui o job e que a web passa a exibir `ONLINE`, sem executar systemd ou acessar rede externa.
 
+Os testes de desligamento cobrem as opções Agora/1/5/10, default operacional, avisos oficiais simulados, progresso, cancelamento antes do ponto irreversível e antecipação pelo Stop normal. A escalada valida a cadeia Stop falho → `FORCAR`/SIGTERM falho → `SIGKILL`, os comandos systemd exatos, auditoria, evento de notificação e a ausência de qualquer SIGKILL automático.
+
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

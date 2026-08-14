@@ -11,6 +11,7 @@ from app.system.palworld_service import (
     FakePalworldService,
     PalworldServiceControlError,
     PalworldServiceQueryError,
+    PalworldSignal,
     SystemdPalworldService,
     create_palworld_service,
 )
@@ -180,6 +181,26 @@ def test_systemd_control_failure_does_not_expose_stderr() -> None:
         service.restart()
 
     assert private_detail not in str(error.value)
+
+
+@pytest.mark.parametrize("signal", [PalworldSignal.TERM, PalworldSignal.KILL])
+def test_systemd_adapter_signals_only_the_main_process_of_configured_unit(
+    signal: PalworldSignal,
+) -> None:
+    runner = RecordingRunner(completed_process(stdout=""))
+    service = SystemdPalworldService("palworld.service", runner=runner)
+
+    service.send_signal(signal)
+
+    assert runner.command == (
+        "/usr/bin/sudo",
+        "--non-interactive",
+        "/usr/bin/systemctl",
+        "kill",
+        "--kill-whom=main",
+        f"--signal={signal.value}",
+        "palworld.service",
+    )
 
 
 @pytest.mark.parametrize("environment", [AppEnvironment.DEVELOPMENT, AppEnvironment.TEST])

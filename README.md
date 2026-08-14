@@ -38,7 +38,7 @@ make test
 make check
 ```
 
-O schema local é criado e atualizado explicitamente com `make db-upgrade`. Assets Tailwind, HTMX e ícones são compilados localmente pela imagem; `make frontend-build` permite reconstruí-los separadamente. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker e os serviços simulados ainda são estruturas mínimas, sem jobs ou integrações reais.
+O schema local é criado e atualizado explicitamente com `make db-upgrade`. Assets Tailwind, HTMX e ícones são compilados localmente pela imagem; `make frontend-build` permite reconstruí-los separadamente. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker já executa jobs persistentes de Start, Restart e desligamento assistido/forçado; development e test usam fakes completos, sem controlar o host ou depender de um Palworld real.
 
 ## Documentação
 

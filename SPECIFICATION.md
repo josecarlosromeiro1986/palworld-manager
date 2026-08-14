@@ -316,6 +316,8 @@ Nunca usar `kill -9` automaticamente.
 ### Encerramento forçado
 Só após Stop falhar. Primeiro nível exige digitar `FORCAR` e tenta SIGTERM. SIGKILL somente como último recurso, com segunda confirmação. Auditar e alertar Discord.
 
+SIGTERM não é liberado quando a falha ocorreu antes do Stop, por exemplo ao consultar ou avisar jogadores. SIGKILL exige que o job manual de SIGTERM também tenha falhado e a segunda confirmação consiste em digitar `SIGKILL`. Os sinais são enviados somente ao processo principal da unidade `PALWORLD_SERVICE`, através de argumentos fixos do systemd; não há escalada automática entre os níveis.
+
 ## 14. Recuperação de crashes
 
 Usar systemd para reinício automático com limite anti-loop. Stop administrativo deve permanecer parado. Falhas recorrentes geram estado crítico, auditoria e Discord.
@@ -323,6 +325,8 @@ Usar systemd para reinício automático com limite anti-loop. Stop administrativ
 ## 15. Desligamento assistido
 
 Opções: Agora, 1, 5 e 10 minutos; default 5. Consultar jogadores quando necessário, enviar avisos oficiais, mostrar progresso, permitir cancelar em ponto seguro e permitir “Forçar agora” quando apropriado.
+
+O desligamento consulta `GET /players` uma vez no início. Quando houver jogadores online, envia por `POST /announce` um aviso inicial e outro imediatamente antes do Stop; cancelamento durante a contagem tenta informar que a operação foi cancelada. Falha na consulta ou em um aviso obrigatório encerra o job sem executar o Stop. “Forçar agora” somente ignora o restante da contagem e segue pelo Stop normal; não envia SIGTERM nem SIGKILL.
 
 ## 16. Jogadores
 

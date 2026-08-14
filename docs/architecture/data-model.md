@@ -67,6 +67,8 @@ Representa operações persistentes em background, incluindo tipo, estado, progr
 
 A revision `0003_lifecycle_job_guard` adiciona `coordination_key` e um índice único parcial para impedir mais de um job com a mesma chave em `PENDING` ou `RUNNING`. Os jobs de ciclo de vida usam `PALWORLD_LIFECYCLE`; estados terminais liberam a chave para uma nova ação.
 
+A revision `0004_assisted_shutdown_controls` adiciona os flags persistentes `cancel_requested` e `execute_now_requested`. Eles permitem que a web solicite mudanças durante a contagem sem executar a operação no processo FastAPI; o worker observa os flags e fecha `is_cancellable` antes do Stop.
+
 ### `backup_records`
 
 Cataloga backups gerenciados, sua localização, integridade e estado. Relaciona-se aos jobs que os criam, transferem ou restauram, sem guardar o conteúdo do backup no banco.

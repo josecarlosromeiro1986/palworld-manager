@@ -26,6 +26,7 @@ from app.auth.sessions import (
 )
 from app.config import Settings
 from app.db.engine import session_scope
+from app.shutdown.jobs import assisted_shutdown_default
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
@@ -123,10 +124,16 @@ def login(
 def home(request: Request) -> Response:
     principal = _principal(request)
     csrf_token = request.cookies.get(SESSION_CSRF_COOKIE_NAME)
+    with session_scope(_session_factory(request)) as session:
+        shutdown_default = assisted_shutdown_default(session)
     return templates.TemplateResponse(
         request=request,
         name="home.html",
-        context={"username": principal.username, "csrf_token": csrf_token},
+        context={
+            "username": principal.username,
+            "csrf_token": csrf_token,
+            "assisted_shutdown_default_minutes": shutdown_default,
+        },
     )
 
 

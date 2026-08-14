@@ -1,8 +1,8 @@
 # Controle do servidor Palworld
 
-> Status: Start, Stop e Restart implementados. Desligamento assistido e encerramento forçado permanecem planejados.
+> Status: Start, Stop, Restart, desligamento assistido e encerramento forçado manual implementados.
 
-O Dashboard oferece as ações **Iniciar**, **Parar** e **Reiniciar**. Cada botão apresenta uma confirmação antes do envio, e o backend exige sessão autenticada, CSRF válido e o valor exato da ação.
+O Dashboard oferece **Iniciar**, **Parar** e **Reiniciar**. Parar permite escolher Agora, 1, 5 ou 10 minutos, com 5 minutos selecionados por padrão. Toda alteração exige sessão autenticada, CSRF válido e confirmação exata.
 
 A web não executa comandos privilegiados. Ela persiste um job no SQLite, registra a solicitação na auditoria e retorna um fragmento HTMX que acompanha o estado do job. O processo `palworld-manager-worker.service` adquire e executa o job.
 
@@ -18,16 +18,27 @@ confirmar
 → SUCCEEDED ou timeout/falha
 ```
 
-Stop:
+Stop assistido:
 
 ```text
-confirmar
+consultar jogadores via GET /players
+→ avisar jogadores online via POST /announce
+→ contagem persistente e cancelável
+→ aviso final, quando houver jogadores
 → job PENDING
 → worker executa systemctl --no-block
 → aguardar health OFFLINE
 → confirmar porta REST fechada
 → SUCCEEDED ou timeout/falha
 ```
+
+Durante a contagem, **Cancelar** permanece disponível somente até o ponto seguro imediatamente anterior ao Stop. **Forçar agora** ignora a espera restante, mas continua usando o Stop normal; não significa envio de sinal. Falha ao consultar jogadores ou enviar um aviso obrigatório mantém o servidor ligado e marca o job como falho.
+
+## Escalada manual após falha do Stop
+
+SIGTERM só pode ser solicitado após falha do Stop. O administrador precisa digitar `FORCAR`. Se esse job também falhar, a UI libera o último recurso, SIGKILL, que exige nova confirmação digitada como `SIGKILL`. Nenhum timeout ou erro promove SIGTERM para SIGKILL automaticamente.
+
+Cada tentativa é auditada. A execução de SIGTERM ou SIGKILL também cria um `notification_event` `FORCED_SHUTDOWN`; a entrega ao Discord permanece exclusivamente com o worker e será habilitada na Etapa 23.
 
 Os timeouts são lidos no momento da criação do job e persistidos com ele:
 
@@ -49,6 +60,8 @@ Em production, somente estes comandos são construídos pelo adapter, sempre com
 /usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block start palworld.service
 /usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block stop palworld.service
 /usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block restart palworld.service
+/usr/bin/sudo --non-interactive /usr/bin/systemctl kill --kill-whom=main --signal=SIGTERM palworld.service
+/usr/bin/sudo --non-interactive /usr/bin/systemctl kill --kill-whom=main --signal=SIGKILL palworld.service
 ```
 
 O nome real da unidade vem de `PALWORLD_SERVICE` e passa pela allowlist estrutural. A regra mínima de sudoers será instalada e validada na etapa de deploy; não existe `sudo ALL`.

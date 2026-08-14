@@ -123,10 +123,11 @@ def enqueue_lifecycle_job(
 
 
 def _pending_lifecycle_job() -> Select[tuple[int]]:
+    kinds = [lifecycle_job_kind(action) for action in LifecycleAction]
     return (
         select(Job.id)
         .where(
-            Job.kind.like(f"{LIFECYCLE_JOB_PREFIX}%"),
+            Job.kind.in_(kinds),
             Job.status == JOB_STATUS_PENDING,
         )
         .order_by(Job.created_at, Job.id)

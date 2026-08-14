@@ -1,6 +1,6 @@
 # REST API do Palworld
 
-> Status: Probe de health implementado; operações administrativas permanecem planejadas para a V1.
+> Status: Probe de health e operações mínimas do desligamento assistido implementados; cliente administrativo completo permanece planejado para a V1.
 
 A integração usará exclusivamente a REST API oficial do Palworld para:
 
@@ -29,6 +29,10 @@ O health check usa somente o endpoint oficial `GET /info`, com HTTP Basic Auth e
 
 > O Palworld Manager não tentará descobrir jogadores offline lendo/modificando saves na V1.
 
-Os demais endpoints serão documentados somente após confirmação na documentação oficial vigente. Veja os requisitos de jogadores e administração em [SPECIFICATION.md](../../SPECIFICATION.md).
+## Desligamento assistido
 
-Referências oficiais consultadas: [REST API do Palworld](https://docs.palworldgame.com/api/rest-api/palwold-rest-api/) e [`GET /info`](https://docs.palworldgame.com/api/rest-api/info/).
+A Etapa 12 usa somente os contratos oficiais necessários ao fluxo: `GET /players` consulta a quantidade de jogadores uma vez no início e `POST /announce`, com JSON `{"message": "..."}`, envia os avisos. Falhas de autenticação, transporte, status ou formato impedem o Stop para não desligar o servidor sem o aviso previsto. Não há polling contínuo.
+
+O cliente administrativo tipado completo, consulta manual de jogadores e anúncios livres continuam reservados à Etapa 14.
+
+Referências oficiais consultadas: [REST API do Palworld](https://docs.palworldgame.com/api/rest-api/palwold-rest-api/), [`GET /info`](https://docs.palworldgame.com/api/rest-api/info/), [`GET /players`](https://docs.palworldgame.com/api/rest-api/players/) e [`POST /announce`](https://docs.palworldgame.com/api/rest-api/announce/).

@@ -1,6 +1,6 @@
 # Jobs e locks
 
-> Status: Jobs de Start, Stop e Restart implementados; fila completa, heartbeat, recovery e maintenance lock geral permanecem planejados para a V1.
+> Status: Jobs de ciclo de vida e desligamento assistido/forçado implementados; fila completa, heartbeat, recovery e maintenance lock geral permanecem planejados para a V1.
 
 Backups, uploads, restores, updates, desligamentos assistidos e outras operações críticas serão jobs persistentes no SQLite. Em produção, o worker será um processo independente da aplicação web.
 
@@ -15,6 +15,8 @@ O serviço web será responsável por autenticação, sessões, páginas Jinja2,
 O worker executará backup, restore, update via SteamCMD, upload ao Google Drive, download de backup remoto, desligamento assistido e outras operações críticas ou demoradas.
 
 O primeiro consumidor implementado é o ciclo de vida do Palworld. A web cria jobs `PALWORLD_START`, `PALWORLD_STOP` e `PALWORLD_RESTART`; o worker os adquire e executa. Uma chave de coordenação com índice único parcial impede duas ações simultâneas, e cada job preserva o timeout vigente no momento da solicitação. Essa fundação é intencionalmente limitada: heartbeat, reconciliação após interrupção, logs textuais e o maintenance lock global serão concluídos na Etapa 17.
+
+O desligamento usa `PALWORLD_ASSISTED_SHUTDOWN`, `PALWORLD_FORCE_SIGTERM` e `PALWORLD_FORCE_SIGKILL` sob a mesma chave. A contagem grava progresso e pedidos de cancelamento ou execução imediata no SQLite. O worker fecha o ponto de cancelamento antes de iniciar o Stop. SIGKILL nunca é criado como consequência automática: somente uma nova requisição autenticada, após falha de SIGTERM, pode enfileirá-lo.
 
 Além dos jobs, o worker será o único processo que entrega `notification_events` a integrações externas. FastAPI e worker podem criar esses eventos no SQLite, mas FastAPI não chama o Discord diretamente. A entrega passa pelos estados `PENDING`, `SENDING`, `SENT` ou `FAILED`, usa semântica at least once e permite no máximo 3 tentativas totais para falhas transitórias, sem retry infinito.
 

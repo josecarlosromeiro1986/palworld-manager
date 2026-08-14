@@ -22,6 +22,8 @@ class Job(IntegerPrimaryKeyMixin, CreatedAtMixin, Base):
     status: Mapped[str] = mapped_column(String(30), index=True)
     progress: Mapped[int] = mapped_column(server_default=text("0"))
     is_cancellable: Mapped[bool] = mapped_column(Boolean, server_default=text("1"))
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, server_default=text("0"))
+    execute_now_requested: Mapped[bool] = mapped_column(Boolean, server_default=text("0"))
     requires_maintenance_lock: Mapped[bool] = mapped_column(Boolean, server_default=text("0"))
     coordination_key: Mapped[str | None] = mapped_column(String(100))
     claimed_by: Mapped[str | None] = mapped_column(String(100))

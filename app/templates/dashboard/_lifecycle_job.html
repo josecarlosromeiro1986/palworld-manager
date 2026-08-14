@@ -34,5 +34,13 @@
     {% else %}
       <p class="mt-1 text-xs text-muted">Job #{{ job.id }} · progresso {{ job.progress }}%</p>
     {% endif %}
+    {% if job.status == "FAILED" and job.action.value == "STOP" %}
+      <form class="mt-3 flex flex-wrap gap-2" hx-post="/dashboard/shutdown/jobs/{{ job.id }}/force/SIGTERM" hx-target="#lifecycle-feedback" hx-swap="innerHTML">
+        <label class="sr-only" for="legacy-force-term-{{ job.id }}">Digite FORCAR</label>
+        <input id="legacy-force-term-{{ job.id }}" class="rounded-md border bg-surface px-2 py-1 text-sm text-ink" name="confirmation" placeholder="Digite FORCAR" required>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="rounded-md border px-2 py-1 text-sm text-danger" type="submit">Tentar SIGTERM</button>
+      </form>
+    {% endif %}
   </div>
 {% endif %}

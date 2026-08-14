@@ -4,7 +4,7 @@ from app.db.engine import session_scope
 from app.db.models import AppSetting
 from app.health.palworld import PalworldHealthSnapshot, PalworldHealthState
 from app.integrations.palworld_rest import RestApiState
-from app.system.palworld_service import PalworldServiceStatus
+from app.system.palworld_service import PalworldServiceStatus, PalworldSignal
 
 FAKE_PALWORLD_ACTIVE_KEY = "development_fake_palworld_active"
 
@@ -43,6 +43,10 @@ class PersistentFakePalworldEnvironment:
 
     def restart(self) -> None:
         self._set_active(True)
+
+    def send_signal(self, signal: PalworldSignal) -> None:
+        del signal
+        self._set_active(False)
 
     def is_open(self) -> bool:
         return self._is_active()
