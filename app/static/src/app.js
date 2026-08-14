@@ -246,7 +246,10 @@ document.body.addEventListener("htmx:afterSwap", restoreOpenJobLogs);
 document.body.addEventListener("htmx:beforeSwap", (event) => {
   const target = event.detail.target;
   const status = event.detail.xhr?.status;
-  if (target?.id === "restore-job" && (status === 400 || status === 409)) {
+  if (
+    (target?.id === "restore-job" || target?.id === "drive-job") &&
+    (status === 400 || status === 409)
+  ) {
     event.detail.shouldSwap = true;
     event.detail.isError = false;
   }

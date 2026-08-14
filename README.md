@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backup local validado e Restore local seguro estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backup/Restore local e Google Drive via rclone estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -41,6 +41,13 @@ make check
 O schema local é criado e atualizado explicitamente com `make db-upgrade`. Assets Tailwind, HTMX e ícones são compilados localmente pela imagem; `make frontend-build` permite reconstruí-los separadamente. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker executa jobs persistentes de ciclo de vida, desligamento e backup local, mantém heartbeat a cada 10 segundos e não expõe HTTP. O Dashboard mostra sua saúde, progresso e logs dos jobs; operações incompatíveis usam um maintenance lock global. A página **Backups** cria e acompanha backups manuais, lista somente registros locais válidos e aplica automaticamente o agendamento diário das 04:00 e retenção de 3 artefatos gerenciados. A página **Logs** oferece histórico, filtros, cópia e streaming SSE. A página **Jogadores** consulta a lista somente pelo botão de atualização, mantém o último resultado apenas em memória, envia anúncios e permite Kick, Ban e Unban com confirmação, CSRF, histórico e auditoria. **Configurações do Palworld** edita apenas campos reconhecidos do `PalWorldSettings.ini`, preserva desconhecidos, cria uma cópia pré-save e oferece Restart após a gravação. Development e test usam fakes completos, sem consultar o journald, controlar o host, tocar no INI ou mundo reais ou depender de um Palworld real.
 
 O worker também executa `LOCAL_RESTORE`; a web apenas enfileira e acompanha o job. Na página **Backups**, o administrador confirma `RESTAURAR`, acompanha validação, backup preventivo, Stop, aplicação, Start e verificação final. O fluxo restaura somente mundo e configurações do Palworld: o banco, usuários, sessões, auditoria, jobs e configurações do Manager permanecem intactos.
+
+O Google Drive usa o remote estrutural `RCLONE_REMOTE` e exclusivamente o
+namespace `Palworld Manager/Backups/`. O backup diário válido cria upload
+automático posterior; backups manuais e preventivos permanecem locais por
+padrão e podem ser enviados pelo painel. Status, quota, upload, download para a
+área local e exclusão remota são jobs do worker. Development e test usam um fake
+completo e não executam rclone nem acessam rede.
 
 ## Documentação
 

@@ -53,6 +53,19 @@
   </article>
 </section>
 
+<section
+  hx-get="/backups/drive/status"
+  hx-trigger="load, driveBackupsChanged from:body"
+  hx-swap="innerHTML"
+  aria-label="Status do Google Drive"
+  class="mb-6"
+>
+  <article class="animate-pulse rounded-md border bg-surface p-3 sm:p-4" aria-busy="true">
+    <h2 class="text-sm font-medium text-ink">Google Drive</h2>
+    <p class="mt-0.5 text-xs text-muted">Consultando último resultado conhecido</p>
+  </article>
+</section>
+
 <section aria-labelledby="lifecycle-title" class="mb-6 rounded-md border bg-surface p-3 sm:p-4">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>

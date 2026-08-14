@@ -86,6 +86,14 @@ ativo do Manager. Mesmo presentes e validados no artefato,
 manual/offline de desastre e não alteram usuários, sessões, auditoria, jobs ou
 `app_settings` durante o Restore pelo painel.
 
+A revision `0006_drive_backup_locations` troca a unicidade global do nome por
+unicidade composta de `location` e `filename`. Assim, o mesmo artefato pode ter
+uma linha `LOCAL` e outra `DRIVE`, ambas com tamanho e SHA-256 idênticos, sem
+confundir as duas cópias. Registros remotos guardam somente o nome relativo no
+namespace fixo; remote, paths estruturais e credenciais não são persistidos. A
+retenção e a exclusão remotas só reconhecem linhas `DRIVE` e `VALID` com formato
+gerenciado.
+
 ### `ban_history`
 
 Mantém o histórico administrativo implementado de Kick, Ban e Unban, incluindo ação, alvo, `userId`, administrador, motivo, resultado e timestamp. Complementa a auditoria, mas não substitui o estado mantido pelo Palworld. A página de jogadores exibe até 50 registros recentes; filtros e retenção geral pertencem à auditoria completa da Etapa 26.

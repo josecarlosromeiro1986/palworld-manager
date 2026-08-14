@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.auth.middleware import AuthenticationMiddleware
 from app.auth.router import router as auth_router
+from app.backups.drive_router import router as drive_backups_router
 from app.backups.router import router as backups_router
 from app.config import AppEnvironment, Settings
 from app.dashboard.metrics import HostMetricsService
@@ -94,6 +95,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(backups_router)
+    application.include_router(drive_backups_router)
     application.include_router(dashboard_router)
     application.include_router(players_router)
     application.include_router(logs_router)

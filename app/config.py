@@ -15,6 +15,7 @@ from pydantic.networks import IPvAnyAddress
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVICE_NAME_PATTERN = r"^[A-Za-z0-9_][A-Za-z0-9_.@-]*\.service$"
+RCLONE_REMOTE_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"
 
 ServiceName = Annotated[str, StringConstraints(pattern=SERVICE_NAME_PATTERN)]
 Port = Annotated[int, Field(ge=1, le=65535)]
@@ -68,6 +69,14 @@ class Settings(BaseSettings):
         default=Path("/usr/games/steamcmd"),
         validation_alias="STEAMCMD",
     )
+    rclone: Path = Field(
+        default=Path("/usr/bin/rclone"),
+        validation_alias="RCLONE",
+    )
+    rclone_remote: Annotated[str, StringConstraints(pattern=RCLONE_REMOTE_PATTERN)] = Field(
+        default="palworld-manager",
+        validation_alias="RCLONE_REMOTE",
+    )
     app_host: IPvAnyAddress = Field(
         default=ip_address("127.0.0.1"),
         validation_alias="APP_HOST",
@@ -78,7 +87,13 @@ class Settings(BaseSettings):
         validation_alias="MANAGER_DATABASE",
     )
 
-    @field_validator("palworld_dir", "palworld_settings", "steamcmd", "manager_database")
+    @field_validator(
+        "palworld_dir",
+        "palworld_settings",
+        "steamcmd",
+        "rclone",
+        "manager_database",
+    )
     @classmethod
     def require_absolute_path(cls, value: Path) -> Path:
         if not value.is_absolute():

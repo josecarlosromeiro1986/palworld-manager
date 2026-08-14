@@ -49,6 +49,17 @@ Os testes de backup local cobrem o `POST /save` oficial e seu fake, mundo comple
 
 Os testes de Restore local verificam a precedência do SHA-256 externo, validação completa do manifest e do payload de disaster recovery, mundo e `Players/` opacos, merge determinístico dos INIs e preservação literal de valores sensíveis e parâmetros desconhecidos. Cobrem falha de safe save preventivo, INI atual ausente/inválido, espaço insuficiente e Stop falho antes de qualquer alteração; aplicação real em árvore temporária com modos mínimos; Start, health e logs críticos; falha parcial sem rollback e com backup preventivo preservado; retenção exata e arquivo externo; maintenance lock, double-submit, não cancelamento e recovery sem retomada. A integração web exige autenticação, CSRF, `RESTAURAR`, modal compartilhado e apenas enfileira o job. Os fakes de test/development não acessam Palworld, systemd ou filesystem estrutural reais.
 
+Os testes do Google Drive usam adapter gravador e fake integral, sem rclone ou
+rede. Cobrem argumentos e namespace fixos, quota válida/inválida, upload
+automático somente após backup diário válido, upload manual, SHA-256 remoto,
+download com validação antes da publicação local, exclusão gerenciada,
+cancelamento seguro, maintenance lock, double-submit e recovery sem requeue.
+Retenção mantém exatamente 10 registros remotos e testes de quota confirmam que
+somente os registros próprios mais antigos são removidos, preservando objetos
+externos. Falhas antes e depois da transferência verificam limpeza restrita,
+preservação local, auditoria, `DRIVE_FAILED` e logs sem detalhes internos. As
+rotas de status, upload, download e exclusão exigem autenticação e CSRF.
+
 Os testes de logs validam os argumentos read-only e allowlisted do `journalctl`, parsing, classificação, proteção de secrets, fake completo, autenticação, histórico de 100/500/1000 linhas, filtros e ausência de persistência no SQLite. O aceite de reconexão abre o SSE com o cursor do histórico, simula nova conexão com `Last-Event-ID` e confirma que a entrega continua no evento seguinte sem repetir o último recebido.
 
 Os testes da REST API administrativa validam os campos oficiais tipados de jogadores, Basic Auth, timeout, servidor offline, indisponibilidade, autenticação, respostas inválidas e falhas inesperadas sem abrir rede nem expor detalhes internos. A integração web confirma que abrir ou reler a página não consulta jogadores, que somente o POST manual atualiza o cache em memória, que uma falha preserva o último snapshot válido e que anúncios exigem CSRF e repetição literal da mensagem. Sucesso e falha do anúncio são verificados na auditoria.

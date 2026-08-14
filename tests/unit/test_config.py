@@ -15,6 +15,8 @@ CONFIG_ENV_VARS = (
     "PALWORLD_DIR",
     "PALWORLD_SETTINGS",
     "STEAMCMD",
+    "RCLONE",
+    "RCLONE_REMOTE",
     "APP_HOST",
     "APP_PORT",
     "MANAGER_DATABASE",
@@ -44,6 +46,8 @@ def test_structural_defaults() -> None:
     assert settings.app_host.is_loopback
     assert settings.app_port == 8080
     assert settings.manager_database == Path("/var/lib/palworld-manager/manager.db")
+    assert settings.rclone == Path("/usr/bin/rclone")
+    assert settings.rclone_remote == "palworld-manager"
 
 
 @pytest.mark.parametrize("environment", list(AppEnvironment))
@@ -150,6 +154,17 @@ def test_paths_must_be_absolute(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("STEAMCMD", "bin/steamcmd")
 
     with pytest.raises(ValidationError, match="absoluto"):
+        Settings()
+
+
+@pytest.mark.parametrize("remote", ["drive:other", "../drive", "drive/name", "--drive"])
+def test_rclone_remote_rejects_unsafe_names(
+    remote: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RCLONE_REMOTE", remote)
+
+    with pytest.raises(ValidationError):
         Settings()
 
 

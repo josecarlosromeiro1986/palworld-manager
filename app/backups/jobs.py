@@ -132,9 +132,12 @@ class LocalBackupJobExecutor:
         self,
         session_factory: sessionmaker[Session],
         service: LocalBackupService,
+        *,
+        automatic_drive_uploads: bool = False,
     ) -> None:
         self._session_factory = session_factory
         self._service = service
+        self._automatic_drive_uploads = automatic_drive_uploads
 
     def execute(self, job_id: int) -> BackupArtifact | None:
         artifact: BackupArtifact | None = None
@@ -153,6 +156,17 @@ class LocalBackupJobExecutor:
                 job = session.get_one(Job, job_id)
                 record = register_backup_artifact(session, artifact, job_id=job.id)
                 _apply_retention(session, self._service, DEFAULT_LOCAL_RETENTION)
+                drive_upload_job_id: int | None = None
+                if trigger == "AUTOMATIC" and self._automatic_drive_uploads:
+                    from app.backups.drive_jobs import enqueue_drive_upload
+
+                    drive_job = enqueue_drive_upload(
+                        session,
+                        backup_record_id=record.id,
+                        user_id=None,
+                        trigger="AUTOMATIC",
+                    )
+                    drive_upload_job_id = drive_job.id
                 job.status = JOB_STATUS_SUCCEEDED
                 job.step = JOB_STEP_COMPLETED
                 job.progress = 100
@@ -166,6 +180,7 @@ class LocalBackupJobExecutor:
                     "size_bytes": artifact.size_bytes,
                     "sha256": artifact.sha256,
                     "integrity": "VALID",
+                    "drive_upload_job_id": drive_upload_job_id,
                 }
                 record_audit_event(
                     session,

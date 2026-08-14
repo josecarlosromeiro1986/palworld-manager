@@ -2,6 +2,7 @@ import logging
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.backups.drive_jobs import DRIVE_JOB_KINDS, DriveJobExecutor
 from app.backups.jobs import LOCAL_BACKUP_JOB_KIND, LocalBackupJobExecutor
 from app.db.engine import session_scope
 from app.db.models import Job
@@ -37,6 +38,7 @@ class LifecycleJobWorker:
         job_logs: JobLogStore | None = None,
         backup_executor: LocalBackupJobExecutor | None = None,
         restore_executor: LocalRestoreJobExecutor | None = None,
+        drive_executor: DriveJobExecutor | None = None,
     ) -> None:
         if not worker_id:
             raise ValueError("o identificador do worker é obrigatório")
@@ -48,6 +50,7 @@ class LifecycleJobWorker:
         self._job_logs = job_logs or MemoryJobLogStore()
         self._backup_executor = backup_executor
         self._restore_executor = restore_executor
+        self._drive_executor = drive_executor
 
     @property
     def _supported_kinds(self) -> tuple[str, ...]:
@@ -60,7 +63,8 @@ class LifecycleJobWorker:
         )
         backups = (LOCAL_BACKUP_JOB_KIND,) if self._backup_executor is not None else ()
         restores = (LOCAL_RESTORE_JOB_KIND,) if self._restore_executor is not None else ()
-        return lifecycle + shutdown + backups + restores
+        drive = DRIVE_JOB_KINDS if self._drive_executor is not None else ()
+        return lifecycle + shutdown + backups + restores + drive
 
     def process_next(self) -> bool:
         with session_scope(self._session_factory) as session:
@@ -85,6 +89,10 @@ class LifecycleJobWorker:
                     "Validação integral e backup preventivo do Restore iniciados.",
                 )
                 self._restore_executor.execute(job_id)
+            elif job_kind in DRIVE_JOB_KINDS:
+                assert self._drive_executor is not None
+                self._append_log(job_log_path, "Operação gerenciada no Google Drive iniciada.")
+                self._drive_executor.execute(job_id)
             elif job_kind in {kind.value for kind in ShutdownJobKind}:
                 if job_kind == ShutdownJobKind.ASSISTED.value:
                     assert self._assisted_shutdown_executor is not None
@@ -102,7 +110,7 @@ class LifecycleJobWorker:
                     execute_lifecycle_job(session, job, self._executor)
         except Exception:
             self._append_log(job_log_path, "Execução falhou de forma inesperada.")
-            if job_kind in {LOCAL_BACKUP_JOB_KIND, LOCAL_RESTORE_JOB_KIND}:
+            if job_kind in {LOCAL_BACKUP_JOB_KIND, LOCAL_RESTORE_JOB_KIND, *DRIVE_JOB_KINDS}:
                 pass
             elif job_kind in {kind.value for kind in ShutdownJobKind}:
                 fail_shutdown_job(self._session_factory, job_id)

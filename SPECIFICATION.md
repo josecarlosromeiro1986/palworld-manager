@@ -156,6 +156,8 @@ PALWORLD_REST_BASE_URL=http://127.0.0.1:8212/v1/api
 PALWORLD_DIR=/home/steam/palserver
 PALWORLD_SETTINGS=/home/steam/palserver/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini
 STEAMCMD=/usr/games/steamcmd
+RCLONE=/usr/bin/rclone
+RCLONE_REMOTE=palworld-manager
 APP_HOST=127.0.0.1
 APP_PORT=8080
 MANAGER_DATABASE=/var/lib/palworld-manager/manager.db
@@ -453,11 +455,18 @@ Retenção: 3 locais e até 10 no Drive.
 
 Configuração inicial do rclone manual via terminal. Painel testa conexão, quota, lista/envia/baixa/remove backups gerenciados.
 
-Pasta própria conceitual: `Palworld Manager/Backups/`.
+Namespace próprio fixo dentro do remote configurado: `Palworld Manager/Backups/`.
 
 **Regra absoluta:** nunca excluir arquivos fora da pasta/namespace gerenciado pelo Palworld Manager.
 
 Antes do upload: verificar quota, aplicar retenção apenas própria, remover backup próprio antigo se necessário; se ainda faltar espaço, cancelar upload, preservar local, auditar e alertar Discord. Não exigir plano pago.
+
+Na V1, todo backup diário automático que concluiu a validação local, possui
+SHA-256 externo e já está registrado como `LOCAL` e `VALID` cria em seguida um
+job separado de upload para o Google Drive. Backups manuais e backups
+preventivos de Restore ou Update permanecem somente locais por padrão. Todo
+backup local válido pode ser enviado manualmente ao Drive pelo painel. Uma
+falha no upload remoto nunca invalida nem remove o backup local que o originou.
 
 ## 27. Restauração
 

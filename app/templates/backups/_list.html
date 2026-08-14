@@ -25,6 +25,14 @@
               <td class="px-4 py-3"><span class="text-positive">{{ backup.status }}</span><p class="mt-1 max-w-44 truncate font-mono text-[10px] text-muted" title="SHA-256">{{ backup.sha256 }}</p></td>
               <td class="px-4 py-3 text-muted">{% if backup.job_id %}#{{ backup.job_id }} · {% endif %}{{ backup.job_status }}</td>
               <td class="px-4 py-3">
+                {% if backup.uploaded_to_drive %}
+                  <p class="mb-2 text-xs text-positive">Enviado ao Drive</p>
+                {% else %}
+                  <form class="mb-3" hx-post="/backups/drive/upload/{{ backup.id }}" hx-target="#drive-job" hx-swap="innerHTML" data-confirm data-confirm-key="drive-upload-{{ backup.id }}" data-confirm-title="Enviar ao Google Drive?" data-confirm-message="O worker validará novamente o backup local, verificará quota e aplicará retenção somente sobre backups remotos gerenciados." data-confirm-button="Enviar ao Drive">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="min-h-9 rounded-md border px-3 text-xs font-medium text-ink hover:border-accent">Enviar ao Drive</button>
+                  </form>
+                {% endif %}
                 <form
                   class="flex min-w-52 flex-col gap-2"
                   hx-post="/backups/{{ backup.id }}/restore"

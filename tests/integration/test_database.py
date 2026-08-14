@@ -8,7 +8,7 @@ from sqlalchemy import Engine, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import User
+from app.db.models import BackupRecord, User
 
 EXPECTED_TABLES = {
     "alembic_version",
@@ -49,7 +49,7 @@ def test_new_database_is_created_only_by_migrations(migrated_engine: Engine) -> 
     with migrated_engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
 
-    assert revision == "0005_persistent_job_system"
+    assert revision == "0006_drive_backup_locations"
     job_columns = {column["name"] for column in inspect(migrated_engine).get_columns("jobs")}
     assert {"cancel_requested", "execute_now_requested", "step"}.issubset(job_columns)
 
@@ -65,6 +65,37 @@ def test_sqlite_connections_enable_integrity_and_concurrency_pragmas(
     assert foreign_keys == 1
     assert journal_mode == "wal"
     assert busy_timeout == 5000
+
+
+def test_backup_filename_can_exist_once_per_location(migrated_engine: Engine) -> None:
+    factory = create_session_factory(migrated_engine)
+    filename = "palworld-manager-backup-test.tar.gz"
+    with session_scope(factory) as session:
+        session.add_all(
+            [
+                BackupRecord(
+                    job_id=None,
+                    filename=filename,
+                    location="LOCAL",
+                    status="VALID",
+                    sha256="a" * 64,
+                    size_bytes=1,
+                    storage_path=f"backups/{filename}",
+                ),
+                BackupRecord(
+                    job_id=None,
+                    filename=filename,
+                    location="DRIVE",
+                    status="VALID",
+                    sha256="a" * 64,
+                    size_bytes=1,
+                    storage_path=filename,
+                ),
+            ]
+        )
+
+    with session_scope(factory) as session:
+        assert len(tuple(session.scalars(select(BackupRecord)))) == 2
 
 
 def test_session_scope_commits_and_rolls_back(migrated_engine: Engine) -> None:

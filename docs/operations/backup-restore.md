@@ -1,12 +1,12 @@
 # Backup e restore
 
-> Status: Backup e Restore locais implementados. A integração com Google Drive permanece planejada para a etapa própria.
+> Status: Backup e Restore locais e integração com Google Drive implementados. O Restore remoto permanece planejado para a etapa própria.
 
 Este documento resume a operação prevista. [SPECIFICATION.md](../../SPECIFICATION.md) contém os requisitos oficiais completos.
 
 ## Backup
 
-O backup automático é diário às `04:00` no timezone configurado, inicialmente `America/Sao_Paulo`. O worker cria no máximo um job automático por data local e respeita `backup_enabled`, `backup_time` e `timezone` quando esses valores operacionais já existem no SQLite; a interface completa para editá-los permanece na Etapa 24. O Manager mantém exatamente 3 backups locais válidos. A retenção de até 10 backups próprios no Google Drive permanece planejada.
+O backup automático é diário às `04:00` no timezone configurado, inicialmente `America/Sao_Paulo`. O worker cria no máximo um job automático por data local e respeita `backup_enabled`, `backup_time` e `timezone` quando esses valores operacionais já existem no SQLite; a interface completa para editá-los permanece na Etapa 24. O Manager mantém exatamente 3 backups locais válidos e até 10 backups remotos gerenciados.
 
 Cada backup será um `.tar.gz` com `manifest.json`, hash SHA-256 e teste de integridade. Só será considerado válido após essas verificações. Antes da cópia, o Manager solicitará um salvamento seguro pelo mecanismo oficial disponível; uma falha nessa etapa invalida a operação.
 
@@ -68,6 +68,27 @@ A retenção consulta registros `LOCAL` e `VALID`, reconhece também o namespace
 ## Google Drive
 
 rclone fará uploads e downloads em uma pasta ou namespace exclusivo do Palworld Manager. Antes do upload, o sistema verificará quota e aplicará retenção somente aos próprios backups. Se o espaço gratuito continuar insuficiente, o upload será cancelado, o backup local será preservado e a falha será auditada.
+
+Um backup diário automático gera um job separado de upload somente depois que o
+artefato local estiver concluído, integralmente validado, com SHA-256 calculado
+e registrado como `LOCAL` e `VALID`. Backups manuais e preventivos permanecem
+somente locais por padrão, mas qualquer backup local válido pode ser enviado
+manualmente pelo painel. Falha remota não altera a validade nem remove o arquivo
+local.
+
+Upload, download e exclusão são jobs persistentes do worker. O download desta
+etapa apenas importa uma cópia remota validada para a área local; ele não inicia
+Restore nem toca no mundo. O arquivo baixado só é publicado após conferir
+SHA-256 externo, tar.gz, manifest e payload. A conexão e a quota também são
+testadas pelo worker, e a interface mostra apenas resultados persistidos, sem
+paths estruturais.
+
+A retenção remota considera somente linhas `DRIVE` e `VALID` cujo nome e path
+correspondem ao formato gerenciado. Para liberar quota real no Google Drive, a
+remoção desses alvos exatos é permanente; nenhum diretório, arquivo sem registro
+ou item fora de `Palworld Manager/Backups/` é removido. Uma falha cria auditoria
+segura e `notification_event` `DRIVE_FAILED`, cuja entrega externa permanece na
+Etapa 23.
 
 **O Manager nunca excluirá arquivos externos à área de backups que administra.** Nenhum plano pago será requisito.
 

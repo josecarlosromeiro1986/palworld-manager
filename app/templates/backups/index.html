@@ -14,5 +14,9 @@
 <section id="restore-job" class="mb-6" aria-live="polite">
   {% include "restores/_job.html" %}
 </section>
+<section id="drive-job" class="mb-6" aria-live="polite" hx-get="/backups/drive/latest" hx-trigger="load" hx-swap="innerHTML"></section>
 {% include "backups/_list.html" %}
+<section id="drive-backups" hx-get="/backups/drive/list" hx-trigger="load" hx-swap="outerHTML">
+  <p class="mt-6 rounded-md border bg-surface px-4 py-8 text-center text-sm text-muted">Carregando Google Drive…</p>
+</section>
 {% endblock %}

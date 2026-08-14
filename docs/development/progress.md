@@ -25,10 +25,11 @@ Nenhuma etapa em andamento.
 - Etapa 17 — Jobs/lock completos.
 - Etapa 18 — Backup local.
 - Etapa 19 — Restore local.
+- Etapa 20 — Google Drive/rclone.
 
 ## Próxima etapa
 
-Etapa 20 — Google Drive.
+Etapa 21 — Restore remoto.
 
 ## Observações
 

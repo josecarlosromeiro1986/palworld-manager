@@ -49,6 +49,7 @@ class BackupListItem:
     created_at: str
     job_id: int | None
     job_status: str
+    uploaded_to_drive: bool
 
 
 def _session_factory(request: Request) -> sessionmaker[Session]:
@@ -303,17 +304,31 @@ def _backup_list_items(session: Session) -> tuple[BackupListItem, ...]:
             select(Job).where(Job.id.in_([record.job_id for record in records if record.job_id]))
         )
     }
+    remote_names = set(
+        session.scalars(
+            select(BackupRecord.filename).where(
+                BackupRecord.location == "DRIVE", BackupRecord.status == "VALID"
+            )
+        )
+    )
     return tuple(
         _list_item(
             record,
             jobs.get(record.job_id) if record.job_id is not None else None,
             timezone,
+            uploaded_to_drive=record.filename in remote_names,
         )
         for record in records
     )
 
 
-def _list_item(record: BackupRecord, job: Job | None, timezone: ZoneInfo) -> BackupListItem:
+def _list_item(
+    record: BackupRecord,
+    job: Job | None,
+    timezone: ZoneInfo,
+    *,
+    uploaded_to_drive: bool,
+) -> BackupListItem:
     created_at = record.created_at
     if created_at.tzinfo is None:
         created_at = created_at.replace(tzinfo=UTC)
@@ -326,6 +341,7 @@ def _list_item(record: BackupRecord, job: Job | None, timezone: ZoneInfo) -> Bac
         created_at=created_at.astimezone(timezone).strftime("%d/%m/%Y %H:%M:%S %Z"),
         job_id=record.job_id,
         job_status=job.status if job is not None else "SEM JOB",
+        uploaded_to_drive=uploaded_to_drive,
     )
 
 

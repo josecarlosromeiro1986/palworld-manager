@@ -5,6 +5,10 @@ import socket
 from threading import Event
 from types import FrameType
 
+from sqlalchemy import select
+
+from app.backups.drive_jobs import DRIVE_UPLOAD_JOB_KIND, DriveJobExecutor
+from app.backups.drive_service import DriveTransferService
 from app.backups.jobs import LOCAL_BACKUP_JOB_KIND, LocalBackupJobExecutor
 from app.backups.scheduler import schedule_daily_backup
 from app.backups.service import LocalBackupService
@@ -12,10 +16,11 @@ from app.backups.source import create_backup_payload_source
 from app.config import Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
 from app.db.models import Job
+from app.integrations.google_drive import GoogleDriveError, create_google_drive_storage
 from app.integrations.palworld_rest import create_palworld_rest_client
 from app.jobs.heartbeat import WorkerHeartbeatPublisher
 from app.jobs.logs import create_job_log_store
-from app.jobs.service import recover_interrupted_jobs
+from app.jobs.service import TERMINAL_JOB_STATUSES, recover_interrupted_jobs
 from app.lifecycle.service import create_lifecycle_executor
 from app.lifecycle.worker import LifecycleJobWorker
 from app.logs.service import create_palworld_log_source
@@ -67,6 +72,31 @@ def run() -> None:
         removed_interrupted_backups = backup_service.cleanup_interrupted_artifacts(
             tuple(job.id for job in interrupted_jobs if job.kind == LOCAL_BACKUP_JOB_KIND)
         )
+        drive_storage = create_google_drive_storage(settings)
+        drive_service = DriveTransferService(
+            manager_database=settings.manager_database,
+            local_backups=backup_service,
+            storage=drive_storage,
+        )
+        removed_drive_temporary = drive_service.cleanup_temporary_artifacts()
+        with session_scope(session_factory) as session:
+            completed_drive_upload_ids = tuple(
+                session.scalars(
+                    select(Job.id).where(
+                        Job.kind == DRIVE_UPLOAD_JOB_KIND,
+                        Job.status.in_(TERMINAL_JOB_STATUSES),
+                    )
+                )
+            )
+        try:
+            removed_remote_temporary = (
+                drive_service.cleanup_interrupted_uploads(completed_drive_upload_ids)
+                if completed_drive_upload_ids
+                else 0
+            )
+        except GoogleDriveError:
+            removed_remote_temporary = 0
+            logger.warning("Não foi possível verificar temporários remotos interrompidos.")
         assisted_shutdown, forced_shutdown = create_shutdown_executors(settings, session_factory)
         lifecycle_executor = create_lifecycle_executor(settings, session_factory)
         restore_service = LocalRestoreService(
@@ -81,7 +111,11 @@ def run() -> None:
             assisted_shutdown_executor=assisted_shutdown,
             forced_shutdown_executor=forced_shutdown,
             job_logs=job_logs,
-            backup_executor=LocalBackupJobExecutor(session_factory, backup_service),
+            backup_executor=LocalBackupJobExecutor(
+                session_factory,
+                backup_service,
+                automatic_drive_uploads=True,
+            ),
             restore_executor=LocalRestoreJobExecutor(
                 session_factory,
                 restore_service,
@@ -89,6 +123,7 @@ def run() -> None:
                 lifecycle_executor,
                 create_palworld_log_source(settings),
             ),
+            drive_executor=DriveJobExecutor(session_factory, drive_service),
         )
         logger.info(
             "Worker iniciado em %s; %d job(s) recuperado(s), %d log(s) expirado(s) removido(s).",
@@ -105,6 +140,16 @@ def run() -> None:
             logger.info(
                 "%d artefato(s) de backup interrompido removido(s).",
                 removed_interrupted_backups,
+            )
+        if removed_drive_temporary:
+            logger.info(
+                "%d área(s) temporária(s) de download remoto removida(s).",
+                removed_drive_temporary,
+            )
+        if removed_remote_temporary:
+            logger.info(
+                "%d upload(s) remoto(s) temporário(s) interrompido(s) removido(s).",
+                removed_remote_temporary,
             )
         while not shutdown_requested.is_set():
             with session_scope(session_factory) as session:

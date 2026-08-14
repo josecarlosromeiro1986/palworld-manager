@@ -24,6 +24,12 @@ Secrets:         /etc/palworld-manager/secrets.env
 
 A configuração estrutural inclui `PALWORLD_REST_BASE_URL=http://127.0.0.1:8212/v1/api`. O arquivo protegido de secrets deve fornecer `PALWORLD_REST_USERNAME` e `PALWORLD_REST_PASSWORD`; ambos são obrigatórios, não têm valor padrão e não usam fallback para `admin`. Web e worker falham no startup com erro de configuração quando esses valores estão ausentes, vazios ou inválidos.
 
+A integração remota usa `RCLONE=/usr/bin/rclone` e
+`RCLONE_REMOTE=palworld-manager`. A autenticação inicial do remote é manual no
+terminal sob `palmanager`; o arquivo de configuração do rclone deve permanecer
+restrito a esse usuário e nunca é copiado para SQLite, logs ou backups. O
+procedimento completo de instalação e validação será consolidado na Etapa 29.
+
 Os serviços web e worker serão processos independentes configurados via systemd. Ambos serão executados pelo usuário `palmanager`, nunca como `root`, usarão a mesma configuração estrutural apropriada e acessarão o mesmo banco SQLite quando necessário.
 
 `palworld-manager.service` executará o FastAPI e escutará somente em `127.0.0.1`. Seu `/health` verificará exclusivamente a aplicação web. `palworld-manager-worker.service` consumirá os jobs persistidos, executará as operações demoradas ou críticas e será o único processo autorizado a entregar notificações externas.
