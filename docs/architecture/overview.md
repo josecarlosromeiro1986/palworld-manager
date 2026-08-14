@@ -1,6 +1,6 @@
 # Visão geral da arquitetura
 
-> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, as métricas efêmeras, o health check, os controles de ciclo de vida, o desligamento assistido e os logs do Palworld via journald/SSE estão implementados; integrações e regras operacionais adicionais permanecem planejadas.
+> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, as métricas efêmeras, o health check, os controles de ciclo de vida, o desligamento assistido, os logs via journald/SSE e a integração REST para jogadores e anúncios estão implementados; integrações e regras operacionais adicionais permanecem planejadas.
 
 O Palworld Manager é uma aplicação Python leve e modular por domínio. FastAPI coordena as rotas e os serviços da aplicação; Jinja2 renderiza as páginas no servidor; HTMX atualiza as métricas e atualizará outros formulários e fragmentos; e SSE já entrega logs em tempo real com reconexão por cursor. Tailwind CSS fornece o layout administrativo responsivo; Chart.js exibe o histórico de 15 minutos mantido somente em memória.
 
@@ -29,6 +29,8 @@ Qualquer componente pode persistir um `notification_event`; somente o worker mud
 
 O worker não terá servidor HTTP. Sua saúde será derivada do systemd e de um heartbeat gravado no SQLite a cada 10 segundos. Enquanto o serviço estiver ativo e ainda não houver heartbeat, ficará `STARTING` com menos de 30 segundos desde a ativação e `UNRESPONSIVE` a partir de 30 segundos. Com heartbeat, idade inferior a 30 segundos é `HEALTHY` e idade igual ou superior é `UNRESPONSIVE`; serviço inativo é `OFFLINE`. O `/health` pertence exclusivamente à aplicação web.
 
-Dev e testes usam fakes nas integrações já implementadas e usarão serviços simulados nas próximas fronteiras externas. Consulte a [especificação da V1](../../SPECIFICATION.md) para os requisitos e a [documentação Docker](../development/docker.md) para o ambiente planejado.
+Dev e testes usam fakes nas integrações implementadas. O cliente fake da REST API oferece info, jogadores, anúncios e falhas controláveis sem rede; o `mock-services` também expõe os contratos oficiais simulados já confirmados. Consulte a [especificação da V1](../../SPECIFICATION.md) para os requisitos e a [documentação Docker](../development/docker.md) para o ambiente planejado.
 
 A saúde do Palworld fica atrás de uma interface única. Em produção, combina `ActiveState`, o processo associado ao `MainPID` e o endpoint oficial autenticado `GET /info`; somente os três sinais saudáveis produzem `ONLINE`. Em development e test, fakes controláveis substituem integralmente systemd, processo e REST API. A matriz completa está em [Health check do Palworld](palworld-health.md).
+
+A consulta administrativa usa o mesmo contrato REST tipado, sem compartilhar segredos com a UI. `GET /players` só é chamado após ação manual ou por uma operação que realmente precise da lista; a página apenas lê um snapshot com timestamp mantido na memória do processo web. `POST /announce` exige sessão, CSRF e confirmação literal do texto antes de enviar, e registra o resultado na auditoria.

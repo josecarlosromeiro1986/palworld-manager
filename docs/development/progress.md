@@ -19,10 +19,11 @@ Nenhuma etapa em andamento.
 - Etapa 11 — Controle Start/Stop/Restart.
 - Etapa 12 — Shutdown assistido/forçado.
 - Etapa 13 — Logs.
+- Etapa 14 — REST API Palworld.
 
 ## Próxima etapa
 
-Etapa 14 — REST API Palworld.
+Etapa 15 — Kick/Ban/Unban.
 
 ## Observações
 

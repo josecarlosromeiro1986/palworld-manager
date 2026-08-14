@@ -6,13 +6,19 @@ import pytest
 
 from app.config import AppEnvironment, Settings
 from app.integrations.palworld_rest import (
+    FakePalworldRestClient,
     FakePalworldRestHealthProbe,
     FakePalworldShutdownCommunicator,
     HttpResponse,
+    OfficialPalworldRestClient,
     OfficialPalworldRestHealthProbe,
     OfficialPalworldShutdownCommunicator,
+    PalworldPlayer,
+    PalworldRestError,
+    PalworldRestErrorKind,
     PalworldRestOperationError,
     RestApiState,
+    create_palworld_rest_client,
     create_palworld_rest_health_probe,
     create_palworld_shutdown_communicator,
 )
@@ -61,6 +67,30 @@ def valid_response() -> HttpResponse:
                 "servername": "Servidor de teste",
                 "description": "Ambiente simulado",
                 "worldguid": "00000000-0000-0000-0000-000000000000",
+            }
+        ).encode(),
+    )
+
+
+def valid_players_response() -> HttpResponse:
+    return HttpResponse(
+        status_code=200,
+        body=json.dumps(
+            {
+                "players": [
+                    {
+                        "name": "PalUser",
+                        "accountName": "paluser",
+                        "playerId": "AFAFD830000000000000000000000000",
+                        "userId": "steam_00000000000000000",
+                        "ip": "127.0.0.1",
+                        "ping": 3.14,
+                        "location_x": 123.45,
+                        "location_y": 67.89,
+                        "level": 12,
+                        "building_count": 119,
+                    }
+                ]
             }
         ).encode(),
     )
@@ -163,7 +193,10 @@ def test_non_production_environments_use_complete_rest_fake(
 
 
 def test_shutdown_communicator_uses_official_players_and_announce_endpoints() -> None:
-    transport = RecordingTransport(HttpResponse(200, b'{"players": [{}, {}]}'))
+    response = valid_players_response()
+    payload = json.loads(response.body)
+    payload["players"].append(payload["players"][0])
+    transport = RecordingTransport(HttpResponse(200, json.dumps(payload).encode()))
     communicator = OfficialPalworldShutdownCommunicator(
         "http://127.0.0.1:8212/v1/api",
         "usuario-ficticio",
@@ -210,3 +243,118 @@ def test_non_production_shutdown_communication_is_fully_fake(
     communicator = create_palworld_shutdown_communicator(Settings(environment=environment))
 
     assert isinstance(communicator, FakePalworldShutdownCommunicator)
+
+
+def test_official_client_parses_typed_players_from_official_fields() -> None:
+    transport = RecordingTransport(valid_players_response())
+    client = OfficialPalworldRestClient(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=transport,
+    )
+
+    players = client.players()
+
+    assert players == (
+        PalworldPlayer(
+            name="PalUser",
+            account_name="paluser",
+            player_id="AFAFD830000000000000000000000000",
+            user_id="steam_00000000000000000",
+            ip="127.0.0.1",
+            ping=3.14,
+            location_x=123.45,
+            location_y=67.89,
+            level=12,
+            building_count=119,
+        ),
+    )
+    assert transport.url == "http://127.0.0.1:8212/v1/api/players"
+    assert transport.timeout_seconds == 5.0
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_kind"),
+    [
+        (
+            HTTPError("url", 401, "credencial-super-secreta", Message(), None),
+            PalworldRestErrorKind.UNAUTHORIZED,
+        ),
+        (URLError(ConnectionRefusedError()), PalworldRestErrorKind.SERVER_OFFLINE),
+        (URLError(TimeoutError()), PalworldRestErrorKind.TIMEOUT),
+        (URLError("network"), PalworldRestErrorKind.UNAVAILABLE),
+        (RuntimeError("senha-super-secreta"), PalworldRestErrorKind.FAILURE),
+    ],
+)
+def test_official_client_classifies_failures_without_exposing_details(
+    error: Exception,
+    expected_kind: PalworldRestErrorKind,
+) -> None:
+    client = OfficialPalworldRestClient(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=RecordingTransport(error=error),
+    )
+
+    with pytest.raises(PalworldRestError) as raised:
+        client.players()
+
+    assert raised.value.kind is expected_kind
+    assert "super-secreta" not in raised.value.public_message
+    assert "usuario-ficticio" not in raised.value.public_message
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        HttpResponse(401, b"{}"),
+        HttpResponse(503, b"{}"),
+        HttpResponse(200, b"not-json"),
+        HttpResponse(200, b'{"players": [{}]}'),
+        HttpResponse(200, b'{"players": [{"name": 1}]}'),
+    ],
+)
+def test_official_client_rejects_status_and_invalid_player_payloads(
+    response: HttpResponse,
+) -> None:
+    client = OfficialPalworldRestClient(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=RecordingTransport(response),
+    )
+
+    with pytest.raises(PalworldRestError):
+        client.players()
+
+
+def test_official_client_sends_exact_free_text_announcement() -> None:
+    transport = RecordingTransport(HttpResponse(200, b"{}"))
+    client = OfficialPalworldRestClient(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=transport,
+    )
+
+    client.announce("Olá, jogadores!\nReinício em breve.")
+
+    assert transport.url == "http://127.0.0.1:8212/v1/api/announce"
+    assert json.loads(transport.body or b"") == {"message": "Olá, jogadores!\nReinício em breve."}
+    assert transport.headers is not None
+    assert transport.headers["Content-Type"] == "application/json"
+
+
+@pytest.mark.parametrize("environment", [AppEnvironment.DEVELOPMENT, AppEnvironment.TEST])
+def test_non_production_environments_use_complete_administrative_fake(
+    environment: AppEnvironment,
+) -> None:
+    client = create_palworld_rest_client(Settings(environment=environment))
+
+    assert isinstance(client, FakePalworldRestClient)
+    assert client.server_info().servername == "Servidor Palworld simulado"
+    assert client.players() == ()
+    client.announce("Mensagem simulada")
+    assert client.announcements == ["Mensagem simulada"]

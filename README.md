@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, a autenticação segura, o layout administrativo responsivo, as métricas efêmeras, o controle seguro do servidor e a visualização de logs com SSE estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, a autenticação segura, o layout administrativo responsivo, as métricas efêmeras, o controle seguro do servidor, a visualização de logs com SSE e a integração oficial para jogadores e anúncios estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -38,7 +38,7 @@ make test
 make check
 ```
 
-O schema local é criado e atualizado explicitamente com `make db-upgrade`. Assets Tailwind, HTMX e ícones são compilados localmente pela imagem; `make frontend-build` permite reconstruí-los separadamente. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker já executa jobs persistentes de Start, Restart e desligamento assistido/forçado. A página **Logs** oferece histórico, filtros, cópia e streaming SSE; development e test usam fakes completos, sem consultar o journald, controlar o host ou depender de um Palworld real.
+O schema local é criado e atualizado explicitamente com `make db-upgrade`. Assets Tailwind, HTMX e ícones são compilados localmente pela imagem; `make frontend-build` permite reconstruí-los separadamente. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker já executa jobs persistentes de Start, Restart e desligamento assistido/forçado. A página **Logs** oferece histórico, filtros, cópia e streaming SSE. A página **Jogadores** consulta a lista somente pelo botão de atualização, mantém o último resultado apenas em memória e envia anúncios com confirmação exata, CSRF e auditoria. Development e test usam fakes completos, sem consultar o journald, controlar o host ou depender de um Palworld real.
 
 ## Documentação
 

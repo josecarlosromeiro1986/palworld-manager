@@ -1,6 +1,6 @@
 # Desenvolvimento com Docker
 
-> Status: Em desenvolvimento. Os três containers base, o fake compartilhado do Palworld e os jobs de ciclo de vida estão implementados; jobs e integrações adicionais continuam planejados.
+> Status: Em desenvolvimento. Os três containers base, os fakes do Palworld, os jobs de ciclo de vida e os contratos REST de jogadores e anúncios estão implementados; integrações adicionais continuam planejadas.
 
 O Docker Compose de desenvolvimento possui três containers e preserva a separação entre aplicação web e worker usada em produção. Todos usam a mesma imagem de desenvolvimento com comandos diferentes.
 
@@ -8,7 +8,7 @@ O Docker Compose de desenvolvimento possui três containers e preserva a separa�
 
 ## `app`
 
-Compila os assets locais no startup, executa o FastAPI com reload, valida `APP_ENVIRONMENT`, host, porta e caminhos estruturais e publica a porta `8080` somente em `127.0.0.1`. Já fornece `/health`, autenticação, métricas, layout administrativo responsivo, health do Palworld e criação/acompanhamento dos jobs de Start, Stop e Restart.
+Compila os assets locais no startup, executa o FastAPI com reload, valida `APP_ENVIRONMENT`, host, porta e caminhos estruturais e publica a porta `8080` somente em `127.0.0.1`. Já fornece `/health`, autenticação, métricas, layout administrativo responsivo, health do Palworld, consulta manual de jogadores, anúncios e criação/acompanhamento dos jobs de Start, Stop e Restart.
 
 ## `worker`
 
@@ -16,7 +16,7 @@ Executa um processo Python separado, valida a mesma configuração estrutural e 
 
 ## `mock-services`
 
-Publica na porta `8090` um serviço mínimo com `/health`. Os contratos simulados da REST API do Palworld, Discord e demais integrações serão adicionados somente quando seus comportamentos forem implementados e confirmados.
+Publica na porta `8090` um serviço simulado com `/health` e os contratos oficiais confirmados `GET /v1/api/info`, `GET /v1/api/players` e `POST /v1/api/announce`. O fake usado diretamente por development e test também permite controlar respostas e falhas sem abrir rede. Contratos de Kick, Ban e Unban não fazem parte desta etapa.
 
 Development e test não dependerão de:
 

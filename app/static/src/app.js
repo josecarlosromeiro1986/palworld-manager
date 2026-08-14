@@ -423,3 +423,39 @@ function initializeLogViewer(root = document) {
 }
 
 initializeLogViewer();
+
+function initializePlayersPage(root = document) {
+  root.querySelectorAll("[data-local-time]").forEach((element) => {
+    const timestamp = element.getAttribute("datetime");
+    if (!timestamp) {
+      return;
+    }
+    const date = new Date(timestamp);
+    if (!Number.isNaN(date.getTime())) {
+      element.textContent = date.toLocaleString("pt-BR");
+    }
+  });
+
+  root.querySelectorAll("[data-announcement-form]").forEach((form) => {
+    const message = form.querySelector("[data-announcement-message]");
+    const count = form.querySelector("[data-announcement-count]");
+    if (!(message instanceof HTMLTextAreaElement)) {
+      return;
+    }
+    const updateCount = () => {
+      if (count) {
+        const amount = [...message.value].length;
+        count.textContent = `${amount} ${amount === 1 ? "caractere" : "caracteres"}`;
+      }
+    };
+    message.addEventListener("input", updateCount);
+    updateCount();
+    form.addEventListener("submit", (event) => {
+      if (!window.confirm(`Enviar exatamente este anúncio?\n\n${message.value}`)) {
+        event.preventDefault();
+      }
+    });
+  });
+}
+
+initializePlayersPage();

@@ -15,7 +15,7 @@ A aplicação seguirá o princípio do menor privilégio. Em produção, será e
 - Cookies de autenticação usam `HttpOnly` e `SameSite=Strict`. `Secure` é obrigatório em produção e omitido somente em development/test para permitir HTTP local.
 - Cinco tentativas inválidas consecutivas para o mesmo usuário causam bloqueio por 15 minutos. Login bem-sucedido ou expiração do bloqueio reinicia a contagem.
 - O endereço de origem observado é armazenado para auditoria, mas não compõe a chave do bloqueio. Tentativas e bloqueios são auditados sem registrar senhas.
-- Login e logout já validam CSRF; toda nova ação que alterar estado deverá aplicar a mesma proteção e controles contra double-submit.
+- Login, logout, controles do servidor e anúncios já validam CSRF. O anúncio também exige que a confirmação repita literalmente o texto livre que será enviado.
 
 ## Secrets e registros
 
@@ -30,7 +30,7 @@ A configuração estrutural já é validada com Pydantic Settings no startup de 
 - A consulta implementada do Palworld usa o executável fixo `/usr/bin/systemctl`, aceita somente a unidade configurada com nome validado e aplica timeout. Development e test usam um fake e nunca chamam o systemd do host.
 - Start, Stop e Restart são executados somente pelo worker através de `/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block <ação> <unidade>`. A ação pertence a uma enum fechada, a unidade é validada e `shell=False` permanece obrigatório. A regra mínima de sudoers pertence ao deploy; `sudo ALL` é proibido.
 - SIGTERM e SIGKILL usam `systemctl kill --kill-whom=main --signal=<sinal>` somente para a unidade validada. SIGTERM exige `FORCAR` após falha real do Stop; SIGKILL exige falha do SIGTERM e a confirmação `SIGKILL`. Não existe escalada automática.
-- A verificação do processo consulta somente o `MainPID` da mesma unidade validada. O probe REST usa URL estrutural validada, timeout, limite de resposta e Basic Auth; credenciais não são incluídas na URL ou em mensagens de erro.
+- A verificação do processo consulta somente o `MainPID` da mesma unidade validada. O cliente REST usa URL estrutural validada, timeout, limites de resposta e Basic Auth; credenciais não são incluídas na URL, interface, auditoria ou mensagens de erro. Autenticação rejeitada, timeout, servidor offline, API indisponível, resposta inválida e falha inesperada recebem classificações seguras.
 - A leitura de logs usa `/usr/bin/journalctl` sem `sudo`, somente para a unidade validada, com limites fechados, campos mínimos, argumentos separados e `shell=False`. Cursores de reconexão são validados, stderr não é exibido e valores sensíveis conhecidos são mascarados antes do SSE.
 - Normalizar e validar caminhos contra path traversal e acesso por symlink.
 - Ao criar ou extrair `.tar.gz`, rejeitar caminhos absolutos, `..`, links perigosos e conteúdo fora do destino autorizado.

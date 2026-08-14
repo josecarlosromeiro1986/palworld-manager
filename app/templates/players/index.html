@@ -1,0 +1,111 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Jogadores - Palworld Manager{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-accent">REST API oficial</p>
+      <h1 class="mt-1 text-2xl font-semibold text-ink">Jogadores</h1>
+      <p class="mt-1 max-w-3xl text-sm text-muted">
+        A lista é consultada somente quando você solicita. O último resultado permanece apenas na memória deste processo.
+      </p>
+    </div>
+    <form method="post" action="/players/refresh">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="min-h-10 rounded-md bg-accent px-4 text-sm font-semibold text-canvas hover:bg-accent-strong">
+        Atualizar jogadores
+      </button>
+    </form>
+  </header>
+
+  <section class="overflow-hidden rounded-lg border bg-surface" aria-labelledby="players-heading">
+    <div class="flex flex-col gap-2 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <h2 id="players-heading" class="text-sm font-semibold text-ink">Jogadores online</h2>
+      {% if snapshot %}
+        <p class="text-xs text-muted">
+          {{ snapshot.players | length }} online · consultado em
+          <time data-local-time datetime="{{ snapshot.queried_at.isoformat() }}">{{ snapshot.queried_at.isoformat() }}</time>
+        </p>
+      {% else %}
+        <p class="text-xs text-muted">Ainda não consultado</p>
+      {% endif %}
+    </div>
+
+    {% if players_error %}
+      <div class="m-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">
+        {{ players_error }} O último resultado válido, se houver, foi preservado.
+      </div>
+    {% endif %}
+
+    {% if snapshot and snapshot.players %}
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[900px] text-left text-sm">
+          <thead class="border-b bg-canvas/50 text-xs uppercase text-muted">
+            <tr>
+              <th class="px-4 py-3 font-semibold">Nome</th>
+              <th class="px-4 py-3 font-semibold">Conta / plataforma</th>
+              <th class="px-4 py-3 font-semibold">Nível</th>
+              <th class="px-4 py-3 font-semibold">Ping</th>
+              <th class="px-4 py-3 font-semibold">Player ID</th>
+              <th class="px-4 py-3 font-semibold">User ID</th>
+              <th class="px-4 py-3 font-semibold">Construções</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            {% for player in snapshot.players %}
+              <tr class="hover:bg-surface-raised/50">
+                <td class="px-4 py-3 font-medium text-ink">{{ player.name }}</td>
+                <td class="px-4 py-3 text-muted">{{ player.account_name or "Não informado" }}</td>
+                <td class="px-4 py-3 tabular-nums">{{ player.level }}</td>
+                <td class="px-4 py-3 tabular-nums">{{ "%.1f" | format(player.ping) }} ms</td>
+                <td class="px-4 py-3 font-mono text-xs text-muted">{{ player.player_id }}</td>
+                <td class="px-4 py-3 font-mono text-xs text-muted">{{ player.user_id }}</td>
+                <td class="px-4 py-3 tabular-nums">{{ player.building_count if player.building_count is not none else "—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% elif snapshot %}
+      <p class="px-4 py-8 text-center text-sm text-muted">Nenhum jogador online no momento da consulta.</p>
+    {% else %}
+      <p class="px-4 py-8 text-center text-sm text-muted">Clique em “Atualizar jogadores” para realizar a primeira consulta.</p>
+    {% endif %}
+  </section>
+
+  <section class="rounded-lg border bg-surface p-4 sm:p-5" aria-labelledby="announcement-heading">
+    <div class="mb-4">
+      <h2 id="announcement-heading" class="text-sm font-semibold text-ink">Enviar anúncio</h2>
+      <p class="mt-1 text-sm text-muted">O texto será enviado imediatamente aos jogadores online e registrado na auditoria.</p>
+    </div>
+
+    {% if announcement_error %}
+      <p class="mb-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ announcement_error }}</p>
+    {% endif %}
+    {% if announcement_success %}
+      <p class="mb-4 rounded-md border border-positive/40 bg-positive/10 px-3 py-2 text-sm text-positive" role="status">{{ announcement_success }}</p>
+    {% endif %}
+
+    <form method="post" action="/players/announce" data-announcement-form class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div>
+        <div class="mb-1 flex items-center justify-between gap-3">
+          <label for="announcement-message" class="text-sm font-medium text-ink">Mensagem</label>
+          <span data-announcement-count class="text-xs tabular-nums text-muted">0 caracteres</span>
+        </div>
+        <textarea id="announcement-message" name="message" data-announcement-message required rows="4" class="field resize-y" placeholder="Escreva o anúncio em texto livre">{{ announcement_message }}</textarea>
+      </div>
+      <div>
+        <label for="announcement-confirmation" class="mb-1 block text-sm font-medium text-ink">Confirmação exata</label>
+        <textarea id="announcement-confirmation" name="confirmation" required rows="3" class="field resize-y" autocomplete="off" placeholder="Repita exatamente a mensagem acima"></textarea>
+        <p class="mt-1 text-xs text-muted">Espaços, acentos, pontuação e quebras de linha também devem ser idênticos.</p>
+      </div>
+      <button type="submit" class="min-h-10 rounded-md border border-accent/40 bg-accent/10 px-4 text-sm font-semibold text-accent hover:bg-accent/20">
+        Confirmar e enviar anúncio
+      </button>
+    </form>
+  </section>
+</div>
+{% endblock %}
