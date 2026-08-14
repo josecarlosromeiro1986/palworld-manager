@@ -439,6 +439,11 @@ function initializePlayersPage(root = document) {
   root.querySelectorAll("[data-announcement-form]").forEach((form) => {
     const message = form.querySelector("[data-announcement-message]");
     const count = form.querySelector("[data-announcement-count]");
+    const modal = root.querySelector("[data-announcement-modal]");
+    const preview = modal?.querySelector("[data-announcement-preview]");
+    const cancelButton = modal?.querySelector("[data-announcement-modal-cancel]");
+    const confirmButton = modal?.querySelector("[data-announcement-modal-confirm]");
+    const submitButton = form.querySelector('button[type="submit"]');
     if (!(message instanceof HTMLTextAreaElement)) {
       return;
     }
@@ -450,11 +455,33 @@ function initializePlayersPage(root = document) {
     };
     message.addEventListener("input", updateCount);
     updateCount();
+
+    if (!(modal instanceof HTMLDialogElement) || !preview || !confirmButton) {
+      return;
+    }
+
     form.addEventListener("submit", (event) => {
-      if (!window.confirm(`Enviar exatamente este anúncio?\n\n${message.value}`)) {
-        event.preventDefault();
+      if (form.dataset.modalConfirmed === "true") {
+        delete form.dataset.modalConfirmed;
+        return;
+      }
+      event.preventDefault();
+      preview.textContent = message.value;
+      modal.showModal();
+    });
+
+    cancelButton?.addEventListener("click", () => modal.close());
+    confirmButton.addEventListener("click", () => {
+      modal.close();
+      form.dataset.modalConfirmed = "true";
+      form.requestSubmit();
+    });
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        modal.close();
       }
     });
+    modal.addEventListener("close", () => submitButton?.focus());
   });
 }
 

@@ -188,6 +188,27 @@ def test_announcement_requires_exact_confirmation_csrf_and_audits_result(
     assert all(event.details == {"message": message} for event in events)
 
 
+def test_announcement_confirmation_uses_accessible_application_modal(
+    players_context: PlayersContext,
+) -> None:
+    _login(players_context.client)
+
+    page = players_context.client.get("/players")
+    script = players_context.client.get("/static/dist/app.js")
+
+    assert page.status_code == 200
+    assert "<dialog" in page.text
+    assert "data-announcement-modal" in page.text
+    assert 'aria-labelledby="announcement-modal-title"' in page.text
+    assert "data-announcement-preview" in page.text
+    assert "data-announcement-modal-cancel" in page.text
+    assert "data-announcement-modal-confirm" in page.text
+    assert script.status_code == 200
+    assert "modal.showModal()" in script.text
+    assert "form.requestSubmit()" in script.text
+    assert "window.confirm" not in script.text
+
+
 def test_failed_announcement_is_safe_and_audited(players_context: PlayersContext) -> None:
     csrf = _login(players_context.client)
     players_context.rest.set_error(PalworldRestErrorKind.UNAUTHORIZED)
