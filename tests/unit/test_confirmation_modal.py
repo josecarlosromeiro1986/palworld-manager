@@ -18,3 +18,12 @@ def test_frontend_uses_shared_confirmation_modal_instead_of_native_dialogs() -> 
     assert "new FormData(form)" in script
     assert 'document.querySelectorAll("form[data-confirm-key]")' in script
     assert "restoreFormValues(form, formValues)" in script
+
+
+def test_restore_panel_swaps_expected_validation_errors() -> None:
+    script = Path("app/static/src/app.js").read_text(encoding="utf-8")
+
+    assert 'target?.id === "restore-job"' in script
+    assert "status === 400 || status === 409" in script
+    assert "event.detail.shouldSwap = true" in script
+    assert "event.detail.isError = false" in script

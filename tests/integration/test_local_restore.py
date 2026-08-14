@@ -535,13 +535,12 @@ def test_restore_web_requires_auth_csrf_exact_confirmation_and_only_enqueues(
             ).status_code
             == 403
         )
-        assert (
-            client.post(
-                f"/backups/{record_id}/restore",
-                data={"confirmation": "restaurar", "csrf_token": csrf},
-            ).status_code
-            == 400
+        invalid_confirmation = client.post(
+            f"/backups/{record_id}/restore",
+            data={"confirmation": "restaurar", "csrf_token": csrf},
         )
+        assert invalid_confirmation.status_code == 400
+        assert "Digite RESTAURAR exatamente para confirmar." in invalid_confirmation.text
         accepted = client.post(
             f"/backups/{record_id}/restore",
             data={"confirmation": "RESTAURAR", "csrf_token": csrf},
