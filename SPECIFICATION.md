@@ -467,6 +467,25 @@ Fluxo: lock → validar backup → download temporário se remoto → SHA-256/in
 
 Sem rollback automático. Preservar backup preventivo em falha. Sem restauração isolada de jogador.
 
+Na V1, o Restore executado pelo painel restaura somente o mundo completo do
+Palworld, inclusive os dados de jogadores contidos no save, e as configurações
+do Palworld. `manager/manager.db` e `manager/settings.json` continuam incluídos
+e validados em todo backup, mas são conteúdo exclusivo de recuperação manual e
+offline de desastre. O fluxo normal não substitui o SQLite ativo, não altera
+usuários, sessões, auditoria, jobs ou configurações atuais do Manager e não
+para web/worker para restaurar o próprio Manager. Um executor externo ou um
+Restore completo do Manager não fazem parte da V1.
+
+Na pré-validação, o Restore combina o `PalWorldSettings.ini` sanitizado do
+backup com o arquivo estrutural atual: campos não sensíveis vêm do backup,
+enquanto todos os valores sensíveis existentes permanecem exatamente como
+estão. Valores sanitizados ou vazios nunca sobrescrevem secrets atuais e o
+Manager não inventa defaults sensíveis. O resultado combinado deve ser válido,
+determinístico e preservar parâmetros desconhecidos antes da fase destrutiva.
+Arquivo atual ausente, ilegível, inválido ou impossível de combinar com
+segurança faz o job falhar antes do Stop e antes de qualquer alteração no
+mundo. A auditoria registra somente uma categoria segura de falha, sem valores.
+
 ## 28. Atualizações do Palworld
 
 Somente manual, com botão **Verificar atualizações**. Mostrar versão instalada/disponível e data quando confiável. Sem changelog de terceiros.

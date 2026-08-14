@@ -24,10 +24,11 @@ Nenhuma etapa em andamento.
 - Etapa 16 — Editor INI.
 - Etapa 17 — Jobs/lock completos.
 - Etapa 18 — Backup local.
+- Etapa 19 — Restore local.
 
 ## Próxima etapa
 
-Etapa 19 — Restore local.
+Etapa 20 — Google Drive.
 
 ## Observações
 

@@ -34,6 +34,20 @@ Quando existe alteração real, o adapter de produção:
 
 Nenhuma retenção automática é aplicada a essas cópias pré-save nesta etapa. A instalação de produção deverá conceder ao usuário `palmanager` apenas as permissões necessárias no arquivo e diretório configurados, sem executar a aplicação como root e sem `sudo ALL`.
 
+## Uso no Restore
+
+O Restore do painel nunca grava diretamente o `PalWorldSettings.ini`
+sanitizado do backup. Durante a pré-validação, o Manager restaura os campos não
+sensíveis do backup e preserva exatamente os valores sensíveis do arquivo atual,
+sem inventar defaults ou transformar valores sanitizados/vazios em
+credenciais. Parâmetros desconhecidos continuam preservados pelas mesmas regras
+conservadoras do editor.
+
+O resultado combinado precisa ser válido e determinístico antes do Stop. Se o
+arquivo atual estiver ausente, ilegível, inválido ou não puder ser combinado
+com segurança, o Restore falha sem alterar o mundo. Logs e auditoria registram
+somente a categoria segura, nunca conteúdo, valores ou paths estruturais.
+
 ## Interface, Restart e auditoria
 
 Leitura e salvamento exigem sessão; a gravação também exige CSRF e o modal compartilhado. Após uma mudança, a página informa que o Restart é necessário e oferece o job de Restart já existente, com uma nova confirmação antes de executá-lo. Enquanto o job estiver pendente ou falhar, a ação permanece disponível; quando ele conclui com sucesso e o servidor volta online, o botão é removido e substituído pela confirmação de que as configurações foram aplicadas.

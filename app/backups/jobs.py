@@ -151,18 +151,7 @@ class LocalBackupJobExecutor:
             )
             with session_scope(self._session_factory) as session:
                 job = session.get_one(Job, job_id)
-                record = BackupRecord(
-                    job_id=job.id,
-                    filename=artifact.filename,
-                    location="LOCAL",
-                    status="VALID",
-                    sha256=artifact.sha256,
-                    size_bytes=artifact.size_bytes,
-                    storage_path=artifact.storage_path,
-                    created_at=artifact.created_at,
-                )
-                session.add(record)
-                session.flush()
+                record = register_backup_artifact(session, artifact, job_id=job.id)
                 _apply_retention(session, self._service, DEFAULT_LOCAL_RETENTION)
                 job.status = JOB_STATUS_SUCCEEDED
                 job.step = JOB_STEP_COMPLETED
@@ -288,7 +277,34 @@ def _finish_failed_job(job: Job, status: str, step: str, error: str) -> datetime
     return completed_at
 
 
-def _apply_retention(session: Session, service: LocalBackupService, retention: int) -> None:
+def register_backup_artifact(
+    session: Session,
+    artifact: BackupArtifact,
+    *,
+    job_id: int,
+) -> BackupRecord:
+    record = BackupRecord(
+        job_id=job_id,
+        filename=artifact.filename,
+        location="LOCAL",
+        status="VALID",
+        sha256=artifact.sha256,
+        size_bytes=artifact.size_bytes,
+        storage_path=artifact.storage_path,
+        created_at=artifact.created_at,
+    )
+    session.add(record)
+    session.flush()
+    return record
+
+
+def apply_local_retention(
+    session: Session,
+    service: LocalBackupService,
+    retention: int,
+    *,
+    preserve_record_ids: tuple[int, ...] = (),
+) -> None:
     records = tuple(
         session.scalars(
             select(BackupRecord)
@@ -301,6 +317,24 @@ def _apply_retention(session: Session, service: LocalBackupService, retention: i
         for record in records
         if service.resolve_managed_artifact(record.storage_path) is not None
     )
-    for record in managed_records[retention:]:
+    protected = set(preserve_record_ids)
+    kept: list[BackupRecord] = []
+    for record in managed_records:
+        if record.id in protected:
+            kept.append(record)
+    for record in managed_records:
+        if len(kept) >= retention:
+            break
+        if record not in kept:
+            kept.append(record)
+    kept_ids = {record.id for record in kept}
+    for record in managed_records:
+        if record.id in kept_ids:
+            continue
         service.remove_managed_artifact(record.storage_path)
         session.execute(delete(BackupRecord).where(BackupRecord.id == record.id))
+
+
+def _apply_retention(session: Session, service: LocalBackupService, retention: int) -> None:
+    """Compatibilidade interna para os testes e o executor de backup existentes."""
+    apply_local_retention(session, service, retention)

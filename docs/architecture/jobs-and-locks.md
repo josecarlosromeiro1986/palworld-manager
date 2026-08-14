@@ -2,7 +2,7 @@
 
 > Status: Fila persistente, worker separado, aquisição atômica, heartbeat, recovery, logs de jobs e maintenance lock global implementados.
 
-Desligamentos, ações de ciclo de vida e backups locais usam jobs persistentes no SQLite. Uploads, restores e updates reutilizarão a mesma infraestrutura nas etapas correspondentes. Em produção, o worker é um processo independente da aplicação web.
+Desligamentos, ações de ciclo de vida, backups e restores locais usam jobs persistentes no SQLite. Uploads e updates reutilizarão a mesma infraestrutura nas etapas correspondentes. Em produção, o worker é um processo independente da aplicação web.
 
 ```text
 palworld-manager.service        → FastAPI e interação web
@@ -12,7 +12,7 @@ SQLite                          → persistência, coordenação e fila
 
 O serviço web é responsável por autenticação, sessões, páginas Jinja2, HTMX, SSE, consultas, Dashboard e criação e acompanhamento de jobs. Ele não executa diretamente operações longas ou destrutivas destinadas ao worker.
 
-O worker executa as operações suportadas por handlers explícitos. `LOCAL_BACKUP` usa a chave de coordenação própria `LOCAL_BACKUP`, impedindo duas solicitações simultâneas, e exige o lock `GLOBAL` para não concorrer com operações incompatíveis. Restore, update via SteamCMD e transferências do Google Drive serão registrados somente nas etapas que os implementarem.
+O worker executa as operações suportadas por handlers explícitos. `LOCAL_BACKUP` usa a chave de coordenação própria `LOCAL_BACKUP`, impedindo duas solicitações simultâneas, e exige o lock `GLOBAL` para não concorrer com operações incompatíveis. `LOCAL_RESTORE` usa sua própria chave contra double-submit, também exige o lock `GLOBAL` e nunca é executado pela web. Update via SteamCMD e transferências do Google Drive serão registrados somente nas etapas que os implementarem.
 
 O primeiro consumidor implementado é o ciclo de vida do Palworld. A web cria jobs `PALWORLD_START`, `PALWORLD_STOP` e `PALWORLD_RESTART`; o worker os adquire e executa. Uma chave de coordenação com índice único parcial impede duas solicitações simultâneas do mesmo domínio, e cada job preserva o timeout vigente no momento da solicitação.
 
@@ -46,11 +46,11 @@ O Dashboard consulta esse estado a cada 10 segundos. O `/health` continua exclus
 
 ## Maintenance lock
 
-O worker adquire a linha `GLOBAL` de `maintenance_locks` na mesma transação do claim de um job incompatível. Outros jobs que exigem o lock permanecem `PENDING`; trabalhos sem lock podem continuar. O lock é liberado ao terminar e locks órfãos de jobs terminais são removidos com segurança. O backup local já usa essa coordenação; Update, Restore, backup pré-update e ações de energia usarão a mesma infraestrutura quando forem implementados. Leituras seguras, métricas, logs e diagnósticos não dependem do lock.
+O worker adquire a linha `GLOBAL` de `maintenance_locks` na mesma transação do claim de um job incompatível. Outros jobs que exigem o lock permanecem `PENDING`; trabalhos sem lock podem continuar. O lock é liberado ao terminar e locks órfãos de jobs terminais são removidos com segurança. Backup e Restore locais já usam essa coordenação; Update, backup pré-update e ações de energia usarão a mesma infraestrutura quando forem implementados. Leituras seguras, métricas, logs e diagnósticos não dependem do lock.
 
 ## Cancelamento e recuperação
 
-Contagens regressivas e backups locais podem ser cancelados nos checkpoints seguros implementados. O backup fecha o cancelamento antes da publicação atômica. Uploads terão seus pontos definidos na etapa própria. SteamCMD modificando arquivos, Restore substituindo saves e outras etapas de estado incerto não poderão ser interrompidas pela UI.
+Contagens regressivas e backups locais podem ser cancelados nos checkpoints seguros implementados. O backup fecha o cancelamento antes da publicação atômica. O Restore local é não cancelável desde a criação: sua UI informa essa condição e nenhuma rota de cancelamento é oferecida. Uploads terão seus pontos definidos na etapa própria. SteamCMD modificando arquivos, Restore substituindo saves e outras etapas de estado incerto não poderão ser interrompidas pela UI.
 
 O reinício do serviço web não implica reinício do worker. Um job já em execução continuará de forma independente quando isso for seguro.
 

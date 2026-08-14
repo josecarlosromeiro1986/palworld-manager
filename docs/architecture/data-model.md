@@ -80,6 +80,12 @@ do `.tar.gz` final. A integridade interna permanece no `manifest.json`, que list
 deterministicamente cada arquivo do payload com path relativo, tamanho e hash
 individual; o manifest e o hash externo não entram nessa lista.
 
+O Restore normal referencia um `backup_record` local válido e preserva o banco
+ativo do Manager. Mesmo presentes e validados no artefato,
+`manager/manager.db` e `manager/settings.json` são reservados à recuperação
+manual/offline de desastre e não alteram usuários, sessões, auditoria, jobs ou
+`app_settings` durante o Restore pelo painel.
+
 ### `ban_history`
 
 Mantém o histórico administrativo implementado de Kick, Ban e Unban, incluindo ação, alvo, `userId`, administrador, motivo, resultado e timestamp. Complementa a auditoria, mas não substitui o estado mantido pelo Palworld. A página de jogadores exibe até 50 registros recentes; filtros e retenção geral pertencem à auditoria completa da Etapa 26.

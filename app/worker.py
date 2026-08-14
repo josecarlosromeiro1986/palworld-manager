@@ -5,7 +5,7 @@ import socket
 from threading import Event
 from types import FrameType
 
-from app.backups.jobs import LocalBackupJobExecutor
+from app.backups.jobs import LOCAL_BACKUP_JOB_KIND, LocalBackupJobExecutor
 from app.backups.scheduler import schedule_daily_backup
 from app.backups.service import LocalBackupService
 from app.backups.source import create_backup_payload_source
@@ -18,6 +18,9 @@ from app.jobs.logs import create_job_log_store
 from app.jobs.service import recover_interrupted_jobs
 from app.lifecycle.service import create_lifecycle_executor
 from app.lifecycle.worker import LifecycleJobWorker
+from app.logs.service import create_palworld_log_source
+from app.restores.jobs import LocalRestoreJobExecutor
+from app.restores.service import LocalRestoreService, create_restore_target
 from app.shutdown.service import create_shutdown_executors
 
 logger = logging.getLogger(__name__)
@@ -62,17 +65,30 @@ def run() -> None:
         )
         removed_temporary_backups = backup_service.cleanup_temporary_artifacts()
         removed_interrupted_backups = backup_service.cleanup_interrupted_artifacts(
-            tuple(job.id for job in interrupted_jobs)
+            tuple(job.id for job in interrupted_jobs if job.kind == LOCAL_BACKUP_JOB_KIND)
         )
         assisted_shutdown, forced_shutdown = create_shutdown_executors(settings, session_factory)
+        lifecycle_executor = create_lifecycle_executor(settings, session_factory)
+        restore_service = LocalRestoreService(
+            manager_database=settings.manager_database,
+            backup_service=backup_service,
+            target=create_restore_target(settings),
+        )
         worker = LifecycleJobWorker(
             session_factory,
-            create_lifecycle_executor(settings, session_factory),
+            lifecycle_executor,
             worker_id=worker_id,
             assisted_shutdown_executor=assisted_shutdown,
             forced_shutdown_executor=forced_shutdown,
             job_logs=job_logs,
             backup_executor=LocalBackupJobExecutor(session_factory, backup_service),
+            restore_executor=LocalRestoreJobExecutor(
+                session_factory,
+                restore_service,
+                backup_service,
+                lifecycle_executor,
+                create_palworld_log_source(settings),
+            ),
         )
         logger.info(
             "Worker iniciado em %s; %d job(s) recuperado(s), %d log(s) expirado(s) removido(s).",

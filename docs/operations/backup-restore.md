@@ -1,6 +1,6 @@
 # Backup e restore
 
-> Status: Backup local implementado. Restore local e integração com Google Drive permanecem planejados para as etapas próprias.
+> Status: Backup e Restore locais implementados. A integração com Google Drive permanece planejada para a etapa própria.
 
 Este documento resume a operação prevista. [SPECIFICATION.md](../../SPECIFICATION.md) contém os requisitos oficiais completos.
 
@@ -17,7 +17,7 @@ A integridade possui duas camadas e não usa sidecar `.sha256`:
 - cada arquivo do payload possui path relativo determinístico, tamanho e SHA-256 individual;
 - o próprio `manifest.json` não aparece na lista, e o hash externo do arquivo não aparece no manifest.
 
-Um Restore futuro deverá validar primeiro o hash externo contra o registro persistido e depois conferir cada item do payload contra o manifest. Paths absolutos e dados sensíveis são proibidos no manifest.
+O Restore local valida primeiro o hash externo contra o registro persistido e depois confere cada item do payload contra o manifest. Paths absolutos e dados sensíveis são proibidos no manifest.
 
 O conteúdo previsto inclui:
 
@@ -26,6 +26,10 @@ O conteúdo previsto inclui:
 - cópia consistente de `/var/lib/palworld-manager/manager.db`;
 - configurações não sensíveis do Manager;
 - manifest com os metadados necessários à validação.
+
+O subtree `manager/` é incluído para recuperação manual e offline de desastre.
+Embora seus arquivos participem integralmente do manifest e da validação do
+artefato, eles não são aplicados pelo Restore normal do painel.
 
 O backup excluirá:
 
@@ -57,7 +61,7 @@ O mundo vem exclusivamente de `PALWORLD_DIR/Pal/Saved/SaveGames`; `Players/` é 
 
 O staging fica sob a área de dados do Manager. O arquivo final usa referência relativa `backups/<nome-gerenciado>.tar.gz`, permissão `0640` e só é publicado após validação integral. Links simbólicos, entradas não regulares, paths absolutos, traversal, escape da raiz e configurações acima do limite são recusados. Falha antes ou depois da publicação remove somente o artefato reconhecido da tentativa atual e nunca cria um `backup_record` válido.
 
-O cancelamento é aceito até o último checkpoint anterior à publicação. Ao entrar na publicação atômica, o job fecha `is_cancellable` e a interface informa que não pode mais cancelar. Após interrupção do worker, o job vira `INTERRUPTED`, não é retomado e o startup remove somente temporários e artefatos finais cujo nome contém o ID desse job interrompido.
+O cancelamento é aceito até o último checkpoint anterior à publicação. Ao entrar na publicação atômica, o job fecha `is_cancellable` e a interface informa que não pode mais cancelar. Após interrupção do worker, o job vira `INTERRUPTED` e não é retomado. O startup remove somente temporários e artefatos finais pertencentes a jobs `LOCAL_BACKUP` interrompidos; um backup preventivo já registrado por um Restore nunca entra nessa limpeza.
 
 A retenção consulta registros `LOCAL` e `VALID`, reconhece também o namespace e o padrão de nome gerenciado e remove somente os excedentes mais antigos. Arquivos sem registro ou fora desse padrão são preservados.
 
@@ -67,24 +71,52 @@ rclone fará uploads e downloads em uma pasta ou namespace exclusivo do Palworld
 
 **O Manager nunca excluirá arquivos externos à área de backups que administra.** Nenhum plano pago será requisito.
 
-## Restore
+## Restore local implementado
 
-O restore local ou remoto seguirá o fluxo:
+FastAPI exige sessão, CSRF e a confirmação literal `RESTAURAR`, mas apenas cria e acompanha o job persistente `LOCAL_RESTORE`. O worker adquire atomicamente o job e o maintenance lock global. O fluxo implementado é:
 
 ```text
 maintenance lock
-→ validação do backup
-→ download temporário, se remoto
-→ SHA-256 e integridade
+→ cópia controlada do backup local para staging
+→ SHA-256 externo contra backup_records
+→ tar.gz, manifest e hashes individuais
+→ validação semântica de world/, config/ e manager/
+→ merge e validação dos INIs atuais
+→ verificação de espaço
 → backup preventivo
 → stop seguro
-→ substituição dos arquivos
-→ ownership e permissões
+→ substituição de world/ e configurações do Palworld
+→ ownership de grupo e permissões mínimas
 → start
 → REST API e health check
+→ verificação de logs críticos
 → conclusão ou falha auditada
 ```
 
-A operação exigirá a confirmação exata `RESTAURAR`. O arquivo será validado contra traversal, symlinks perigosos, formato inválido e espaço insuficiente antes de alterar o mundo. Temporários só serão removidos quando for seguro.
+A cópia temporária tem o SHA-256 conferido antes de o arquivo ser aberto para validação interna. A extração não usa `extractall`: aceita somente arquivos regulares com paths relativos presentes no manifest e recusa traversal, paths absolutos, links, duplicidade, conteúdo extra e escape da área temporária. O mundo precisa conter `Level.sav`, `LevelMeta.sav` e `Players/`; saves de jogadores permanecem opacos. `manager/manager.db` passa por `PRAGMA integrity_check` e `manager/settings.json` pela allowlist e tipos esperados, embora nenhum dos dois seja aplicado.
 
-Não haverá rollback automático. Em caso de falha, o backup preventivo será preservado e a recuperação dependerá de decisão humana. A V1 não restaurará um jogador isoladamente.
+Todas as validações e preparações possíveis terminam antes do Stop. Isso inclui a leitura do `PalWorldSettings.ini` atual, o merge conservador, a validação do resultado e o espaço livre. Se `GameUserSettings.ini` estiver no backup, seus campos com nomes sensíveis também vêm obrigatoriamente do arquivo atual. Uma falha nessa fase não solicita Stop nem altera o mundo.
+
+Depois da pré-validação, o backup preventivo executa novo `POST /save` oficial e o pipeline completo do backup local. Ele recebe `backup_record` válido antes do Stop e é preservado tanto no sucesso quanto na falha; a retenção continua exatamente em 3 arquivos gerenciados, protegendo durante a operação a origem e o preventivo. Arquivos externos permanecem intocados.
+
+O Stop só é aceito quando o serviço está offline e a porta REST está fechada. A publicação usa nomes temporários controlados no mesmo filesystem, mantém o grupo do mundo anterior e aplica `0770` em diretórios e `0660` em arquivos. O worker continua não-root e precisa apenas pertencer ao grupo compartilhado com o Palworld; nenhum comando usa shell. O Start só conclui após health `ONLINE`, incluindo `/info` da REST API oficial, e ausência de erros críticos posteriores ao início.
+
+O job não é cancelável em nenhuma fase. Não há rollback automático. Falha ou interrupção depois do início da substituição marca `requires_manual_review`; o worker não retoma o job e não remove automaticamente diretórios estruturais de estado ambíguo. O staging isolado do Manager é removido ao fim de uma execução conhecida; após encerramento abrupto do processo, permanece para inspeção segura. A V1 não restaura um jogador isoladamente.
+
+O Restore do painel aplica somente `world/` e as configurações do Palworld. Ele
+nunca substitui `manager/manager.db` nem aplica `manager/settings.json`:
+usuários, sessões, auditoria, jobs e configurações atuais do Manager permanecem
+intactos. Web e worker não são parados para trocar o banco ativo, e esta etapa
+não cria executor externo ou fluxo de Restore completo do Manager.
+
+Como `PalWorldSettings.ini` entra no backup com campos sensíveis sanitizados, a
+pré-validação combina os campos não sensíveis do backup com os valores
+sensíveis do arquivo atual. O merge preserva também parâmetros desconhecidos e
+é integralmente validado antes do Stop. O Manager nunca inventa secrets nem
+aplica valores vazios sanitizados sobre os atuais. Arquivo atual ausente,
+ilegível, inválido ou sem combinação determinística encerra o job antes de
+alterar o servidor; a auditoria recebe apenas a categoria segura da falha.
+
+A página **Backups** mostra um formulário por artefato válido, progresso e log controlado do Restore a cada segundo. Ao terminar, atualiza a lista sem refresh manual, exibe o backup preventivo e informa quando revisão humana é necessária. Paths de armazenamento e detalhes internos não são expostos.
+
+Development e test usam `FakeRestoreTarget`, REST, ciclo de vida e logs simulados. Nesses ambientes o worker não lê nem escreve mundo, INIs, systemd ou filesystem estrutural reais do Palworld.
