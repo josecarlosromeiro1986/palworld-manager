@@ -18,9 +18,11 @@ EXPECTED_TABLES = {
     "ban_history",
     "jobs",
     "login_attempts",
+    "maintenance_locks",
     "notification_events",
     "sessions",
     "users",
+    "worker_heartbeats",
 }
 
 
@@ -47,9 +49,9 @@ def test_new_database_is_created_only_by_migrations(migrated_engine: Engine) -> 
     with migrated_engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
 
-    assert revision == "0004_assisted_shutdown_controls"
+    assert revision == "0005_persistent_job_system"
     job_columns = {column["name"] for column in inspect(migrated_engine).get_columns("jobs")}
-    assert {"cancel_requested", "execute_now_requested"}.issubset(job_columns)
+    assert {"cancel_requested", "execute_now_requested", "step"}.issubset(job_columns)
 
 
 def test_sqlite_connections_enable_integrity_and_concurrency_pragmas(

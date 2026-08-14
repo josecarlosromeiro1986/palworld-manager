@@ -1,6 +1,6 @@
 # Desenvolvimento com Docker
 
-> Status: Em desenvolvimento. Os três containers base, os fakes do Palworld, os jobs de ciclo de vida e os contratos REST de jogadores e anúncios estão implementados; integrações adicionais continuam planejadas.
+> Status: Em desenvolvimento. Os três containers base, os fakes do Palworld, o sistema persistente de jobs e os contratos REST administrativos estão implementados; integrações adicionais continuam planejadas.
 
 O Docker Compose de desenvolvimento possui três containers e preserva a separação entre aplicação web e worker usada em produção. Todos usam a mesma imagem de desenvolvimento com comandos diferentes.
 
@@ -12,7 +12,7 @@ Compila os assets locais no startup, executa o FastAPI com reload, valida `APP_E
 
 ## `worker`
 
-Executa um processo Python separado, valida a mesma configuração estrutural e não possui servidor HTTP. Ele adquire e executa os jobs de ciclo de vida, permanecendo independente do processo web. Fila completa, heartbeat, recovery e maintenance lock geral pertencem à Etapa 17.
+Executa um processo Python separado, valida a mesma configuração estrutural e não possui servidor HTTP. Ele adquire jobs atomicamente, mantém heartbeat a cada 10 segundos, executa ciclo de vida e desligamento, grava logs no volume `manager-data`, recupera jobs abandonados como `INTERRUPTED` sem retomá-los e coordena operações incompatíveis pelo maintenance lock global. Um segundo processo com lease recente é recusado.
 
 ## `mock-services`
 

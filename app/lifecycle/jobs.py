@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import Select, select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,17 +13,24 @@ from app.audit.service import (
     record_audit_event,
 )
 from app.db.models import AppSetting, Job
+from app.jobs.service import (
+    ACTIVE_JOB_STATUSES,
+    JOB_STATUS_FAILED,
+    JOB_STATUS_INTERRUPTED,
+    JOB_STATUS_PENDING,
+    JOB_STATUS_RUNNING,
+    JOB_STATUS_SUCCEEDED,
+    JOB_STEP_COMPLETED,
+    JOB_STEP_FAILED,
+    JOB_STEP_WAITING,
+    claim_next_job,
+)
 from app.lifecycle.service import (
     LifecycleAction,
     LifecycleExecutor,
     LifecycleOutcome,
 )
 
-JOB_STATUS_PENDING = "PENDING"
-JOB_STATUS_RUNNING = "RUNNING"
-JOB_STATUS_SUCCEEDED = "SUCCEEDED"
-JOB_STATUS_FAILED = "FAILED"
-ACTIVE_JOB_STATUSES = (JOB_STATUS_PENDING, JOB_STATUS_RUNNING)
 LIFECYCLE_JOB_PREFIX = "PALWORLD_"
 LIFECYCLE_COORDINATION_KEY = "PALWORLD_LIFECYCLE"
 
@@ -52,6 +59,7 @@ class LifecycleJobView:
     action: LifecycleAction
     status: str
     progress: int
+    step: str
     timed_out: bool | None
     final_state: str | None
 
@@ -61,7 +69,7 @@ def lifecycle_job_kind(action: LifecycleAction) -> str:
 
 
 def active_palworld_job(session: Session) -> Job | None:
-    return session.scalar(
+    active = session.scalar(
         select(Job)
         .where(
             Job.coordination_key == LIFECYCLE_COORDINATION_KEY,
@@ -70,6 +78,15 @@ def active_palworld_job(session: Session) -> Job | None:
         .order_by(Job.id.desc())
         .limit(1)
     )
+    if active is not None:
+        return active
+    latest = session.scalar(
+        select(Job)
+        .where(Job.coordination_key == LIFECYCLE_COORDINATION_KEY)
+        .order_by(Job.id.desc())
+        .limit(1)
+    )
+    return latest if latest is not None and latest.status == JOB_STATUS_INTERRUPTED else None
 
 
 def parse_lifecycle_job_kind(kind: str) -> LifecycleAction:
@@ -109,6 +126,7 @@ def enqueue_lifecycle_job(
     job = Job(
         kind=lifecycle_job_kind(action),
         status=JOB_STATUS_PENDING,
+        step=JOB_STEP_WAITING,
         progress=0,
         is_cancellable=False,
         requires_maintenance_lock=True,
@@ -134,42 +152,18 @@ def enqueue_lifecycle_job(
     return job
 
 
-def _pending_lifecycle_job() -> Select[tuple[int]]:
-    kinds = [lifecycle_job_kind(action) for action in LifecycleAction]
-    return (
-        select(Job.id)
-        .where(
-            Job.kind.in_(kinds),
-            Job.status == JOB_STATUS_PENDING,
-        )
-        .order_by(Job.created_at, Job.id)
-        .limit(1)
-    )
-
-
 def claim_next_lifecycle_job(
     session: Session,
     worker_id: str,
     *,
     claimed_at: datetime | None = None,
 ) -> Job | None:
-    now = claimed_at or datetime.now(UTC)
-    statement = (
-        update(Job)
-        .where(
-            Job.id == _pending_lifecycle_job().scalar_subquery(),
-            Job.status == JOB_STATUS_PENDING,
-        )
-        .values(
-            status=JOB_STATUS_RUNNING,
-            claimed_by=worker_id,
-            claimed_at=now,
-            started_at=now,
-            progress=5,
-        )
-        .returning(Job)
+    return claim_next_job(
+        session,
+        worker_id,
+        tuple(lifecycle_job_kind(action) for action in LifecycleAction),
+        claimed_at=claimed_at,
     )
-    return session.scalars(statement).one_or_none()
 
 
 def execute_lifecycle_job(
@@ -186,6 +180,9 @@ def execute_lifecycle_job(
     result = executor.execute(action, timeout_seconds)
     job.status = (
         JOB_STATUS_SUCCEEDED if result.outcome is LifecycleOutcome.SUCCEEDED else JOB_STATUS_FAILED
+    )
+    job.step = (
+        JOB_STEP_COMPLETED if result.outcome is LifecycleOutcome.SUCCEEDED else JOB_STEP_FAILED
     )
     job.progress = 100
     job.finished_at = finished_at or datetime.now(UTC)
@@ -222,6 +219,7 @@ def fail_lifecycle_job(
     action = parse_lifecycle_job_kind(job.kind)
     completed_at = finished_at or datetime.now(UTC)
     job.status = JOB_STATUS_FAILED
+    job.step = JOB_STEP_FAILED
     job.progress = 100
     job.finished_at = completed_at
     job.result = {"unexpected_failure": True}
@@ -255,6 +253,7 @@ def lifecycle_job_view(job: Job) -> LifecycleJobView:
         action=parse_lifecycle_job_kind(job.kind),
         status=job.status,
         progress=job.progress,
+        step=job.step,
         timed_out=timed_out if isinstance(timed_out, bool) else None,
         final_state=final_state if isinstance(final_state, str) else None,
     )

@@ -5,7 +5,8 @@
 {% endif %}
 {% if job %}
   {% set action_labels = {"START": "Iniciar", "STOP": "Parar", "RESTART": "Reiniciar"} %}
-  {% set terminal = job.status in ["SUCCEEDED", "FAILED"] %}
+  {% set step_labels = {"WAITING": "aguardando", "EXECUTING": "executando", "COMPLETED": "concluído", "FAILED": "falhou", "INTERRUPTED": "interrompido"} %}
+  {% set terminal = job.status in ["SUCCEEDED", "FAILED", "INTERRUPTED"] %}
   <div
     class="rounded-md border bg-surface-raised px-3 py-2 text-sm"
     data-lifecycle-job="{{ job.id }}"
@@ -22,6 +23,8 @@
         <span class="font-semibold text-positive">CONCLUÍDO</span>
       {% elif job.status == "FAILED" %}
         <span class="font-semibold text-danger">FALHOU</span>
+      {% elif job.status == "INTERRUPTED" %}
+        <span class="font-semibold text-warning">INTERROMPIDO</span>
       {% elif job.status == "RUNNING" %}
         <span class="font-semibold text-accent">EM EXECUÇÃO</span>
       {% else %}
@@ -33,7 +36,16 @@
     {% elif job.final_state %}
       <p class="mt-1 text-xs text-muted">Estado final: {{ job.final_state }}</p>
     {% else %}
-      <p class="mt-1 text-xs text-muted">Job #{{ job.id }} · progresso {{ job.progress }}%</p>
+      <p class="mt-1 text-xs text-muted">Job #{{ job.id }} · {{ step_labels[job.step] }} · progresso {{ job.progress }}%</p>
+    {% endif %}
+    {% if job.status == "INTERRUPTED" %}
+      <p class="mt-1 text-xs text-warning">A execução não foi retomada. Verifique o estado real antes de agir novamente.</p>
+    {% endif %}
+    {% if job_log_lines %}
+      <details class="mt-2">
+        <summary class="cursor-pointer text-xs text-muted">Log do job</summary>
+        <pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-surface p-2 text-xs text-muted">{{ job_log_lines | join('\n') }}</pre>
+      </details>
     {% endif %}
     {% if job.status == "FAILED" and job.action.value == "STOP" %}
       <form class="mt-3 flex flex-wrap gap-2" hx-post="/dashboard/shutdown/jobs/{{ job.id }}/force/SIGTERM" hx-target="#lifecycle-feedback" hx-swap="innerHTML">

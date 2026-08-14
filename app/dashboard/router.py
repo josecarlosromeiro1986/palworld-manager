@@ -15,6 +15,8 @@ from app.db.engine import session_scope
 from app.db.models import Job
 from app.health.palworld import PalworldHealthChecker, PalworldHealthState
 from app.integrations.palworld_rest import RestApiState
+from app.jobs.health import WorkerHealthChecker, WorkerHealthState
+from app.jobs.logs import JobLogStore
 from app.lifecycle.jobs import (
     LifecycleJobConflictError,
     active_palworld_job,
@@ -47,6 +49,23 @@ def _palworld_health_check(request: Request) -> PalworldHealthChecker:
 
 def _session_factory(request: Request) -> sessionmaker[Session]:
     return cast(sessionmaker[Session], request.app.state.session_factory)
+
+
+def _worker_health_check(request: Request) -> WorkerHealthChecker:
+    return cast(WorkerHealthChecker, request.app.state.worker_health_check)
+
+
+def _job_logs(request: Request) -> JobLogStore:
+    return cast(JobLogStore, request.app.state.job_log_store)
+
+
+def _job_log_lines(request: Request, job: Job | None) -> tuple[str, ...]:
+    if job is None:
+        return ()
+    try:
+        return _job_logs(request).tail(job.log_path)
+    except (OSError, ValueError):
+        return ()
 
 
 def _principal(request: Request) -> SessionPrincipal:
@@ -141,6 +160,22 @@ def palworld_health_fragment(request: Request) -> Response:
     )
 
 
+@router.get("/worker-health", response_class=HTMLResponse, include_in_schema=False)
+def worker_health_fragment(request: Request) -> Response:
+    health = _worker_health_check(request).check()
+    descriptions = {
+        WorkerHealthState.STARTING: "serviço ativo, aguardando o primeiro heartbeat",
+        WorkerHealthState.HEALTHY: "serviço ativo e heartbeat recente",
+        WorkerHealthState.UNRESPONSIVE: "serviço ativo sem heartbeat recente",
+        WorkerHealthState.OFFLINE: "serviço do worker inativo",
+    }
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard/_worker_health.html",
+        context={"health": health, "description": descriptions[health.state]},
+    )
+
+
 @router.post("/lifecycle/{action}", response_class=HTMLResponse, include_in_schema=False)
 def request_lifecycle_action(
     request: Request,
@@ -170,6 +205,7 @@ def request_lifecycle_action(
         name="dashboard/_lifecycle_job.html",
         context={
             "job": view,
+            "job_log_lines": (),
             "error": None,
             "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
         },
@@ -189,6 +225,7 @@ def _shutdown_response(
         name="dashboard/_shutdown_job.html",
         context={
             "job": shutdown_job_view(job) if job is not None else None,
+            "job_log_lines": _job_log_lines(request, job),
             "error": error,
             "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
         },
@@ -214,6 +251,7 @@ def _palworld_job_response(
         name="dashboard/_lifecycle_job.html",
         context={
             "job": view,
+            "job_log_lines": _job_log_lines(request, job),
             "error": error,
             "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
         },
@@ -363,6 +401,7 @@ def lifecycle_job_status(request: Request, job_id: int) -> Response:
         name="dashboard/_lifecycle_job.html",
         context={
             "job": view,
+            "job_log_lines": _job_log_lines(request, job),
             "error": None,
             "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
         },

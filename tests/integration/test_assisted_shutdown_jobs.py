@@ -10,11 +10,10 @@ from app.auth.service import create_administrator
 from app.config import AppEnvironment, Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
 from app.db.models import AuditEvent, Job, NotificationEvent
-from app.lifecycle.jobs import JOB_STATUS_FAILED
+from app.jobs.service import JOB_STATUS_CANCELLED, JOB_STATUS_FAILED
 from app.lifecycle.service import create_lifecycle_executor
 from app.lifecycle.worker import LifecycleJobWorker
 from app.shutdown.jobs import (
-    JOB_STATUS_CANCELLED,
     InvalidForcedShutdownError,
     ShutdownJobKind,
     enqueue_assisted_shutdown,

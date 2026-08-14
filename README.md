@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, a autenticação segura, o layout administrativo responsivo, as métricas efêmeras, o controle seguro do servidor, a visualização de logs com SSE, a integração oficial para jogadores e ações administrativas e o editor conservador do `PalWorldSettings.ini` estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI e sistema persistente de jobs com heartbeat, recovery, logs e maintenance lock estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -38,7 +38,7 @@ make test
 make check
 ```
 
-O schema local é criado e atualizado explicitamente com `make db-upgrade`. Assets Tailwind, HTMX e ícones são compilados localmente pela imagem; `make frontend-build` permite reconstruí-los separadamente. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker já executa jobs persistentes de Start, Restart e desligamento assistido/forçado. A página **Logs** oferece histórico, filtros, cópia e streaming SSE. A página **Jogadores** consulta a lista somente pelo botão de atualização, mantém o último resultado apenas em memória, envia anúncios e permite Kick, Ban e Unban com confirmação, CSRF, histórico e auditoria. **Configurações do Palworld** edita apenas campos reconhecidos do `PalWorldSettings.ini`, preserva desconhecidos, cria uma cópia pré-save e oferece Restart após a gravação. Development e test usam fakes completos, sem consultar o journald, controlar o host, tocar no INI real ou depender de um Palworld real.
+O schema local é criado e atualizado explicitamente com `make db-upgrade`. Assets Tailwind, HTMX e ícones são compilados localmente pela imagem; `make frontend-build` permite reconstruí-los separadamente. Consulte a [preparação do ambiente](docs/development/setup.md) para os demais comandos disponíveis. O worker executa jobs persistentes de Start, Restart e desligamento assistido/forçado, mantém heartbeat a cada 10 segundos e não expõe HTTP. O Dashboard mostra sua saúde, progresso e logs dos jobs; operações incompatíveis usam um maintenance lock global. A página **Logs** oferece histórico, filtros, cópia e streaming SSE. A página **Jogadores** consulta a lista somente pelo botão de atualização, mantém o último resultado apenas em memória, envia anúncios e permite Kick, Ban e Unban com confirmação, CSRF, histórico e auditoria. **Configurações do Palworld** edita apenas campos reconhecidos do `PalWorldSettings.ini`, preserva desconhecidos, cria uma cópia pré-save e oferece Restart após a gravação. Development e test usam fakes completos, sem consultar o journald, controlar o host, tocar no INI real ou depender de um Palworld real.
 
 ## Documentação
 

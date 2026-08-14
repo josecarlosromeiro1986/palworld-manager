@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import Select, select, update
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,11 +17,20 @@ from app.audit.service import (
 from app.db.engine import session_scope
 from app.db.models import AppSetting, Job, NotificationEvent
 from app.health.palworld import PalworldHealthState
-from app.lifecycle.jobs import (
+from app.jobs.service import (
     ACTIVE_JOB_STATUSES,
+    JOB_STATUS_CANCELLED,
     JOB_STATUS_FAILED,
     JOB_STATUS_PENDING,
-    JOB_STATUS_RUNNING,
+    JOB_STEP_CANCELLED,
+    JOB_STEP_COMPLETED,
+    JOB_STEP_COUNTDOWN,
+    JOB_STEP_FAILED,
+    JOB_STEP_IRREVERSIBLE,
+    JOB_STEP_WAITING,
+    claim_next_job,
+)
+from app.lifecycle.jobs import (
     LIFECYCLE_COORDINATION_KEY,
     lifecycle_timeout,
 )
@@ -35,7 +44,6 @@ from app.shutdown.service import (
 )
 from app.system.palworld_service import PalworldSignal
 
-JOB_STATUS_CANCELLED = "CANCELLED"
 ASSISTED_SHUTDOWN_DEFAULT_KEY = "assisted_shutdown_default_minutes"
 ALLOWED_COUNTDOWN_MINUTES = (0, 1, 5, 10)
 
@@ -60,6 +68,7 @@ class ShutdownJobView:
     kind: ShutdownJobKind
     status: str
     progress: int
+    step: str
     is_cancellable: bool
     remaining_seconds: int | None
     timed_out: bool | None
@@ -95,6 +104,7 @@ def enqueue_assisted_shutdown(
     job = Job(
         kind=ShutdownJobKind.ASSISTED.value,
         status=JOB_STATUS_PENDING,
+        step=JOB_STEP_WAITING,
         progress=0,
         is_cancellable=countdown_minutes > 0,
         requires_maintenance_lock=True,
@@ -169,6 +179,7 @@ def enqueue_forced_shutdown(
     job = Job(
         kind=job_kind.value,
         status=JOB_STATUS_PENDING,
+        step=JOB_STEP_WAITING,
         progress=0,
         is_cancellable=False,
         requires_maintenance_lock=True,
@@ -223,6 +234,7 @@ def request_shutdown_cancel(session: Session, job_id: int, *, user_id: int) -> b
     )
     if changed_status == JOB_STATUS_PENDING:
         job.status = JOB_STATUS_CANCELLED
+        job.step = JOB_STEP_CANCELLED
         job.progress = 100
         job.is_cancellable = False
         job.finished_at = requested_at
@@ -270,36 +282,15 @@ def request_shutdown_now(session: Session, job_id: int, *, user_id: int) -> bool
     return True
 
 
-def _pending_shutdown_job() -> Select[tuple[int]]:
-    return (
-        select(Job.id)
-        .where(
-            Job.kind.in_([kind.value for kind in ShutdownJobKind]), Job.status == JOB_STATUS_PENDING
-        )
-        .order_by(Job.created_at, Job.id)
-        .limit(1)
-    )
-
-
 def claim_next_shutdown_job(
     session: Session, worker_id: str, *, claimed_at: datetime | None = None
 ) -> Job | None:
-    now = claimed_at or datetime.now(UTC)
-    statement = (
-        update(Job)
-        .where(
-            Job.id == _pending_shutdown_job().scalar_subquery(), Job.status == JOB_STATUS_PENDING
-        )
-        .values(
-            status=JOB_STATUS_RUNNING,
-            claimed_by=worker_id,
-            claimed_at=now,
-            started_at=now,
-            progress=5,
-        )
-        .returning(Job)
+    return claim_next_job(
+        session,
+        worker_id,
+        tuple(kind.value for kind in ShutdownJobKind),
+        claimed_at=claimed_at,
     )
-    return session.scalars(statement).one_or_none()
 
 
 class DatabaseCountdownControl:
@@ -310,6 +301,7 @@ class DatabaseCountdownControl:
     def update(self, remaining_seconds: int, total_seconds: int) -> CountdownDirective:
         with session_scope(self._session_factory) as session:
             job = session.get_one(Job, self._job_id)
+            job.step = JOB_STEP_COUNTDOWN
             result = dict(job.result or {})
             result["remaining_seconds"] = remaining_seconds
             job.result = result
@@ -336,6 +328,7 @@ class DatabaseCountdownControl:
             if changed_id is None and job.cancel_requested:
                 return CountdownDirective.CANCEL
             job.is_cancellable = False
+            job.step = JOB_STEP_IRREVERSIBLE
             job.progress = 80
             result = dict(job.result or {})
             result["remaining_seconds"] = 0
@@ -395,6 +388,11 @@ def _complete_shutdown_job(
     with session_scope(session_factory) as session:
         job = session.get_one(Job, job_id)
         job.status = result.outcome.value
+        job.step = {
+            ShutdownOutcome.SUCCEEDED: JOB_STEP_COMPLETED,
+            ShutdownOutcome.FAILED: JOB_STEP_FAILED,
+            ShutdownOutcome.CANCELLED: JOB_STEP_CANCELLED,
+        }[result.outcome]
         job.progress = 100
         job.is_cancellable = False
         job.finished_at = datetime.now(UTC)
@@ -450,6 +448,7 @@ def shutdown_job_view(job: Job) -> ShutdownJobView:
         kind=kind,
         status=job.status,
         progress=job.progress,
+        step=job.step,
         is_cancellable=job.is_cancellable and job.status in ACTIVE_JOB_STATUSES,
         remaining_seconds=remaining if isinstance(remaining, int) else None,
         timed_out=timed_out if isinstance(timed_out, bool) else None,

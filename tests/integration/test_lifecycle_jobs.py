@@ -10,11 +10,14 @@ from sqlalchemy.exc import IntegrityError
 from app.db.engine import create_database_engine, create_session_factory, session_scope
 from app.db.models import AppSetting, AuditEvent, Job, User
 from app.health.palworld import PalworldHealthState
-from app.lifecycle.jobs import (
+from app.jobs.logs import MemoryJobLogStore
+from app.jobs.service import (
     JOB_STATUS_FAILED,
     JOB_STATUS_PENDING,
     JOB_STATUS_RUNNING,
     JOB_STATUS_SUCCEEDED,
+)
+from app.lifecycle.jobs import (
     LifecycleJobConflictError,
     claim_next_lifecycle_job,
     enqueue_lifecycle_job,
@@ -245,7 +248,13 @@ def test_lifecycle_worker_claims_and_completes_one_job(lifecycle_engine: Engine)
             timed_out=False,
         )
     )
-    worker = LifecycleJobWorker(factory, executor, worker_id="worker-test")
+    job_logs = MemoryJobLogStore()
+    worker = LifecycleJobWorker(
+        factory,
+        executor,
+        worker_id="worker-test",
+        job_logs=job_logs,
+    )
 
     assert worker.process_next() is True
     assert worker.process_next() is False
@@ -255,6 +264,8 @@ def test_lifecycle_worker_claims_and_completes_one_job(lifecycle_engine: Engine)
         assert job is not None
         assert job.status == JOB_STATUS_SUCCEEDED
         assert job.claimed_by == "worker-test"
+        assert job.log_path is not None
+        assert any(line.endswith("Execução finalizada.") for line in job_logs.tail(job.log_path))
 
 
 def test_lifecycle_worker_records_unexpected_failure_without_details(
@@ -264,7 +275,13 @@ def test_lifecycle_worker_records_unexpected_failure_without_details(
     factory = create_session_factory(lifecycle_engine)
     with session_scope(factory) as session:
         enqueue_lifecycle_job(session, LifecycleAction.RESTART, user_id=user_id)
-    worker = LifecycleJobWorker(factory, FailingExecutor(), worker_id="worker-test")
+    job_logs = MemoryJobLogStore()
+    worker = LifecycleJobWorker(
+        factory,
+        FailingExecutor(),
+        worker_id="worker-test",
+        job_logs=job_logs,
+    )
 
     assert worker.process_next() is True
 
@@ -278,3 +295,7 @@ def test_lifecycle_worker_records_unexpected_failure_without_details(
         assert completion is not None
         assert completion.details == {"unexpected_failure": True}
         assert "detalhe interno" not in str(completion.details)
+        assert job.log_path is not None
+        log_text = "\n".join(job_logs.tail(job.log_path))
+        assert "falhou de forma inesperada" in log_text
+        assert "detalhe interno" not in log_text

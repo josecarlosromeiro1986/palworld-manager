@@ -34,6 +34,25 @@
   </article>
 </section>
 
+<section
+  data-worker-health-panel
+  hx-get="/dashboard/worker-health"
+  hx-trigger="load, every 10s"
+  hx-swap="innerHTML"
+  aria-label="Saúde do worker"
+  class="mb-6"
+>
+  <article class="animate-pulse rounded-md border bg-surface p-3 sm:p-4" aria-busy="true">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h2 class="text-sm font-medium text-ink">Worker</h2>
+        <p class="mt-0.5 text-xs text-muted">Consultando serviço e heartbeat</p>
+      </div>
+      <p class="status-placeholder text-xs">Carregando</p>
+    </div>
+  </article>
+</section>
+
 <section aria-labelledby="lifecycle-title" class="mb-6 rounded-md border bg-surface p-3 sm:p-4">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>

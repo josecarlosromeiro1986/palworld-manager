@@ -28,7 +28,9 @@ Os serviços web e worker serão processos independentes configurados via system
 
 `palworld-manager.service` executará o FastAPI e escutará somente em `127.0.0.1`. Seu `/health` verificará exclusivamente a aplicação web. `palworld-manager-worker.service` consumirá os jobs persistidos, executará as operações demoradas ou críticas e será o único processo autorizado a entregar notificações externas.
 
-O worker não terá servidor HTTP. Ele atualizará um heartbeat no SQLite a cada 10 segundos; sua saúde combinará o heartbeat com o estado e o tempo de ativação do serviço no systemd. Serviço ativo sem heartbeat fica `STARTING` com menos de 30 segundos desde a ativação e `UNRESPONSIVE` a partir de 30 segundos. Heartbeat inferior a 30 segundos com serviço ativo significa `HEALTHY`, heartbeat de 30 segundos ou mais significa `UNRESPONSIVE`, e serviço inativo significa `OFFLINE`.
+O worker não tem servidor HTTP. Ele atualiza um heartbeat no SQLite a cada 10 segundos; sua saúde combina o heartbeat com o estado e o tempo de ativação do serviço no systemd. Serviço ativo sem heartbeat fica `STARTING` com menos de 30 segundos desde a ativação e `UNRESPONSIVE` a partir de 30 segundos. Heartbeat inferior a 30 segundos com serviço ativo significa `HEALTHY`, heartbeat de 30 segundos ou mais significa `UNRESPONSIVE`, e serviço inativo significa `OFFLINE`. O heartbeat funciona também como lease: uma identidade concorrente é recusada enquanto o sinal anterior tiver menos de 30 segundos.
+
+Logs textuais de jobs usam `/var/lib/palworld-manager/jobs/<ano>/`, guardam apenas mensagens operacionais controladas e têm retenção de 90 dias. O SQLite mantém somente a referência relativa. A etapa de deploy deverá criar e proteger essa árvore para `palmanager`; a aplicação não requer acesso fora de `/var/lib/palworld-manager` para esses logs.
 
 Tailscale Serve fornecerá acesso privado com HTTPS apenas ao serviço web; journald receberá os logs de ambos.
 

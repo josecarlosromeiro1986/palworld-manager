@@ -83,7 +83,10 @@ def login(client: TestClient) -> None:
     assert response.status_code == 303
 
 
-@pytest.mark.parametrize("path", ["/dashboard/metrics", "/dashboard/palworld-health"])
+@pytest.mark.parametrize(
+    "path",
+    ["/dashboard/metrics", "/dashboard/palworld-health", "/dashboard/worker-health"],
+)
 def test_dashboard_fragments_require_authentication(
     metrics_client: TestClient,
     path: str,
@@ -142,6 +145,20 @@ def test_dashboard_polls_and_renders_palworld_health_state(
     assert 'data-health-state="ONLINE"' in online.text
     assert "data-health-process>ATIVO" in online.text
     assert "data-health-rest>DISPONÍVEL" in online.text
+
+
+def test_dashboard_polls_and_renders_worker_health(metrics_client: TestClient) -> None:
+    login(metrics_client)
+
+    dashboard = metrics_client.get("/")
+    worker = metrics_client.get("/dashboard/worker-health")
+
+    assert dashboard.status_code == 200
+    assert 'hx-get="/dashboard/worker-health"' in dashboard.text
+    assert 'hx-trigger="load, every 10s"' in dashboard.text
+    assert worker.status_code == 200
+    assert 'data-worker-health-state="STARTING"' in worker.text
+    assert "aguardando o primeiro heartbeat" in worker.text
 
 
 def test_dashboard_renders_failure_without_exposing_internal_details(

@@ -69,6 +69,8 @@ A revision `0003_lifecycle_job_guard` adiciona `coordination_key` e um índice �
 
 A revision `0004_assisted_shutdown_controls` adiciona os flags persistentes `cancel_requested` e `execute_now_requested`. Eles permitem que a web solicite mudanças durante a contagem sem executar a operação no processo FastAPI; o worker observa os flags e fecha `is_cancellable` antes do Stop.
 
+A revision `0005_persistent_job_system` adiciona `step`, a tabela singleton `worker_heartbeats` e `maintenance_locks`. O heartbeat guarda a identidade, início e último sinal do worker e também impede uma segunda identidade enquanto o lease de 30 segundos estiver válido. O lock global referencia o job proprietário e é adquirido na mesma transação do claim. Logs textuais permanecem fora do SQLite; `jobs.log_path` guarda somente a referência relativa sob `jobs/<ano>/`.
+
 ### `backup_records`
 
 Cataloga backups gerenciados, sua localização, integridade e estado. Relaciona-se aos jobs que os criam, transferem ou restauram, sem guardar o conteúdo do backup no banco.

@@ -14,6 +14,13 @@ from app.db.engine import create_database_engine, create_session_factory
 from app.health.palworld import create_palworld_health_check
 from app.health.router import router as health_router
 from app.integrations.palworld_rest import create_palworld_rest_client
+from app.jobs.health import (
+    FakeWorkerService,
+    SystemdWorkerService,
+    WorkerHealthChecker,
+    WorkerService,
+)
+from app.jobs.logs import create_job_log_store
 from app.lifecycle.fake import PersistentFakePalworldEnvironment
 from app.logs.router import router as logs_router
 from app.logs.service import create_palworld_log_source
@@ -47,6 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.session_factory = session_factory
     application.state.metrics_service = HostMetricsService()
     application.state.palworld_log_source = create_palworld_log_source(resolved_settings)
+    application.state.job_log_store = create_job_log_store(resolved_settings.manager_database)
     palworld_rest_client = create_palworld_rest_client(resolved_settings)
     application.state.palworld_rest_client = palworld_rest_client
     application.state.players_service = ManualPlayersService(palworld_rest_client)
@@ -60,18 +68,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         palworld_settings_storage,
         session_factory,
     )
+    worker_service: WorkerService
     if resolved_settings.environment is AppEnvironment.PRODUCTION:
         palworld_service = create_palworld_service(resolved_settings)
         palworld_health_check = create_palworld_health_check(
             resolved_settings,
             palworld_service,
         )
+        worker_service = SystemdWorkerService()
     else:
         fake_environment = PersistentFakePalworldEnvironment(session_factory)
         palworld_service = fake_environment
         palworld_health_check = fake_environment
+        worker_service = FakeWorkerService()
     application.state.palworld_service = palworld_service
     application.state.palworld_health_check = palworld_health_check
+    application.state.worker_health_check = WorkerHealthChecker(session_factory, worker_service)
     application.add_middleware(AuthenticationMiddleware, session_factory=session_factory)
     application.mount(
         "/static",

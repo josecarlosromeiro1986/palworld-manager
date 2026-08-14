@@ -52,7 +52,7 @@ Os valores podem ser mantidos em `app_settings`; sua edição pelo painel será 
 
 ## Concorrência e segurança
 
-Uma chave de coordenação com índice único parcial impede dois jobs de ciclo de vida simultaneamente em `PENDING` ou `RUNNING`, inclusive sob requisições concorrentes. A aquisição do próximo job usa uma única atualização condicional. A infraestrutura completa de maintenance lock, heartbeat e recuperação do worker continua reservada à Etapa 17.
+Uma chave de coordenação com índice único parcial impede dois jobs de ciclo de vida simultaneamente em `PENDING` ou `RUNNING`, inclusive sob requisições concorrentes. A aquisição usa uma única atualização condicional e adquire o maintenance lock global na mesma transação. O worker mantém heartbeat a cada 10 segundos; se for interrompido, jobs em `RUNNING` passam para `INTERRUPTED`, liberam o lock e nunca são retomados automaticamente. O Dashboard mostra etapa, progresso e trecho do log textual de cada execução.
 
 Em production, somente estes comandos são construídos pelo adapter, sempre com argumentos separados e sem shell:
 

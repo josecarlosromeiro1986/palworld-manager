@@ -4,7 +4,7 @@
 
 O Palworld Manager é uma aplicação Python leve e modular por domínio. FastAPI coordena as rotas e os serviços da aplicação; Jinja2 renderiza as páginas no servidor; HTMX atualiza as métricas e atualizará outros formulários e fragmentos; e SSE já entrega logs em tempo real com reconexão por cursor. Tailwind CSS fornece o layout administrativo responsivo; Chart.js exibe o histórico de 15 minutos mantido somente em memória.
 
-SQLite será o banco do Manager, acessado por SQLAlchemy e versionado por migrations do Alembic. Também funcionará como fila e mecanismo persistente de coordenação entre a aplicação web e um worker Python independente. O worker processará jobs como backup, restore e update sob um maintenance lock para impedir operações incompatíveis.
+SQLite é o banco do Manager, acessado por SQLAlchemy e versionado por migrations do Alembic. Também funciona como fila e mecanismo persistente de coordenação entre a aplicação web e um worker Python independente. O worker já processa ações de ciclo de vida sob um maintenance lock global; backup, restore e update reutilizarão a infraestrutura nas etapas próprias.
 
 Em produção, `palworld-manager.service` executará o FastAPI e a interação web, enquanto `palworld-manager-worker.service` consumirá e executará jobs. Ambos rodarão como `palmanager`, nunca como `root`, e serão controlados por systemd. O worker acionará SteamCMD e rclone para operações demoradas e será o único componente autorizado a entregar notificações ao Discord. Tailscale Serve publicará somente a aplicação web, que escutará em localhost, e journald receberá os logs dos dois serviços.
 
@@ -28,7 +28,7 @@ O serviço web cria e acompanha jobs, mas não executa diretamente operações l
 
 Qualquer componente pode persistir um `notification_event`; somente o worker muda a entrega para execução e chama o Discord. FastAPI não envia ao webhook diretamente. A entrega é at least once: um evento deixado em `SENDING` após interrupção volta a `PENDING` quando ainda houver tentativa disponível, portanto uma mensagem pode ser entregue mais de uma vez.
 
-O worker não terá servidor HTTP. Sua saúde será derivada do systemd e de um heartbeat gravado no SQLite a cada 10 segundos. Enquanto o serviço estiver ativo e ainda não houver heartbeat, ficará `STARTING` com menos de 30 segundos desde a ativação e `UNRESPONSIVE` a partir de 30 segundos. Com heartbeat, idade inferior a 30 segundos é `HEALTHY` e idade igual ou superior é `UNRESPONSIVE`; serviço inativo é `OFFLINE`. O `/health` pertence exclusivamente à aplicação web.
+O worker não tem servidor HTTP. Sua saúde é derivada do systemd e de um heartbeat gravado no SQLite a cada 10 segundos. Enquanto o serviço estiver ativo e ainda não houver heartbeat, fica `STARTING` com menos de 30 segundos desde a ativação e `UNRESPONSIVE` a partir de 30 segundos. Com heartbeat, idade inferior a 30 segundos é `HEALTHY` e idade igual ou superior é `UNRESPONSIVE`; serviço inativo é `OFFLINE`. O mesmo registro impede uma segunda identidade enquanto o lease estiver recente. O `/health` pertence exclusivamente à aplicação web.
 
 Dev e testes usam fakes nas integrações implementadas. O cliente fake da REST API oferece info, jogadores, anúncios, Kick, Ban, Unban e falhas controláveis sem rede; o `mock-services` também expõe os contratos oficiais simulados já confirmados. Consulte a [especificação da V1](../../SPECIFICATION.md) para os requisitos e a [documentação Docker](../development/docker.md) para o ambiente planejado.
 
