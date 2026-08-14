@@ -20,6 +20,13 @@
     </form>
   </header>
 
+  {% if administration_error %}
+    <p class="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ administration_error }}</p>
+  {% endif %}
+  {% if administration_success %}
+    <p class="rounded-md border border-positive/40 bg-positive/10 px-3 py-2 text-sm text-positive" role="status">{{ administration_success }}</p>
+  {% endif %}
+
   <section class="overflow-hidden rounded-lg border bg-surface" aria-labelledby="players-heading">
     <div class="flex flex-col gap-2 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <h2 id="players-heading" class="text-sm font-semibold text-ink">Jogadores online</h2>
@@ -41,7 +48,7 @@
 
     {% if snapshot and snapshot.players %}
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[900px] text-left text-sm">
+        <table class="w-full min-w-[1200px] text-left text-sm">
           <thead class="border-b bg-canvas/50 text-xs uppercase text-muted">
             <tr>
               <th class="px-4 py-3 font-semibold">Nome</th>
@@ -51,6 +58,7 @@
               <th class="px-4 py-3 font-semibold">Player ID</th>
               <th class="px-4 py-3 font-semibold">User ID</th>
               <th class="px-4 py-3 font-semibold">Construções</th>
+              <th class="px-4 py-3 font-semibold">Administração</th>
             </tr>
           </thead>
           <tbody class="divide-y">
@@ -63,6 +71,49 @@
                 <td class="px-4 py-3 font-mono text-xs text-muted">{{ player.player_id }}</td>
                 <td class="px-4 py-3 font-mono text-xs text-muted">{{ player.user_id }}</td>
                 <td class="px-4 py-3 tabular-nums">{{ player.building_count if player.building_count is not none else "—" }}</td>
+                <td class="px-4 py-3 align-top">
+                  <details class="w-72 rounded-md border bg-canvas/50 p-2">
+                    <summary class="cursor-pointer text-xs font-semibold text-accent">Kick ou Ban</summary>
+                    <div class="mt-3 space-y-4">
+                      <form
+                        method="post"
+                        action="/players/kick"
+                        data-confirm
+                        data-confirm-title="Aplicar Kick em {{ player.name }}?"
+                        data-confirm-description="O jogador será desconectado imediatamente pelo endpoint oficial."
+                        data-confirm-source="kick-reason-{{ loop.index }}"
+                        data-confirm-preview-label="Motivo opcional"
+                        data-confirm-button="Aplicar Kick"
+                        data-confirm-tone="warning"
+                        class="space-y-2"
+                      >
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="user_id" value="{{ player.user_id }}">
+                        <label for="kick-reason-{{ loop.index }}" class="block text-xs font-medium text-ink">Motivo do Kick (opcional)</label>
+                        <textarea id="kick-reason-{{ loop.index }}" name="reason" rows="2" class="field resize-y text-xs" placeholder="Mensagem opcional ao jogador"></textarea>
+                        <button type="submit" class="min-h-9 rounded-md border border-warning/40 bg-warning/10 px-3 text-xs font-semibold text-warning hover:bg-warning/20">Aplicar Kick</button>
+                      </form>
+                      <form
+                        method="post"
+                        action="/players/ban"
+                        data-confirm
+                        data-confirm-title="Banir {{ player.name }}?"
+                        data-confirm-description="O Ban será enviado imediatamente e ficará registrado no histórico administrativo."
+                        data-confirm-source="ban-reason-{{ loop.index }}"
+                        data-confirm-preview-label="Motivo obrigatório"
+                        data-confirm-button="Confirmar Ban"
+                        data-confirm-tone="danger"
+                        class="space-y-2 border-t pt-3"
+                      >
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="user_id" value="{{ player.user_id }}">
+                        <label for="ban-reason-{{ loop.index }}" class="block text-xs font-medium text-ink">Motivo do Ban</label>
+                        <textarea id="ban-reason-{{ loop.index }}" name="reason" required rows="2" class="field resize-y text-xs" placeholder="Informe o motivo obrigatório"></textarea>
+                        <button type="submit" class="min-h-9 rounded-md border border-danger/40 bg-danger/10 px-3 text-xs font-semibold text-danger hover:bg-danger/20">Aplicar Ban</button>
+                      </form>
+                    </div>
+                  </details>
+                </td>
               </tr>
             {% endfor %}
           </tbody>
@@ -72,6 +123,74 @@
       <p class="px-4 py-8 text-center text-sm text-muted">Nenhum jogador online no momento da consulta.</p>
     {% else %}
       <p class="px-4 py-8 text-center text-sm text-muted">Clique em “Atualizar jogadores” para realizar a primeira consulta.</p>
+    {% endif %}
+  </section>
+
+  <section class="rounded-lg border bg-surface p-4 sm:p-5" aria-labelledby="unban-heading">
+    <div class="mb-4">
+      <h2 id="unban-heading" class="text-sm font-semibold text-ink">Remover Ban</h2>
+      <p class="mt-1 text-sm text-muted">Informe o User ID oficial. O Palworld não oferece uma lista oficial de jogadores banidos neste fluxo, e nenhum save é consultado.</p>
+    </div>
+    <form
+      method="post"
+      action="/players/unban"
+      data-confirm
+      data-confirm-title="Remover Ban?"
+      data-confirm-description="O Unban será enviado imediatamente e o motivo ficará no histórico administrativo."
+      data-confirm-source="unban-user-id"
+      data-confirm-preview-label="User ID exato"
+      data-confirm-button="Confirmar Unban"
+      data-confirm-tone="warning"
+      class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] lg:items-end"
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div>
+        <label for="unban-user-id" class="mb-1 block text-sm font-medium text-ink">User ID</label>
+        <input id="unban-user-id" name="user_id" value="{{ unban_user_id }}" maxlength="255" required class="field font-mono text-sm" autocomplete="off" placeholder="steam_00000000000000000">
+      </div>
+      <div>
+        <label for="unban-reason" class="mb-1 block text-sm font-medium text-ink">Motivo do Unban</label>
+        <input id="unban-reason" name="reason" value="{{ unban_reason }}" required class="field" placeholder="Informe o motivo obrigatório">
+      </div>
+      <button type="submit" class="min-h-10 rounded-md border border-warning/40 bg-warning/10 px-4 text-sm font-semibold text-warning hover:bg-warning/20">Remover Ban</button>
+    </form>
+  </section>
+
+  <section class="overflow-hidden rounded-lg border bg-surface" aria-labelledby="administration-history-heading">
+    {% set action_labels = {"KICK": "Kick", "BAN": "Ban", "UNBAN": "Unban"} %}
+    <div class="border-b px-4 py-3">
+      <h2 id="administration-history-heading" class="text-sm font-semibold text-ink">Histórico administrativo recente</h2>
+      <p class="mt-1 text-xs text-muted">Até 50 ações recentes registradas no SQLite. A autoridade atual de Ban permanece no Palworld.</p>
+    </div>
+    {% if administration_history %}
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[900px] text-left text-sm">
+          <thead class="border-b bg-canvas/50 text-xs uppercase text-muted">
+            <tr>
+              <th class="px-4 py-3 font-semibold">Horário</th>
+              <th class="px-4 py-3 font-semibold">Ação</th>
+              <th class="px-4 py-3 font-semibold">Alvo</th>
+              <th class="px-4 py-3 font-semibold">User ID</th>
+              <th class="px-4 py-3 font-semibold">Motivo</th>
+              <th class="px-4 py-3 font-semibold">Resultado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            {% for entry in administration_history %}
+              <tr>
+                <td class="px-4 py-3 text-xs text-muted"><time data-local-time datetime="{{ entry.occurred_at.isoformat() }}">{{ entry.occurred_at.isoformat() }}</time></td>
+                <td class="px-4 py-3 font-medium text-ink">{{ action_labels[entry.action.value] }}</td>
+                <td class="px-4 py-3">{{ entry.target }}</td>
+                <td class="px-4 py-3 font-mono text-xs text-muted">{{ entry.user_id }}</td>
+                <td class="max-w-md whitespace-pre-wrap break-words px-4 py-3 text-muted">{{ entry.reason or "Não informado" }}</td>
+                <td class="px-4 py-3 font-semibold {% if entry.result == 'SUCCESS' %}text-positive{% else %}text-danger{% endif %}">{{ "SUCESSO" if entry.result == "SUCCESS" else "FALHA" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="px-4 py-8 text-center text-sm text-muted">Nenhuma ação administrativa registrada.</p>
     {% endif %}
   </section>
 

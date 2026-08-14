@@ -132,6 +132,12 @@ class PalworldRestClient(Protocol):
 
     def announce(self, message: str) -> None: ...
 
+    def kick(self, user_id: str, message: str | None = None) -> None: ...
+
+    def ban(self, user_id: str, message: str | None = None) -> None: ...
+
+    def unban(self, user_id: str) -> None: ...
+
 
 class OfficialPalworldRestClient:
     def __init__(
@@ -184,6 +190,28 @@ class OfficialPalworldRestClient:
             "announce",
             headers=headers,
             body=body,
+        )
+        self._validate_response(response, MAX_INFO_RESPONSE_BYTES)
+
+    def kick(self, user_id: str, message: str | None = None) -> None:
+        self._player_action("kick", user_id, message)
+
+    def ban(self, user_id: str, message: str | None = None) -> None:
+        self._player_action("ban", user_id, message)
+
+    def unban(self, user_id: str) -> None:
+        self._player_action("unban", user_id)
+
+    def _player_action(self, endpoint: str, user_id: str, message: str | None = None) -> None:
+        normalized_user_id = _validate_palworld_user_id(user_id)
+        payload = {"userid": normalized_user_id}
+        if message is not None:
+            payload["message"] = message
+        response = self._request(
+            "POST",
+            endpoint,
+            headers={**self._headers, "Content-Type": "application/json"},
+            body=json.dumps(payload, ensure_ascii=False).encode(),
         )
         self._validate_response(response, MAX_INFO_RESPONSE_BYTES)
 
@@ -257,6 +285,9 @@ class FakePalworldRestClient:
         )
         self.online_players = players or ()
         self.announcements: list[str] = []
+        self.kicks: list[tuple[str, str | None]] = []
+        self.bans: list[tuple[str, str | None]] = []
+        self.unbans: list[str] = []
         self.player_queries = 0
         self.error: PalworldRestErrorKind | None = None
 
@@ -274,6 +305,21 @@ class FakePalworldRestClient:
             raise ValueError("a mensagem do anúncio é obrigatória")
         self._raise_configured_error()
         self.announcements.append(message)
+
+    def kick(self, user_id: str, message: str | None = None) -> None:
+        normalized_user_id = _validate_palworld_user_id(user_id)
+        self._raise_configured_error()
+        self.kicks.append((normalized_user_id, message))
+
+    def ban(self, user_id: str, message: str | None = None) -> None:
+        normalized_user_id = _validate_palworld_user_id(user_id)
+        self._raise_configured_error()
+        self.bans.append((normalized_user_id, message))
+
+    def unban(self, user_id: str) -> None:
+        normalized_user_id = _validate_palworld_user_id(user_id)
+        self._raise_configured_error()
+        self.unbans.append(normalized_user_id)
 
     def set_error(self, error: PalworldRestErrorKind | None) -> None:
         self.error = error
@@ -381,6 +427,15 @@ def _validate_credentials(username: str, password: str) -> None:
         raise ValueError("username REST do Palworld possui formato inválido")
     if "\r" in password or "\n" in password:
         raise ValueError("password REST do Palworld possui formato inválido")
+
+
+def _validate_palworld_user_id(user_id: str) -> str:
+    normalized = user_id.strip()
+    if not normalized or len(normalized) > 255:
+        raise ValueError("o User ID do Palworld é inválido")
+    if any(ord(character) < 32 or ord(character) == 127 for character in normalized):
+        raise ValueError("o User ID do Palworld é inválido")
+    return normalized
 
 
 def _http_error_kind(status_code: int) -> PalworldRestErrorKind:

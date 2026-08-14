@@ -75,6 +75,6 @@ Cataloga backups gerenciados, sua localização, integridade e estado. Relaciona
 
 ### `ban_history`
 
-Mantém o histórico administrativo de Ban e Unban, incluindo alvo, motivo e resultado. Complementa a auditoria, mas não substitui o estado mantido pelo Palworld.
+Mantém o histórico administrativo implementado de Kick, Ban e Unban, incluindo ação, alvo, `userId`, administrador, motivo, resultado e timestamp. Complementa a auditoria, mas não substitui o estado mantido pelo Palworld. A página de jogadores exibe até 50 registros recentes; filtros e retenção geral pertencem à auditoria completa da Etapa 26.
 
 O detalhamento futuro deve preservar transações, integridade referencial e preparação para múltiplos usuários. A migration atual está em `migrations/versions/` e deve ser aplicada com `make db-upgrade`. Consulte os requisitos de banco e auditoria em [SPECIFICATION.md](../../SPECIFICATION.md).

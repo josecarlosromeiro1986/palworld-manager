@@ -33,7 +33,7 @@ Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **
 
 ## Integrações
 
-- [REST API do Palworld](integrations/palworld-rest-api.md): cliente oficial tipado, consulta manual de jogadores, anúncios e tratamento seguro de falhas.
+- [REST API do Palworld](integrations/palworld-rest-api.md): cliente oficial tipado, consulta manual de jogadores, anúncios, administração de jogadores e tratamento seguro de falhas.
 - [Tailscale](integrations/tailscale.md): acesso privado por Tailscale Serve e HTTPS.
 - [Google Drive e rclone](integrations/google-drive-rclone.md): armazenamento remoto de backups gerenciados.
 - [Discord](integrations/discord.md): webhook e política enxuta de notificações.

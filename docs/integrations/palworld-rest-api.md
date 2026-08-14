@@ -1,14 +1,17 @@
 # REST API do Palworld
 
-> Status: Implementado para health, consulta manual de jogadores, anúncios e comunicação do desligamento assistido. Kick, Ban e Unban permanecem planejados para a etapa seguinte.
+> Status: Implementado para health, consulta manual de jogadores, anúncios, Kick, Ban, Unban e comunicação do desligamento assistido.
 
 O Palworld Manager usa exclusivamente os endpoints oficiais necessários ao comportamento já implementado:
 
 - `GET /info` para o sinal REST do health check;
 - `GET /players` para consultas sob demanda e para operações que precisem verificar jogadores conectados;
 - `POST /announce`, com JSON `{"message": "..."}`, para anúncios livres e avisos do desligamento assistido.
+- `POST /kick`, com `userid` e `message` opcional, para desconectar um jogador;
+- `POST /ban`, com `userid` e `message`, para banir um jogador;
+- `POST /unban`, somente com `userid`, para remover um Ban.
 
-Nenhum endpoint de Kick, Ban ou Unban é exposto nesta etapa. O Manager não lê nem modifica saves para descobrir jogadores offline.
+O Manager não lê nem modifica saves para descobrir jogadores offline ou banidos. Como a API oficial de Unban não aceita mensagem, o motivo obrigatório dessa ação permanece somente no histórico administrativo e na auditoria; nenhum campo adicional é inventado no payload remoto.
 
 ## Cliente e erros
 
@@ -37,7 +40,7 @@ PALWORLD_REST_BASE_URL=http://127.0.0.1:8212/v1/api
 
 Em produção, `PALWORLD_REST_USERNAME` e `PALWORLD_REST_PASSWORD` são secrets obrigatórios provenientes de `/etc/palworld-manager/secrets.env`. Não existe username padrão nem fallback para `admin`; valor ausente, vazio ou inválido impede o startup sem revelar a credencial.
 
-Development e test selecionam um cliente fake completo no startup, sem exigir credenciais ou abrir rede. Ele simula info, jogadores, anúncios e todas as categorias de falha. O container `mock-services` expõe os três contratos HTTP confirmados para desenvolvimento de integrações sem um servidor Palworld real.
+Development e test selecionam um cliente fake completo no startup, sem exigir credenciais ou abrir rede. Ele simula info, jogadores, anúncios, Kick, Ban, Unban e todas as categorias de falha. O container `mock-services` expõe os contratos HTTP confirmados para desenvolvimento de integrações sem um servidor Palworld real.
 
 ## Jogadores
 
@@ -51,9 +54,18 @@ Anúncios aceitam texto livre e não têm agendamento. O formulário mostra o co
 
 Cada tentativa validada é auditada como `PALWORLD_ANNOUNCEMENT`, com usuário, mensagem, destino e resultado. Falhas externas registram somente a categoria segura; credenciais e detalhes de transporte nunca são persistidos.
 
+## Administração de jogadores
+
+Kick e Ban ficam disponíveis para jogadores presentes no último snapshot consultado manualmente. Kick aceita motivo opcional; quando informado, ele é enviado como `message`. Ban exige motivo livre e o envia como `message`. Unban recebe manualmente o `userId`, pois este fluxo não consulta saves nem presume uma lista de banidos; seu motivo é obrigatório e registrado localmente.
+
+Os três formulários exigem sessão, CSRF e o modal compartilhado. Sucesso e falha externa criam um registro em `ban_history` e um `audit_event` com ação `KICK`, `BAN` ou `UNBAN`, administrador, alvo, `userId`, motivo e resultado. O histórico recente é exibido na página, mas continua sendo somente a trilha administrativa: a autoridade atual de Ban pertence à API do Palworld.
+
 ## Referências oficiais
 
 - [Introdução à REST API](https://docs.palworldgame.com/api/rest-api/palwold-rest-api/)
 - [`GET /info`](https://docs.palworldgame.com/api/rest-api/info/)
 - [`GET /players`](https://docs.palworldgame.com/api/rest-api/players/)
 - [`POST /announce`](https://docs.palworldgame.com/api/rest-api/announce/)
+- [`POST /kick`](https://docs.palworldgame.com/api/rest-api/kick/)
+- [`POST /ban`](https://docs.palworldgame.com/api/rest-api/ban/)
+- [`POST /unban`](https://docs.palworldgame.com/api/rest-api/unban/)

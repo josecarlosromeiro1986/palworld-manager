@@ -14,13 +14,14 @@ from app.auth.cookies import LOGIN_CSRF_COOKIE_NAME, SESSION_CSRF_COOKIE_NAME
 from app.auth.service import create_administrator
 from app.config import AppEnvironment, Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import AuditEvent
+from app.db.models import AuditEvent, BanHistory
 from app.integrations.palworld_rest import (
     FakePalworldRestClient,
     PalworldPlayer,
     PalworldRestErrorKind,
 )
 from app.main import create_app
+from app.players.administration import PlayerAdministrationService
 from app.players.service import ManualPlayersService
 
 
@@ -65,6 +66,11 @@ def players_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator
     application.state.players_service = ManualPlayersService(
         rest,
         clock=lambda: datetime(2026, 8, 14, 15, 30, tzinfo=UTC),
+    )
+    application.state.player_administration_service = PlayerAdministrationService(
+        rest,
+        factory,
+        clock=lambda: datetime(2026, 8, 14, 15, 31, tzinfo=UTC),
     )
     with TestClient(application, base_url="http://testserver") as client:
         yield PlayersContext(client=client, engine=engine, rest=rest)
@@ -233,3 +239,126 @@ def test_failed_announcement_is_safe_and_audited(players_context: PlayersContext
     assert event is not None
     assert event.result == "FAILURE"
     assert event.details == {"message": "Teste", "error_kind": "unauthorized"}
+
+
+def test_player_actions_enforce_csrf_reasons_and_persist_history(
+    players_context: PlayersContext,
+) -> None:
+    csrf = _login(players_context.client)
+    players_context.client.post("/players/refresh", data={"csrf_token": csrf})
+
+    invalid_csrf = players_context.client.post(
+        "/players/kick",
+        data={"user_id": "steam-user-id", "reason": "", "csrf_token": "invalido"},
+    )
+    missing_ban_reason = players_context.client.post(
+        "/players/ban",
+        data={"user_id": "steam-user-id", "reason": "   ", "csrf_token": csrf},
+    )
+    missing_unban_reason = players_context.client.post(
+        "/players/unban",
+        data={"user_id": "steam-user-id", "reason": "", "csrf_token": csrf},
+    )
+
+    assert invalid_csrf.status_code == 403
+    assert missing_ban_reason.status_code == 400
+    assert missing_unban_reason.status_code == 400
+    assert "motivo é obrigatório" in missing_ban_reason.text
+    assert players_context.rest.kicks == []
+    assert players_context.rest.bans == []
+    assert players_context.rest.unbans == []
+
+    kick = players_context.client.post(
+        "/players/kick",
+        data={"user_id": "steam-user-id", "reason": "", "csrf_token": csrf},
+    )
+    ban_reason = "Conduta inadequada\ncom reincidência."
+    ban = players_context.client.post(
+        "/players/ban",
+        data={"user_id": "steam-user-id", "reason": ban_reason, "csrf_token": csrf},
+    )
+    unban_reason = "Revisão administrativa aprovada."
+    unban = players_context.client.post(
+        "/players/unban",
+        data={"user_id": "steam-user-id", "reason": unban_reason, "csrf_token": csrf},
+    )
+
+    assert kick.status_code == 200
+    assert ban.status_code == 200
+    assert unban.status_code == 200
+    assert "Unban executado e registrado com sucesso" in unban.text
+    assert players_context.rest.kicks == [("steam-user-id", None)]
+    assert players_context.rest.bans == [("steam-user-id", ban_reason)]
+    assert players_context.rest.unbans == ["steam-user-id"]
+    assert "Jogador &lt;script&gt;" in unban.text
+    assert ban_reason in unban.text
+    assert unban_reason in unban.text
+
+    with Session(players_context.engine) as session:
+        history = list(session.scalars(select(BanHistory).order_by(BanHistory.id)))
+        audits = list(
+            session.scalars(
+                select(AuditEvent)
+                .where(AuditEvent.action.in_(["KICK", "BAN", "UNBAN"]))
+                .order_by(AuditEvent.id)
+            )
+        )
+    assert [entry.action for entry in history] == ["KICK", "BAN", "UNBAN"]
+    assert [entry.result for entry in history] == ["SUCCESS", "SUCCESS", "SUCCESS"]
+    assert [entry.reason for entry in history] == ["", ban_reason, unban_reason]
+    assert [entry.palworld_user_id for entry in history] == ["steam-user-id"] * 3
+    assert [entry.target_name for entry in history] == [
+        "Jogador <script>",
+        "Jogador <script>",
+        "steam-user-id",
+    ]
+    assert all(entry.administrator_user_id is not None for entry in history)
+    assert [event.action for event in audits] == ["KICK", "BAN", "UNBAN"]
+    assert all(event.user_id is not None for event in audits)
+
+
+def test_failed_player_action_is_safe_and_persisted(players_context: PlayersContext) -> None:
+    csrf = _login(players_context.client)
+    players_context.rest.set_error(PalworldRestErrorKind.UNAUTHORIZED)
+
+    response = players_context.client.post(
+        "/players/ban",
+        data={
+            "user_id": "steam-user-id",
+            "reason": "Motivo administrativo",
+            "csrf_token": csrf,
+        },
+    )
+
+    assert response.status_code == 503
+    assert "autenticação da API" in response.text
+    assert "senha-ficticia" not in response.text
+    assert players_context.rest.bans == []
+    with Session(players_context.engine) as session:
+        history = session.scalar(select(BanHistory))
+        audit = session.scalar(select(AuditEvent).where(AuditEvent.action == "BAN"))
+    assert history is not None
+    assert history.result == "FAILURE"
+    assert history.reason == "Motivo administrativo"
+    assert audit is not None
+    assert audit.result == "FAILURE"
+    assert audit.details == {
+        "palworld_user_id": "steam-user-id",
+        "error_kind": "unauthorized",
+    }
+
+
+def test_player_action_forms_use_shared_confirmation_modal(
+    players_context: PlayersContext,
+) -> None:
+    csrf = _login(players_context.client)
+    page = players_context.client.post("/players/refresh", data={"csrf_token": csrf})
+
+    assert page.status_code == 200
+    assert 'action="/players/kick"' in page.text
+    assert 'action="/players/ban"' in page.text
+    assert 'action="/players/unban"' in page.text
+    assert 'data-confirm-title="Aplicar Kick em Jogador &lt;script&gt;?"' in page.text
+    assert 'data-confirm-title="Banir Jogador &lt;script&gt;?"' in page.text
+    assert 'data-confirm-source="unban-user-id"' in page.text
+    assert "hx-confirm" not in page.text

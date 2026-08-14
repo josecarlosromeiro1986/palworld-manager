@@ -17,6 +17,7 @@ from app.integrations.palworld_rest import create_palworld_rest_client
 from app.lifecycle.fake import PersistentFakePalworldEnvironment
 from app.logs.router import router as logs_router
 from app.logs.service import create_palworld_log_source
+from app.players.administration import PlayerAdministrationService
 from app.players.router import router as players_router
 from app.players.service import ManualPlayersService
 from app.system.palworld_service import create_palworld_service
@@ -46,6 +47,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     palworld_rest_client = create_palworld_rest_client(resolved_settings)
     application.state.palworld_rest_client = palworld_rest_client
     application.state.players_service = ManualPlayersService(palworld_rest_client)
+    application.state.player_administration_service = PlayerAdministrationService(
+        palworld_rest_client,
+        session_factory,
+    )
     if resolved_settings.environment is AppEnvironment.PRODUCTION:
         palworld_service = create_palworld_service(resolved_settings)
         palworld_health_check = create_palworld_health_check(

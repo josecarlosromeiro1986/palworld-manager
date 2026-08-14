@@ -9,10 +9,22 @@ app = FastAPI(
 )
 
 announcements: list[str] = []
+kicks: list[tuple[str, str | None]] = []
+bans: list[tuple[str, str | None]] = []
+unbans: list[str] = []
 
 
 class Announcement(BaseModel):
     message: str
+
+
+class PlayerAction(BaseModel):
+    userid: str
+    message: str | None = None
+
+
+class PlayerReference(BaseModel):
+    userid: str
 
 
 @app.get("/health", include_in_schema=False)
@@ -53,4 +65,22 @@ def palworld_players() -> dict[str, list[dict[str, str | float | int]]]:
 @app.post("/v1/api/announce", include_in_schema=False)
 def palworld_announce(payload: Announcement) -> dict[str, str]:
     announcements.append(payload.message)
+    return {"status": "ok"}
+
+
+@app.post("/v1/api/kick", include_in_schema=False)
+def palworld_kick(payload: PlayerAction) -> dict[str, str]:
+    kicks.append((payload.userid, payload.message))
+    return {"status": "ok"}
+
+
+@app.post("/v1/api/ban", include_in_schema=False)
+def palworld_ban(payload: PlayerAction) -> dict[str, str]:
+    bans.append((payload.userid, payload.message))
+    return {"status": "ok"}
+
+
+@app.post("/v1/api/unban", include_in_schema=False)
+def palworld_unban(payload: PlayerReference) -> dict[str, str]:
+    unbans.append(payload.userid)
     return {"status": "ok"}

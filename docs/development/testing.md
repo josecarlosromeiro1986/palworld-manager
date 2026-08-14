@@ -45,4 +45,6 @@ Os testes de logs validam os argumentos read-only e allowlisted do `journalctl`,
 
 Os testes da REST API administrativa validam os campos oficiais tipados de jogadores, Basic Auth, timeout, servidor offline, indisponibilidade, autenticação, respostas inválidas e falhas inesperadas sem abrir rede nem expor detalhes internos. A integração web confirma que abrir ou reler a página não consulta jogadores, que somente o POST manual atualiza o cache em memória, que uma falha preserva o último snapshot válido e que anúncios exigem CSRF e repetição literal da mensagem. Sucesso e falha do anúncio são verificados na auditoria.
 
+Kick, Ban e Unban têm testes dos endpoints e payloads oficiais exatos, fake sem rede, CSRF, modal compartilhado, motivo opcional apenas para Kick e motivo obrigatório para Ban/Unban. A integração verifica sucesso e falha segura tanto em `ban_history` quanto em `audit_events`, incluindo alvo, `userId`, administrador, motivo e resultado.
+
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

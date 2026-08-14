@@ -347,6 +347,46 @@ def test_official_client_sends_exact_free_text_announcement() -> None:
     assert transport.headers["Content-Type"] == "application/json"
 
 
+def test_official_client_uses_only_documented_player_action_contracts() -> None:
+    transport = RecordingTransport(HttpResponse(200, b"{}"))
+    client = OfficialPalworldRestClient(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=transport,
+    )
+
+    client.kick("steam_00000000000000000")
+    assert transport.url == "http://127.0.0.1:8212/v1/api/kick"
+    assert json.loads(transport.body or b"") == {"userid": "steam_00000000000000000"}
+
+    client.ban("steam_00000000000000000", "Conduta inadequada")
+    assert transport.url == "http://127.0.0.1:8212/v1/api/ban"
+    assert json.loads(transport.body or b"") == {
+        "userid": "steam_00000000000000000",
+        "message": "Conduta inadequada",
+    }
+
+    client.unban("steam_00000000000000000")
+    assert transport.url == "http://127.0.0.1:8212/v1/api/unban"
+    assert json.loads(transport.body or b"") == {"userid": "steam_00000000000000000"}
+    assert transport.headers is not None
+    assert transport.headers["Content-Type"] == "application/json"
+
+
+@pytest.mark.parametrize("user_id", ["", "   ", "steam\ninvalid"])
+def test_official_client_rejects_invalid_player_user_id(user_id: str) -> None:
+    client = OfficialPalworldRestClient(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=RecordingTransport(HttpResponse(200, b"{}")),
+    )
+
+    with pytest.raises(ValueError, match="User ID"):
+        client.kick(user_id)
+
+
 @pytest.mark.parametrize("environment", [AppEnvironment.DEVELOPMENT, AppEnvironment.TEST])
 def test_non_production_environments_use_complete_administrative_fake(
     environment: AppEnvironment,
@@ -358,3 +398,9 @@ def test_non_production_environments_use_complete_administrative_fake(
     assert client.players() == ()
     client.announce("Mensagem simulada")
     assert client.announcements == ["Mensagem simulada"]
+    client.kick("steam-kick")
+    client.ban("steam-ban", "Motivo livre")
+    client.unban("steam-unban")
+    assert client.kicks == [("steam-kick", None)]
+    assert client.bans == [("steam-ban", "Motivo livre")]
+    assert client.unbans == ["steam-unban"]
