@@ -36,7 +36,7 @@ Nenhuma retenção automática é aplicada a essas cópias pré-save nesta etapa
 
 ## Interface, Restart e auditoria
 
-Leitura e salvamento exigem sessão; a gravação também exige CSRF e o modal compartilhado. Após uma mudança, a página informa que o Restart é necessário e oferece o job de Restart já existente, com uma nova confirmação antes de executá-lo.
+Leitura e salvamento exigem sessão; a gravação também exige CSRF e o modal compartilhado. Após uma mudança, a página informa que o Restart é necessário e oferece o job de Restart já existente, com uma nova confirmação antes de executá-lo. Enquanto o job estiver pendente ou falhar, a ação permanece disponível; quando ele conclui com sucesso e o servidor volta online, o botão é removido e substituído pela confirmação de que as configurações foram aplicadas.
 
 Cada tentativa de salvamento validada cria um `audit_event` `PALWORLD_SETTINGS_UPDATE`. O evento registra administrador, resultado, versão do schema, nomes das chaves alteradas e nome da cópia pré-save. Valores de configuração, conteúdo do arquivo, caminhos absolutos e senhas não são persistidos na auditoria.
 

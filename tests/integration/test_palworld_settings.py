@@ -117,6 +117,15 @@ def test_save_requires_csrf_creates_backup_and_audits_only_field_names(
     assert 'hx-post="/dashboard/lifecycle/RESTART"' in success.text
     assert 'name="confirmation" value="RESTART"' in success.text
     assert 'data-confirm-title="Reiniciar servidor agora?"' in success.text
+    assert "data-settings-restart-panel" in success.text
+    assert "data-settings-restart-required" in success.text
+    assert "data-settings-restart-complete hidden" in success.text
+    script = settings_context.client.get("/static/dist/app.js")
+    assert script.status_code == 200
+    assert "updateSettingsRestartPanels" in script.text
+    assert '[data-job-status="SUCCEEDED"]' in script.text
+    assert "required.hidden = true" in script.text
+    assert "complete.hidden = false" in script.text
     assert len(settings_context.storage.backups) == 1
     backup_name, backup_content = settings_context.storage.backups[0]
     assert backup_name in success.text

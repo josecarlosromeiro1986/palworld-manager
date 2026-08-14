@@ -119,24 +119,30 @@
   </form>
 
   {% if save_result and save_result.changed_fields %}
-    <section class="mt-5 rounded-lg border border-warning/40 bg-warning/5 p-4" aria-labelledby="restart-after-settings-title">
-      <h2 id="restart-after-settings-title" class="text-sm font-semibold text-warning">Restart necessário</h2>
-      <p class="mt-1 text-xs text-muted">O arquivo já foi salvo e protegido por backup. Reinicie quando for seguro desconectar os jogadores.</p>
-      <form
-        class="mt-3"
-        hx-post="/dashboard/lifecycle/RESTART"
-        hx-target="#settings-restart-feedback"
-        hx-swap="innerHTML"
-        data-confirm
-        data-confirm-title="Reiniciar servidor agora?"
-        data-confirm-message="As novas configurações serão aplicadas durante o Restart."
-        data-confirm-button="Reiniciar"
-        data-confirm-tone="warning"
-      >
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="confirmation" value="RESTART">
-        <button type="submit" class="min-h-10 rounded-md border border-warning/40 bg-warning/10 px-4 text-sm font-semibold text-warning hover:bg-warning/20">Reiniciar Palworld</button>
-      </form>
+    <section data-settings-restart-panel class="mt-5 rounded-lg border border-warning/40 bg-warning/5 p-4" aria-label="Aplicação das configurações salvas">
+      <div data-settings-restart-required>
+        <h2 id="restart-after-settings-title" class="text-sm font-semibold text-warning">Restart necessário</h2>
+        <p class="mt-1 text-xs text-muted">O arquivo já foi salvo e protegido por backup. Reinicie quando for seguro desconectar os jogadores.</p>
+        <form
+          class="mt-3"
+          hx-post="/dashboard/lifecycle/RESTART"
+          hx-target="#settings-restart-feedback"
+          hx-swap="innerHTML"
+          data-confirm
+          data-confirm-title="Reiniciar servidor agora?"
+          data-confirm-message="As novas configurações serão aplicadas durante o Restart."
+          data-confirm-button="Reiniciar"
+          data-confirm-tone="warning"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="confirmation" value="RESTART">
+          <button type="submit" class="min-h-10 rounded-md border border-warning/40 bg-warning/10 px-4 text-sm font-semibold text-warning hover:bg-warning/20">Reiniciar Palworld</button>
+        </form>
+      </div>
+      <div data-settings-restart-complete hidden role="status">
+        <h2 class="text-sm font-semibold text-positive">Restart concluído</h2>
+        <p class="mt-1 text-xs text-muted">O servidor voltou online e as configurações salvas foram aplicadas.</p>
+      </div>
       <div id="settings-restart-feedback" class="mt-3" aria-live="polite"></div>
     </section>
   {% endif %}

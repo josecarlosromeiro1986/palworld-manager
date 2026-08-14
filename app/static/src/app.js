@@ -455,6 +455,29 @@ function initializePlayersPage(root = document) {
 
 initializePlayersPage();
 
+function updateSettingsRestartPanels() {
+  document.querySelectorAll("[data-settings-restart-panel]").forEach((panel) => {
+    const succeeded = panel.querySelector('[data-job-status="SUCCEEDED"]');
+    if (!succeeded) {
+      return;
+    }
+    const required = panel.querySelector("[data-settings-restart-required]");
+    const complete = panel.querySelector("[data-settings-restart-complete]");
+    const feedback = panel.querySelector("#settings-restart-feedback");
+    if (required) {
+      required.hidden = true;
+    }
+    if (complete) {
+      complete.hidden = false;
+    }
+    if (feedback) {
+      feedback.hidden = true;
+    }
+  });
+}
+
+document.body.addEventListener("htmx:afterSwap", updateSettingsRestartPanels);
+
 function initializeConfirmationModal(root = document) {
   const modal = root.querySelector("[data-confirmation-modal]");
   const title = modal?.querySelector("[data-confirmation-modal-title]");
