@@ -60,6 +60,16 @@ externos. Falhas antes e depois da transferência verificam limpeza restrita,
 preservação local, auditoria, `DRIVE_FAILED` e logs sem detalhes internos. As
 rotas de status, upload, download e exclusão exigem autenticação e CSRF.
 
+Os testes de Restore remoto conectam o fake integral do Drive ao mesmo executor
+seguro do Restore local. Cobrem sucesso sem publicar cópia `LOCAL`, confirmação
+literal, autenticação, CSRF, chave compartilhada contra Restore concorrente,
+maintenance lock e recovery `INTERRUPTED` sem requeue. SHA-256 externo
+divergente, tar.gz inválido, staging externo ou com symlink e falha anterior ao
+Stop não criam backup preventivo nem alteram o mundo. Falha posterior à
+aplicação exige revisão manual e preserva o backup preventivo e o remoto. Em
+todos os resultados, apenas temporários reconhecidos são limpos e Manager,
+secrets e saves de jogadores opacos seguem as garantias do fluxo local.
+
 Os testes de logs validam os argumentos read-only e allowlisted do `journalctl`, parsing, classificação, proteção de secrets, fake completo, autenticação, histórico de 100/500/1000 linhas, filtros e ausência de persistência no SQLite. O aceite de reconexão abre o SSE com o cursor do histórico, simula nova conexão com `Last-Event-ID` e confirma que a entrega continua no evento seguinte sem repetir o último recebido.
 
 Os testes da REST API administrativa validam os campos oficiais tipados de jogadores, Basic Auth, timeout, servidor offline, indisponibilidade, autenticação, respostas inválidas e falhas inesperadas sem abrir rede nem expor detalhes internos. A integração web confirma que abrir ou reler a página não consulta jogadores, que somente o POST manual atualiza o cache em memória, que uma falha preserva o último snapshot válido e que anúncios exigem CSRF e repetição literal da mensagem. Sucesso e falha do anúncio são verificados na auditoria.

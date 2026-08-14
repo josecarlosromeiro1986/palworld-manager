@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backup/Restore local e Google Drive via rclone estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos e Restore local/remoto estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -48,6 +48,12 @@ automático posterior; backups manuais e preventivos permanecem locais por
 padrão e podem ser enviados pelo painel. Status, quota, upload, download para a
 área local e exclusão remota são jobs do worker. Development e test usam um fake
 completo e não executam rclone nem acessam rede.
+
+Backups remotos válidos também oferecem **Restore remoto**. A web exige
+`RESTAURAR` e apenas cria o job; o worker baixa para staging, valida SHA-256,
+tar.gz, manifest e payload antes de criar o backup preventivo e tocar no
+Palworld. O download não vira uma cópia local permanente, e o artefato remoto é
+preservado independentemente do resultado.
 
 ## Documentação
 

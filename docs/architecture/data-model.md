@@ -94,6 +94,12 @@ namespace fixo; remote, paths estruturais e credenciais não são persistidos. A
 retenção e a exclusão remotas só reconhecem linhas `DRIVE` e `VALID` com formato
 gerenciado.
 
+O Restore remoto referencia diretamente uma dessas linhas `DRIVE`/`VALID` e
+preserva sua identidade, tamanho e SHA-256 no resultado seguro do job. O
+download de staging não cria uma linha `LOCAL`, não altera a retenção local e
+não remove nem muda o status do registro remoto. Somente um download solicitado
+explicitamente como cópia local cria o par `LOCAL` correspondente.
+
 ### `ban_history`
 
 Mantém o histórico administrativo implementado de Kick, Ban e Unban, incluindo ação, alvo, `userId`, administrador, motivo, resultado e timestamp. Complementa a auditoria, mas não substitui o estado mantido pelo Palworld. A página de jogadores exibe até 50 registros recentes; filtros e retenção geral pertencem à auditoria completa da Etapa 26.

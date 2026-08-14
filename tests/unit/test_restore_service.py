@@ -1,11 +1,14 @@
 import stat
 from ipaddress import ip_address
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from pydantic import SecretStr
 
+from app.backups.service import LocalBackupService
 from app.config import AppEnvironment, Settings
+from app.db.models import BackupRecord
 from app.palworld_settings.storage import (
     FakePalworldSettingsStorage,
     SettingsWriteResult,
@@ -14,12 +17,59 @@ from app.palworld_settings.storage import (
 from app.restores.service import (
     FakeRestoreTarget,
     FilesystemRestoreTarget,
+    LocalRestoreService,
     PreparedRestore,
     RestoreValidationError,
     create_restore_target,
     merge_generic_ini,
     merge_palworld_settings,
 )
+
+
+def _remote_record() -> BackupRecord:
+    filename = f"palworld-manager-backup-20260814T120000000000Z-j000123-{'a' * 32}.tar.gz"
+    return BackupRecord(
+        filename=filename,
+        location="DRIVE",
+        status="VALID",
+        sha256="b" * 64,
+        size_bytes=16,
+        storage_path=filename,
+    )
+
+
+def test_remote_restore_rejects_download_outside_controlled_staging(tmp_path: Path) -> None:
+    outside = tmp_path / "outside.tar.gz"
+    outside.write_bytes(b"external-content")
+    service = LocalRestoreService(
+        manager_database=tmp_path / "manager.db",
+        backup_service=Mock(spec=LocalBackupService),
+        target=FakeRestoreTarget(FakePalworldSettingsStorage()),
+    )
+
+    with pytest.raises(RestoreValidationError) as captured:
+        service.prepare_remote(_remote_record(), outside, job_id=123)
+
+    assert captured.value.category == "REMOTE_TEMP_INVALID"
+
+
+def test_remote_restore_rejects_symlinked_download_in_controlled_staging(tmp_path: Path) -> None:
+    outside = tmp_path / "outside.tar.gz"
+    outside.write_bytes(b"external-content")
+    temporary = tmp_path / "tmp/drive/job-000123-test"
+    temporary.mkdir(parents=True)
+    linked = temporary / "source.tar.gz"
+    linked.symlink_to(outside)
+    service = LocalRestoreService(
+        manager_database=tmp_path / "manager.db",
+        backup_service=Mock(spec=LocalBackupService),
+        target=FakeRestoreTarget(FakePalworldSettingsStorage()),
+    )
+
+    with pytest.raises(RestoreValidationError) as captured:
+        service.prepare_remote(_remote_record(), linked, job_id=123)
+
+    assert captured.value.category == "REMOTE_TEMP_INVALID"
 
 
 def test_palworld_settings_merge_restores_safe_fields_and_preserves_secrets_and_unknowns() -> None:

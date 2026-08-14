@@ -1,6 +1,6 @@
 # Google Drive com rclone
 
-> Status: Implementado para backup remoto; Restore remoto permanece na Etapa 21.
+> Status: Implementado para backup e Restore remotos.
 
 rclone conecta o Manager ao Google Drive. A configuração inicial e a autenticação do remote são feitas manualmente no terminal, sob o mesmo usuário `palmanager` que executa o worker; credenciais não são exibidas nem armazenadas no SQLite. `RCLONE=/usr/bin/rclone` define o executável estrutural e `RCLONE_REMOTE=palworld-manager` define o nome validado do remote. O namespace interno é fixo em `Palworld Manager/Backups/` e não é editável no painel.
 
@@ -33,9 +33,17 @@ tamanho devem coincidir com o registro local antes de criar o registro `DRIVE`.
 Saída inválida, timeout, autenticação ausente ou indisponibilidade são reduzidos
 a categorias seguras, sem stderr, configuração ou credenciais nos registros.
 
-Downloads usam staging em `tmp/drive/`, conferem primeiro o SHA-256 registrado e
-depois reutilizam a validação integral do backup local. O resultado é somente
-uma cópia local válida; a Etapa 20 não conecta esse download ao Restore.
+Downloads solicitados como cópia local usam staging em `tmp/drive/`, conferem
+primeiro o SHA-256 registrado e depois reutilizam a validação integral do backup
+local. Somente esse fluxo publica uma nova cópia `LOCAL` válida.
+
+O Restore remoto usa um job `REMOTE_RESTORE` separado dos jobs comuns de
+download. Ele baixa o mesmo artefato para staging controlado e, sem publicar uma
+cópia local, entrega o arquivo validado ao pipeline completo de Restore. O
+SHA-256 externo, tar.gz, manifest, hashes individuais, payload e configurações
+combinadas são conferidos antes do backup preventivo e do Stop. Ao fim da
+preparação ou diante de falha conhecida, somente o staging do job é removido; o
+registro e o objeto remoto não são alterados.
 
 Retenção e exclusão chamam `deletefile` apenas para um nome previamente
 registrado como `DRIVE` e `VALID`, dentro do namespace fixo e compatível com o
@@ -49,6 +57,5 @@ Development e test usam `FakeGoogleDriveStorage`, sem processo rclone, rede ou
 credencial real. O fake cobre quota, listagem, upload, download, exclusão,
 cancelamento e falhas controladas.
 
-O download temporário conectado ao fluxo de Restore permanece exclusivo da
-Etapa 21. Consulte [backup e restore](../operations/backup-restore.md) e
+Consulte [backup e restore](../operations/backup-restore.md) e
 [SPECIFICATION.md](../../SPECIFICATION.md).

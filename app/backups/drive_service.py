@@ -2,6 +2,7 @@ import os
 import shutil
 import tempfile
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
@@ -21,6 +22,13 @@ from app.integrations.google_drive import (
 )
 
 DRIVE_TEMPORARY_DIRECTORY_NAME: Final = "tmp/drive"
+
+
+@dataclass(frozen=True, slots=True)
+class TemporaryDriveDownload:
+    working_directory: Path
+    archive_path: Path
+    backup_id: str
 
 
 class DriveTransferService:
@@ -85,57 +93,34 @@ class DriveTransferService:
         job_id: int,
         cancel_requested: Callable[[], bool],
     ) -> BackupArtifact:
-        if (
-            record.location != "DRIVE"
-            or record.status != "VALID"
-            or record.sha256 is None
-            or record.size_bytes is None
-            or BACKUP_FILENAME_PATTERN.fullmatch(record.filename) is None
-            or record.storage_path != record.filename
-        ):
-            raise GoogleDriveError("registro remoto inválido")
+        self._validate_remote_record(record)
         self._backup_directory.mkdir(mode=0o750, parents=True, exist_ok=True)
-        self._temporary_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         self._validate_controlled_directory(self._backup_directory)
-        self._validate_controlled_directory(self._temporary_directory)
-        working_directory = Path(
-            tempfile.mkdtemp(prefix=f"job-{job_id:06d}-", dir=self._temporary_directory)
-        )
-        partial = working_directory / f"{record.filename}.partial"
         final = self._backup_directory / record.filename
+        if final.exists() or final.is_symlink():
+            raise GoogleDriveError("o backup local já existe")
+        temporary = self.download_temporary(
+            record,
+            job_id=job_id,
+            cancel_requested=cancel_requested,
+        )
         published = False
         try:
             if final.exists() or final.is_symlink():
                 raise GoogleDriveError("o backup local já existe")
-            self._storage.download(
-                record.filename,
-                partial,
-                expected_sha256=record.sha256,
-                cancel_requested=cancel_requested,
-            )
-            if (
-                partial.is_symlink()
-                or not partial.is_file()
-                or partial.stat().st_size != record.size_bytes
-                or sha256_file(partial) != record.sha256
-            ):
-                raise GoogleDriveError("download remoto inválido")
-            manifest = validate_archive(partial)
-            backup_id = manifest.get("backup_id")
-            if not isinstance(backup_id, str):
-                raise BackupValidationError("identificador do manifest inválido")
             if cancel_requested():
                 from app.integrations.google_drive import GoogleDriveCancelled
 
                 raise GoogleDriveCancelled("transferência cancelada")
-            os.replace(partial, final)
+            os.replace(temporary.archive_path, final)
             os.chmod(final, 0o640)
             published = True
             validate_archive(final)
             if sha256_file(final) != record.sha256:
                 raise GoogleDriveError("SHA-256 mudou durante a publicação local")
+            assert record.sha256 is not None and record.size_bytes is not None
             return BackupArtifact(
-                backup_id=backup_id,
+                backup_id=temporary.backup_id,
                 filename=record.filename,
                 storage_path=f"{BACKUP_DIRECTORY_NAME}/{record.filename}",
                 sha256=record.sha256,
@@ -149,16 +134,53 @@ class DriveTransferService:
                 )
             raise
         finally:
+            self.cleanup_temporary_download(temporary)
+
+    def download_temporary(
+        self,
+        record: BackupRecord,
+        *,
+        job_id: int,
+        cancel_requested: Callable[[], bool],
+    ) -> TemporaryDriveDownload:
+        self._validate_remote_record(record)
+        self._temporary_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self._validate_controlled_directory(self._temporary_directory)
+        working_directory = Path(
+            tempfile.mkdtemp(prefix=f"job-{job_id:06d}-", dir=self._temporary_directory)
+        )
+        archive_path = working_directory / "source.tar.gz"
+        try:
+            assert record.sha256 is not None and record.size_bytes is not None
+            self._storage.download(
+                record.filename,
+                archive_path,
+                expected_sha256=record.sha256,
+                cancel_requested=cancel_requested,
+            )
+            if (
+                archive_path.is_symlink()
+                or not archive_path.is_file()
+                or archive_path.stat().st_size != record.size_bytes
+                or sha256_file(archive_path) != record.sha256
+            ):
+                raise GoogleDriveError("download remoto inválido")
+            manifest = validate_archive(archive_path)
+            backup_id = manifest.get("backup_id")
+            if not isinstance(backup_id, str):
+                raise BackupValidationError("identificador do manifest inválido")
+            return TemporaryDriveDownload(working_directory, archive_path, backup_id)
+        except Exception:
             shutil.rmtree(working_directory, ignore_errors=True)
+            raise
+
+    @staticmethod
+    def cleanup_temporary_download(download: TemporaryDriveDownload | None) -> None:
+        if download is not None:
+            shutil.rmtree(download.working_directory, ignore_errors=True)
 
     def delete(self, record: BackupRecord) -> None:
-        if (
-            record.location != "DRIVE"
-            or record.status != "VALID"
-            or record.storage_path != record.filename
-            or BACKUP_FILENAME_PATTERN.fullmatch(record.filename) is None
-        ):
-            raise GoogleDriveError("registro remoto não gerenciado")
+        self._validate_remote_record(record)
         self._storage.delete(record.filename)
 
     def remove_uploaded_artifact(self, filename: str) -> None:
@@ -197,3 +219,16 @@ class DriveTransferService:
                 raise BackupValidationError("diretório do Drive contém link simbólico")
         if not directory.resolve().is_relative_to(self._data_directory):
             raise BackupValidationError("diretório do Drive escapou da área do Manager")
+
+    @staticmethod
+    def _validate_remote_record(record: BackupRecord) -> None:
+        if (
+            record.location != "DRIVE"
+            or record.status != "VALID"
+            or record.sha256 is None
+            or record.size_bytes is None
+            or record.size_bytes <= 0
+            or record.storage_path != record.filename
+            or BACKUP_FILENAME_PATTERN.fullmatch(record.filename) is None
+        ):
+            raise GoogleDriveError("registro remoto não gerenciado")

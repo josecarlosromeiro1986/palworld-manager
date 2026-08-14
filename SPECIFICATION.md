@@ -495,6 +495,15 @@ Arquivo atual ausente, ilegível, inválido ou impossível de combinar com
 segurança faz o job falhar antes do Stop e antes de qualquer alteração no
 mundo. A auditoria registra somente uma categoria segura de falha, sem valores.
 
+O Restore remoto usa um job persistente `REMOTE_RESTORE` e a mesma chave de
+coordenação dos restores locais. Sob o maintenance lock, o worker baixa o
+artefato registrado como `DRIVE` e `VALID` para staging controlado, confere
+tamanho e o SHA-256 externo antes de abrir o `.tar.gz` e executa toda a
+validação interna antes do backup preventivo e do Stop. O download temporário
+não cria um `backup_record` local, não participa da retenção local e é removido
+quando a preparação termina ou falha. O registro e o arquivo remoto permanecem
+intactos tanto no sucesso quanto na falha do Restore.
+
 ## 28. Atualizações do Palworld
 
 Somente manual, com botão **Verificar atualizações**. Mostrar versão instalada/disponível e data quando confiável. Sem changelog de terceiros.

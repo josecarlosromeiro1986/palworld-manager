@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Final, Protocol
 
+from app.backups.drive_service import DRIVE_TEMPORARY_DIRECTORY_NAME
 from app.backups.manifest import (
     MANIFEST_FILENAME,
     BackupValidationError,
@@ -102,12 +103,35 @@ class LocalRestoreService:
     def prepare(self, record: BackupRecord, *, job_id: int) -> PreparedRestore:
         if job_id <= 0:
             raise ValueError("identificador do job de Restore inválido")
-        self._validate_record(record)
+        self._validate_record(record, location="LOCAL")
         source = self._backup_service.resolve_managed_artifact(record.storage_path)
         if source is None or not source.is_file() or source.is_symlink():
             raise RestoreValidationError(
                 "BACKUP_UNAVAILABLE", "O backup local não está disponível."
             )
+        return self._prepare_archive(record, source=source, job_id=job_id)
+
+    def prepare_remote(
+        self,
+        record: BackupRecord,
+        archive_path: Path,
+        *,
+        job_id: int,
+    ) -> PreparedRestore:
+        if job_id <= 0:
+            raise ValueError("identificador do job de Restore inválido")
+        self._validate_record(record, location="DRIVE")
+        remote_temporary = self._data_directory / DRIVE_TEMPORARY_DIRECTORY_NAME
+        self._validate_downloaded_archive(archive_path, remote_temporary)
+        return self._prepare_archive(record, source=archive_path, job_id=job_id)
+
+    def _prepare_archive(
+        self,
+        record: BackupRecord,
+        *,
+        source: Path,
+        job_id: int,
+    ) -> PreparedRestore:
 
         self._temporary_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         self._validate_controlled_directory(self._temporary_directory)
@@ -168,9 +192,9 @@ class LocalRestoreService:
         if prepared is not None:
             shutil.rmtree(prepared.working_directory, ignore_errors=True)
 
-    def _validate_record(self, record: BackupRecord) -> None:
+    def _validate_record(self, record: BackupRecord, *, location: str) -> None:
         if (
-            record.location != "LOCAL"
+            record.location != location
             or record.status != "VALID"
             or record.sha256 is None
             or len(record.sha256) != 64
@@ -178,10 +202,39 @@ class LocalRestoreService:
             or record.size_bytes <= 0
             or Path(record.storage_path).name != record.filename
             or any(character not in "0123456789abcdef" for character in record.sha256)
+            or (
+                record.storage_path != record.filename
+                if location == "DRIVE"
+                else Path(record.storage_path).parent.as_posix() != "backups"
+            )
         ):
             raise RestoreValidationError(
                 "BACKUP_RECORD_INVALID",
-                "O registro selecionado não representa um backup local válido.",
+                "O registro selecionado não representa um backup válido.",
+            )
+
+    def _validate_downloaded_archive(self, archive_path: Path, temporary_root: Path) -> None:
+        try:
+            self._validate_controlled_directory(temporary_root)
+            relative = archive_path.relative_to(temporary_root)
+        except (OSError, ValueError, RestoreValidationError) as error:
+            raise RestoreValidationError(
+                "REMOTE_TEMP_INVALID", "O download temporário do backup é inválido."
+            ) from error
+        current = temporary_root
+        for part in relative.parts:
+            current /= part
+            if current.is_symlink():
+                raise RestoreValidationError(
+                    "REMOTE_TEMP_INVALID", "O download temporário do backup é inválido."
+                )
+        if (
+            archive_path.is_symlink()
+            or not archive_path.is_file()
+            or not archive_path.resolve().is_relative_to(temporary_root.resolve())
+        ):
+            raise RestoreValidationError(
+                "REMOTE_TEMP_INVALID", "O download temporário do backup é inválido."
             )
 
     def _validate_controlled_directory(self, directory: Path) -> None:

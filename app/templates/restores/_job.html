@@ -3,7 +3,7 @@
 {% endif %}
 {% if restore_job %}
   {% set terminal = restore_job.status in ["SUCCEEDED", "FAILED", "CANCELLED", "INTERRUPTED"] %}
-  {% set step_labels = {"WAITING": "aguardando worker e maintenance lock", "VALIDATING": "validando SHA-256, manifest e payload", "PREVENTIVE_BACKUP": "criando backup preventivo", "PREVENTIVE_SAFE_SAVE": "solicitando salvamento seguro preventivo", "PREVENTIVE_COPYING_WORLD": "copiando mundo para o backup preventivo", "PREVENTIVE_COPYING_DATABASE": "copiando SQLite para o backup preventivo", "PREVENTIVE_BUILDING_MANIFEST": "criando manifest preventivo", "PREVENTIVE_COMPRESSING": "compactando backup preventivo", "PREVENTIVE_VALIDATING": "validando backup preventivo", "PREVENTIVE_PUBLISHING": "publicando backup preventivo", "STOPPING": "parando o Palworld", "RESTORING": "aplicando mundo e configurações", "STARTING": "iniciando o Palworld", "VERIFYING": "validando saúde e logs críticos", "COMPLETED": "concluído", "FAILED": "falhou", "INTERRUPTED": "interrompido"} %}
+  {% set step_labels = {"WAITING": "aguardando worker e maintenance lock", "DOWNLOADING_REMOTE": "baixando backup remoto para staging", "VALIDATING": "validando SHA-256, manifest e payload", "PREVENTIVE_BACKUP": "criando backup preventivo", "PREVENTIVE_SAFE_SAVE": "solicitando salvamento seguro preventivo", "PREVENTIVE_COPYING_WORLD": "copiando mundo para o backup preventivo", "PREVENTIVE_COPYING_DATABASE": "copiando SQLite para o backup preventivo", "PREVENTIVE_BUILDING_MANIFEST": "criando manifest preventivo", "PREVENTIVE_COMPRESSING": "compactando backup preventivo", "PREVENTIVE_VALIDATING": "validando backup preventivo", "PREVENTIVE_PUBLISHING": "publicando backup preventivo", "STOPPING": "parando o Palworld", "RESTORING": "aplicando mundo e configurações", "STARTING": "iniciando o Palworld", "VERIFYING": "validando saúde e logs críticos", "COMPLETED": "concluído", "FAILED": "falhou", "INTERRUPTED": "interrompido"} %}
   <article
     data-restore-job
     {% if not terminal %}hx-get="/backups/restore/jobs/{{ restore_job.id }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}
@@ -11,7 +11,7 @@
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
-        <p class="text-sm font-medium text-ink">Restore local · Job #{{ restore_job.id }}</p>
+        <p class="text-sm font-medium text-ink">{% if restore_job.source_location == "DRIVE" %}Restore remoto{% else %}Restore local{% endif %} · Job #{{ restore_job.id }}</p>
         <p class="mt-1 text-xs text-muted">{{ restore_job.source_filename }}</p>
         <p class="mt-1 text-xs text-muted">{{ step_labels.get(restore_job.step, restore_job.step) }} · {{ restore_job.progress }}%</p>
       </div>

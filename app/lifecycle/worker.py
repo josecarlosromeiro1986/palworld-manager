@@ -14,7 +14,11 @@ from app.lifecycle.jobs import (
     lifecycle_job_kind,
 )
 from app.lifecycle.service import LifecycleAction, LifecycleExecutor
-from app.restores.jobs import LOCAL_RESTORE_JOB_KIND, LocalRestoreJobExecutor
+from app.restores.jobs import (
+    REMOTE_RESTORE_JOB_KIND,
+    RESTORE_JOB_KINDS,
+    LocalRestoreJobExecutor,
+)
 from app.shutdown.jobs import (
     ShutdownJobKind,
     execute_assisted_shutdown_job,
@@ -62,7 +66,7 @@ class LifecycleJobWorker:
             else ()
         )
         backups = (LOCAL_BACKUP_JOB_KIND,) if self._backup_executor is not None else ()
-        restores = (LOCAL_RESTORE_JOB_KIND,) if self._restore_executor is not None else ()
+        restores = RESTORE_JOB_KINDS if self._restore_executor is not None else ()
         drive = DRIVE_JOB_KINDS if self._drive_executor is not None else ()
         return lifecycle + shutdown + backups + restores + drive
 
@@ -82,11 +86,15 @@ class LifecycleJobWorker:
                 assert self._backup_executor is not None
                 self._append_log(job_log_path, "Salvamento seguro e backup local iniciados.")
                 self._backup_executor.execute(job_id)
-            elif job_kind == LOCAL_RESTORE_JOB_KIND:
+            elif job_kind in RESTORE_JOB_KINDS:
                 assert self._restore_executor is not None
                 self._append_log(
                     job_log_path,
-                    "Validação integral e backup preventivo do Restore iniciados.",
+                    (
+                        "Download e validação do Restore remoto iniciados."
+                        if job_kind == REMOTE_RESTORE_JOB_KIND
+                        else "Validação integral e backup preventivo do Restore iniciados."
+                    ),
                 )
                 self._restore_executor.execute(job_id)
             elif job_kind in DRIVE_JOB_KINDS:
@@ -110,7 +118,7 @@ class LifecycleJobWorker:
                     execute_lifecycle_job(session, job, self._executor)
         except Exception:
             self._append_log(job_log_path, "Execução falhou de forma inesperada.")
-            if job_kind in {LOCAL_BACKUP_JOB_KIND, LOCAL_RESTORE_JOB_KIND, *DRIVE_JOB_KINDS}:
+            if job_kind in {LOCAL_BACKUP_JOB_KIND, *RESTORE_JOB_KINDS, *DRIVE_JOB_KINDS}:
                 pass
             elif job_kind in {kind.value for kind in ShutdownJobKind}:
                 fail_shutdown_job(self._session_factory, job_id)

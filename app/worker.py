@@ -122,6 +122,7 @@ def run() -> None:
                 backup_service,
                 lifecycle_executor,
                 create_palworld_log_source(settings),
+                drive_service,
             ),
             drive_executor=DriveJobExecutor(session_factory, drive_service),
         )

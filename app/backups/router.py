@@ -27,10 +27,11 @@ from app.db.models import AppSetting, BackupRecord, Job
 from app.jobs.logs import JobLogStore
 from app.jobs.service import TERMINAL_JOB_STATUSES
 from app.restores.jobs import (
-    LOCAL_RESTORE_JOB_KIND,
+    RESTORE_JOB_KINDS,
     RestoreJobConflictError,
     RestoreRequestError,
     enqueue_local_restore,
+    enqueue_remote_restore,
     latest_restore_job,
     restore_job_view,
 )
@@ -262,7 +263,41 @@ def request_restore(
             return _restore_job_response(
                 request,
                 latest_restore_job(session),
-                error="Já existe um Restore local em andamento.",
+                error="Já existe um Restore em andamento.",
+                status_code=409,
+            )
+
+
+@router.post(
+    "/drive/{backup_record_id}/restore",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+def request_remote_restore(
+    request: Request,
+    backup_record_id: int,
+    confirmation: Annotated[str, Form()],
+    csrf_token: Annotated[str | None, Form()] = None,
+) -> Response:
+    if not _valid_session_csrf(request, csrf_token):
+        return PlainTextResponse("Token CSRF inválido.", status_code=403)
+    try:
+        with session_scope(_session_factory(request)) as session:
+            job = enqueue_remote_restore(
+                session,
+                backup_record_id=backup_record_id,
+                confirmation=confirmation,
+                user_id=_principal(request).user_id,
+            )
+            return _restore_job_response(request, job, status_code=202)
+    except RestoreRequestError as error:
+        return _restore_job_response(request, None, error=str(error), status_code=400)
+    except RestoreJobConflictError:
+        with session_scope(_session_factory(request)) as session:
+            return _restore_job_response(
+                request,
+                latest_restore_job(session),
+                error="Já existe um Restore em andamento.",
                 status_code=409,
             )
 
@@ -271,7 +306,7 @@ def request_restore(
 def restore_job_status(request: Request, job_id: int) -> Response:
     with session_scope(_session_factory(request)) as session:
         job = session.get(Job, job_id)
-        if job is None or job.kind != LOCAL_RESTORE_JOB_KIND:
+        if job is None or job.kind not in RESTORE_JOB_KINDS:
             raise HTTPException(status_code=404)
         return _restore_job_response(request, job)
 

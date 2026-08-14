@@ -1,6 +1,6 @@
 # Backup e restore
 
-> Status: Backup e Restore locais e integração com Google Drive implementados. O Restore remoto permanece planejado para a etapa própria.
+> Status: Backup e Restore locais e remotos implementados.
 
 Este documento resume a operação prevista. [SPECIFICATION.md](../../SPECIFICATION.md) contém os requisitos oficiais completos.
 
@@ -141,3 +141,26 @@ alterar o servidor; a auditoria recebe apenas a categoria segura da falha.
 A página **Backups** mostra um formulário por artefato válido, progresso e log controlado do Restore a cada segundo. Ao terminar, atualiza a lista sem refresh manual, exibe o backup preventivo e informa quando revisão humana é necessária. Paths de armazenamento e detalhes internos não são expostos.
 
 Development e test usam `FakeRestoreTarget`, REST, ciclo de vida e logs simulados. Nesses ambientes o worker não lê nem escreve mundo, INIs, systemd ou filesystem estrutural reais do Palworld.
+
+## Restore remoto implementado
+
+Cada registro remoto `DRIVE` e `VALID` oferece no painel um Restore com a mesma
+confirmação literal `RESTAURAR`. FastAPI cria o job `REMOTE_RESTORE`; somente o
+worker executa o download e o restante da operação. `LOCAL_RESTORE` e
+`REMOTE_RESTORE` compartilham a mesma chave de coordenação e o maintenance lock,
+impedindo sobreposição entre si e com outras operações incompatíveis.
+
+O worker baixa para uma área exclusiva em `tmp/drive/`, confere tamanho e
+SHA-256 contra `backup_records` e valida o tar.gz antes de repassar o artefato ao
+pipeline local. Esse pipeline repete a validação externa, confere manifest,
+payload e disaster recovery, combina os INIs atuais e verifica espaço antes de
+criar o backup preventivo e solicitar o Stop. Nenhuma cópia `LOCAL` é criada
+pelo download temporário, portanto ele não altera a retenção local.
+
+O job não é cancelável, assim como o Restore local, e não é retomado depois de
+uma interrupção. Falha antes do Stop remove somente o staging conhecido, não
+toca no mundo e não remove nem invalida o objeto remoto. Falha depois da
+substituição mantém o backup preventivo, preserva o backup remoto, não executa
+rollback automático e exige revisão manual. O escopo restaurado continua sendo
+somente mundo e configurações do Palworld; `manager/` permanece reservado à
+recuperação manual/offline.
