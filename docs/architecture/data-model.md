@@ -73,7 +73,12 @@ A revision `0005_persistent_job_system` adiciona `step`, a tabela singleton `wor
 
 ### `backup_records`
 
-Cataloga backups gerenciados, sua localização, integridade e estado. Relaciona-se aos jobs que os criam, transferem ou restauram, sem guardar o conteúdo do backup no banco.
+Cataloga backups gerenciados, sua localização relativa, integridade e estado. O backup local implementado cria o registro somente após salvar, montar, validar e publicar o arquivo; falhas não deixam registro `VALID`. Cada registro local referencia o job que o criou, usa `location=LOCAL`, `status=VALID`, tamanho, nome gerenciado e path relativo sob `backups/`, sem expor paths estruturais na interface.
+
+Para backups locais válidos, `sha256` representa exclusivamente o hash dos bytes
+do `.tar.gz` final. A integridade interna permanece no `manifest.json`, que lista
+deterministicamente cada arquivo do payload com path relativo, tamanho e hash
+individual; o manifest e o hash externo não entram nessa lista.
 
 ### `ban_history`
 

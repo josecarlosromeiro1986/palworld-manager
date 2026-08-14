@@ -347,6 +347,21 @@ def test_official_client_sends_exact_free_text_announcement() -> None:
     assert transport.headers["Content-Type"] == "application/json"
 
 
+def test_official_client_requests_world_save_with_confirmed_endpoint() -> None:
+    transport = RecordingTransport(HttpResponse(200, b"{}"))
+    client = OfficialPalworldRestClient(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=transport,
+    )
+
+    client.save_world()
+
+    assert transport.url == "http://127.0.0.1:8212/v1/api/save"
+    assert transport.body == b""
+
+
 def test_official_client_uses_only_documented_player_action_contracts() -> None:
     transport = RecordingTransport(HttpResponse(200, b"{}"))
     client = OfficialPalworldRestClient(

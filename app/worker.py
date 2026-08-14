@@ -5,9 +5,14 @@ import socket
 from threading import Event
 from types import FrameType
 
+from app.backups.jobs import LocalBackupJobExecutor
+from app.backups.scheduler import schedule_daily_backup
+from app.backups.service import LocalBackupService
+from app.backups.source import create_backup_payload_source
 from app.config import Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
 from app.db.models import Job
+from app.integrations.palworld_rest import create_palworld_rest_client
 from app.jobs.heartbeat import WorkerHeartbeatPublisher
 from app.jobs.logs import create_job_log_store
 from app.jobs.service import recover_interrupted_jobs
@@ -49,6 +54,16 @@ def run() -> None:
                     "Worker reiniciado; job interrompido e bloqueado para revisão manual.",
                 )
         removed_logs = job_logs.prune()
+        rest_client = create_palworld_rest_client(settings)
+        backup_service = LocalBackupService(
+            manager_database=settings.manager_database,
+            session_factory=session_factory,
+            payload_source=create_backup_payload_source(settings, rest_client),
+        )
+        removed_temporary_backups = backup_service.cleanup_temporary_artifacts()
+        removed_interrupted_backups = backup_service.cleanup_interrupted_artifacts(
+            tuple(job.id for job in interrupted_jobs)
+        )
         assisted_shutdown, forced_shutdown = create_shutdown_executors(settings, session_factory)
         worker = LifecycleJobWorker(
             session_factory,
@@ -57,6 +72,7 @@ def run() -> None:
             assisted_shutdown_executor=assisted_shutdown,
             forced_shutdown_executor=forced_shutdown,
             job_logs=job_logs,
+            backup_executor=LocalBackupJobExecutor(session_factory, backup_service),
         )
         logger.info(
             "Worker iniciado em %s; %d job(s) recuperado(s), %d log(s) expirado(s) removido(s).",
@@ -64,7 +80,19 @@ def run() -> None:
             len(interrupted_jobs),
             removed_logs,
         )
+        if removed_temporary_backups:
+            logger.info(
+                "%d área(s) temporária(s) de backup interrompido removida(s).",
+                removed_temporary_backups,
+            )
+        if removed_interrupted_backups:
+            logger.info(
+                "%d artefato(s) de backup interrompido removido(s).",
+                removed_interrupted_backups,
+            )
         while not shutdown_requested.is_set():
+            with session_scope(session_factory) as session:
+                schedule_daily_backup(session)
             processed = worker.process_next()
             if not processed:
                 shutdown_requested.wait(1.0)

@@ -60,6 +60,18 @@
       <p class="mt-0.5 text-xs text-muted">As ações são executadas como jobs e validadas pelo health check.</p>
     </div>
     <div class="flex flex-wrap gap-2">
+      <form
+        hx-post="/backups"
+        hx-target="#backup-quick-feedback"
+        hx-swap="innerHTML"
+        data-confirm
+        data-confirm-title="Criar backup agora?"
+        data-confirm-message="O worker solicitará o salvamento seguro e validará o backup antes de publicá-lo."
+        data-confirm-button="Criar backup"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="min-h-10 rounded-md border bg-surface-raised px-3 text-sm font-medium text-accent hover:border-current">Backup agora</button>
+      </form>
       {% set lifecycle_actions = [
         ("START", "Iniciar", "Iniciar o servidor Palworld?", "text-positive"),
         ("RESTART", "Reiniciar", "Reiniciar o servidor Palworld?", "text-warning")
@@ -116,6 +128,7 @@
     hx-trigger="load"
     hx-swap="innerHTML"
   ></div>
+  <div id="backup-quick-feedback" class="mt-3" aria-live="polite"></div>
 </section>
 
 <section

@@ -1,6 +1,6 @@
 # REST API do Palworld
 
-> Status: Implementado para health, consulta manual de jogadores, anúncios, Kick, Ban, Unban e comunicação do desligamento assistido.
+> Status: Implementado para health, consulta manual de jogadores, anúncios, Kick, Ban, Unban, salvamento seguro e comunicação do desligamento assistido.
 
 O Palworld Manager usa exclusivamente os endpoints oficiais necessários ao comportamento já implementado:
 
@@ -10,6 +10,7 @@ O Palworld Manager usa exclusivamente os endpoints oficiais necessários ao comp
 - `POST /kick`, com `userid` e `message` opcional, para desconectar um jogador;
 - `POST /ban`, com `userid` e `message`, para banir um jogador;
 - `POST /unban`, somente com `userid`, para remover um Ban.
+- `POST /save`, sem payload, para solicitar o salvamento seguro antes de um backup.
 
 O Manager não lê nem modifica saves para descobrir jogadores offline ou banidos. Como a API oficial de Unban não aceita mensagem, o motivo obrigatório dessa ação permanece somente no histórico administrativo e na auditoria; nenhum campo adicional é inventado no payload remoto.
 
@@ -69,3 +70,4 @@ Os três formulários exigem sessão, CSRF e o modal compartilhado. Sucesso e fa
 - [`POST /kick`](https://docs.palworldgame.com/api/rest-api/kick/)
 - [`POST /ban`](https://docs.palworldgame.com/api/rest-api/ban/)
 - [`POST /unban`](https://docs.palworldgame.com/api/rest-api/unban/)
+- [`POST /save`](https://docs.palworldgame.com/api/rest-api/save/)

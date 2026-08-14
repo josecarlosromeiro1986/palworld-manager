@@ -12,11 +12,11 @@ Compila os assets locais no startup, executa o FastAPI com reload, valida `APP_E
 
 ## `worker`
 
-Executa um processo Python separado, valida a mesma configuração estrutural e não possui servidor HTTP. Ele adquire jobs atomicamente, mantém heartbeat a cada 10 segundos, executa ciclo de vida e desligamento, grava logs no volume `manager-data`, recupera jobs abandonados como `INTERRUPTED` sem retomá-los e coordena operações incompatíveis pelo maintenance lock global. Um segundo processo com lease recente é recusado.
+Executa um processo Python separado, valida a mesma configuração estrutural e não possui servidor HTTP. Ele adquire jobs atomicamente, mantém heartbeat a cada 10 segundos, executa ciclo de vida, desligamento e backup local, grava logs e backups no volume `manager-data`, recupera jobs abandonados como `INTERRUPTED` sem retomá-los e coordena operações incompatíveis pelo maintenance lock global. Um segundo processo com lease recente é recusado. No ambiente de desenvolvimento, o backup usa payload Palworld fake e nunca lê `PALWORLD_DIR` ou `PALWORLD_SETTINGS` reais.
 
 ## `mock-services`
 
-Publica na porta `8090` um serviço simulado com `/health` e os contratos oficiais confirmados `GET /v1/api/info`, `GET /v1/api/players` e `POST /v1/api/announce`. O fake usado diretamente por development e test também permite controlar respostas e falhas sem abrir rede. Contratos de Kick, Ban e Unban não fazem parte desta etapa.
+Publica na porta `8090` um serviço simulado com `/health` e os contratos oficiais confirmados `GET /v1/api/info`, `GET /v1/api/players`, `POST /v1/api/announce`, Kick, Ban, Unban e `POST /v1/api/save`. O fake usado diretamente por development e test também permite controlar respostas e falhas sem abrir rede.
 
 Development e test não dependerão de:
 

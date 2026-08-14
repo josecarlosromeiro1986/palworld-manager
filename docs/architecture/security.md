@@ -36,5 +36,7 @@ A configuração estrutural já é validada com Pydantic Settings no startup de 
 - Normalizar e validar caminhos contra path traversal e acesso por symlink.
 - Ao criar ou extrair `.tar.gz`, rejeitar caminhos absolutos, `..`, links perigosos e conteúdo fora do destino autorizado.
 - Validar formato, tamanho e integridade antes de usar um backup.
+- O backup local implementado lê somente o subtree estrutural de saves, recusa symlinks e entradas não regulares, exclui backups internos e `secrets.env`, redige campos sensíveis dos INIs e exporta apenas configurações operacionais allowlisted do Manager. O SQLite é copiado pelo mecanismo de backup ativo e validado com `integrity_check`.
+- Temporários e arquivos finais de backup ficam sob a área de dados do Manager. A publicação é atômica, o arquivo final usa modo `0640` e cleanup/retenção aceitam somente paths relativos e nomes reconhecidos; arquivos externos são preservados.
 
 Operações destrutivas exigirão confirmações explícitas, locks e auditoria. Uma operação interrompida não será retomada automaticamente. Os requisitos completos estão em [SPECIFICATION.md](../../SPECIFICATION.md), especialmente nas seções de autenticação, jobs, backup e hardening.

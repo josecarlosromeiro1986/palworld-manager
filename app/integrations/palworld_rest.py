@@ -132,6 +132,8 @@ class PalworldRestClient(Protocol):
 
     def announce(self, message: str) -> None: ...
 
+    def save_world(self) -> None: ...
+
     def kick(self, user_id: str, message: str | None = None) -> None: ...
 
     def ban(self, user_id: str, message: str | None = None) -> None: ...
@@ -190,6 +192,15 @@ class OfficialPalworldRestClient:
             "announce",
             headers=headers,
             body=body,
+        )
+        self._validate_response(response, MAX_INFO_RESPONSE_BYTES)
+
+    def save_world(self) -> None:
+        response = self._request(
+            "POST",
+            "save",
+            headers=self._headers,
+            body=b"",
         )
         self._validate_response(response, MAX_INFO_RESPONSE_BYTES)
 
@@ -285,6 +296,7 @@ class FakePalworldRestClient:
         )
         self.online_players = players or ()
         self.announcements: list[str] = []
+        self.save_requests = 0
         self.kicks: list[tuple[str, str | None]] = []
         self.bans: list[tuple[str, str | None]] = []
         self.unbans: list[str] = []
@@ -305,6 +317,10 @@ class FakePalworldRestClient:
             raise ValueError("a mensagem do anúncio é obrigatória")
         self._raise_configured_error()
         self.announcements.append(message)
+
+    def save_world(self) -> None:
+        self._raise_configured_error()
+        self.save_requests += 1
 
     def kick(self, user_id: str, message: str | None = None) -> None:
         normalized_user_id = _validate_palworld_user_id(user_id)

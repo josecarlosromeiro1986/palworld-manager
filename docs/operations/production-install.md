@@ -32,6 +32,8 @@ O worker não tem servidor HTTP. Ele atualiza um heartbeat no SQLite a cada 10 s
 
 Logs textuais de jobs usam `/var/lib/palworld-manager/jobs/<ano>/`, guardam apenas mensagens operacionais controladas e têm retenção de 90 dias. O SQLite mantém somente a referência relativa. A etapa de deploy deverá criar e proteger essa árvore para `palmanager`; a aplicação não requer acesso fora de `/var/lib/palworld-manager` para esses logs.
 
+Backups locais usam `/var/lib/palworld-manager/backups/` e staging em `/var/lib/palworld-manager/tmp/backups/`; os arquivos finais pertencem a `palmanager` e usam modo `0640`. O worker precisa somente de leitura no subtree estrutural `PALWORLD_DIR/Pal/Saved/SaveGames` e nas configurações permitidas, além de escrita na área de dados do Manager. A Etapa 29 deverá conceder essas permissões mínimas sem executar web ou worker como root e sem `sudo ALL`.
+
 Tailscale Serve fornecerá acesso privado com HTTPS apenas ao serviço web; journald receberá os logs de ambos.
 
 O visualizador de logs do Palworld já usa `journalctl` somente leitura, sem `sudo`, com argumentos fixos para `PALWORLD_SERVICE`. A etapa de deploy deverá conceder ao usuário `palmanager` apenas o acesso de leitura necessário ao journal e validar esse acesso sem executar a aplicação como root.

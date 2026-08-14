@@ -23,10 +23,11 @@ Nenhuma etapa em andamento.
 - Etapa 15 — Kick/Ban/Unban.
 - Etapa 16 — Editor INI.
 - Etapa 17 — Jobs/lock completos.
+- Etapa 18 — Backup local.
 
 ## Próxima etapa
 
-Etapa 18 — Backup local.
+Etapa 19 — Restore local.
 
 ## Observações
 

@@ -433,6 +433,20 @@ Não incluir binários, SteamCMD, `secrets.env`, tokens/webhooks/credenciais ou 
 
 Formato: `.tar.gz`. Integridade: teste do arquivo + SHA-256. Backup inválido é auditado e removido.
 
+O contrato de integridade usa duas camadas, sem arquivo sidecar. A coluna
+`backup_records.sha256` guarda o SHA-256 calculado sobre os bytes do `.tar.gz`
+final. Dentro do arquivo, `manifest.json` usa uma versão explícita de schema e
+contém identificador do backup, timestamp UTC, metadados não sensíveis e uma
+lista determinística dos arquivos do payload. Cada entrada registra somente o
+path relativo determinístico, o tamanho em bytes e o SHA-256 individual.
+`manifest.json` não entra em sua própria lista, e o hash externo do `.tar.gz`
+não entra no manifest, evitando autorreferência. Nenhum path absoluto ou dado
+sensível pode ser registrado no manifest.
+
+O Restore futuro deverá validar primeiro o SHA-256 do `.tar.gz` contra o
+registro persistido e, somente depois, validar o conteúdo integral contra o
+`manifest.json` antes de tocar no mundo.
+
 Retenção: 3 locais e até 10 no Drive.
 
 ## 26. Google Drive via rclone

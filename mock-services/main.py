@@ -12,6 +12,7 @@ announcements: list[str] = []
 kicks: list[tuple[str, str | None]] = []
 bans: list[tuple[str, str | None]] = []
 unbans: list[str] = []
+save_requests = 0
 
 
 class Announcement(BaseModel):
@@ -83,4 +84,11 @@ def palworld_ban(payload: PlayerAction) -> dict[str, str]:
 @app.post("/v1/api/unban", include_in_schema=False)
 def palworld_unban(payload: PlayerReference) -> dict[str, str]:
     unbans.append(payload.userid)
+    return {"status": "ok"}
+
+
+@app.post("/v1/api/save", include_in_schema=False)
+def palworld_save() -> dict[str, str]:
+    global save_requests
+    save_requests += 1
     return {"status": "ok"}
