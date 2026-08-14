@@ -17,6 +17,7 @@ from app.health.palworld import PalworldHealthChecker, PalworldHealthState
 from app.integrations.palworld_rest import RestApiState
 from app.lifecycle.jobs import (
     LifecycleJobConflictError,
+    active_palworld_job,
     enqueue_lifecycle_job,
     lifecycle_job_view,
 )
@@ -160,14 +161,9 @@ def request_lifecycle_action(
             job = enqueue_lifecycle_job(session, action, user_id=principal.user_id)
             view = lifecycle_job_view(job)
     except LifecycleJobConflictError:
-        return templates.TemplateResponse(
-            request=request,
-            name="dashboard/_lifecycle_job.html",
-            context={
-                "job": None,
-                "error": "Já existe uma ação do servidor em andamento.",
-                "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
-            },
+        return _active_palworld_job_response(
+            request,
+            error="Já existe uma ação do servidor em andamento.",
         )
     return templates.TemplateResponse(
         request=request,
@@ -200,6 +196,52 @@ def _shutdown_response(
     )
 
 
+def _palworld_job_response(
+    request: Request,
+    job: Job | None,
+    *,
+    error: str | None = None,
+    status_code: int = 200,
+) -> Response:
+    if job is None:
+        return _shutdown_response(request, None, error=error, status_code=status_code)
+    try:
+        view = lifecycle_job_view(job)
+    except ValueError:
+        return _shutdown_response(request, job, error=error, status_code=status_code)
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard/_lifecycle_job.html",
+        context={
+            "job": view,
+            "error": error,
+            "csrf_token": request.cookies.get(SESSION_CSRF_COOKIE_NAME),
+        },
+        status_code=status_code,
+    )
+
+
+def _active_palworld_job_response(
+    request: Request,
+    *,
+    error: str | None = None,
+    status_code: int = 200,
+) -> Response:
+    with session_scope(_session_factory(request)) as session:
+        job = active_palworld_job(session)
+        return _palworld_job_response(
+            request,
+            job,
+            error=error,
+            status_code=status_code,
+        )
+
+
+@router.get("/active-job", response_class=HTMLResponse, include_in_schema=False)
+def active_job_status(request: Request) -> Response:
+    return _active_palworld_job_response(request)
+
+
 @router.post("/shutdown", response_class=HTMLResponse, include_in_schema=False)
 def request_assisted_shutdown(
     request: Request,
@@ -222,8 +264,9 @@ def request_assisted_shutdown(
     except ValueError:
         return PlainTextResponse("Duração de desligamento inválida.", status_code=400)
     except ShutdownJobConflictError:
-        return _shutdown_response(
-            request, None, error="Já existe uma ação do servidor em andamento."
+        return _active_palworld_job_response(
+            request,
+            error="Já existe uma ação do servidor em andamento.",
         )
 
 
@@ -295,8 +338,14 @@ def request_forced_shutdown(
                 user_id=_principal(request).user_id,
             )
             return _shutdown_response(request, job, status_code=202)
-    except (InvalidForcedShutdownError, ShutdownJobConflictError) as error:
+    except InvalidForcedShutdownError as error:
         return _shutdown_response(request, None, error=str(error), status_code=409)
+    except ShutdownJobConflictError:
+        return _active_palworld_job_response(
+            request,
+            error="Já existe uma ação do servidor em andamento.",
+            status_code=409,
+        )
 
 
 @router.get("/lifecycle/jobs/{job_id}", response_class=HTMLResponse, include_in_schema=False)

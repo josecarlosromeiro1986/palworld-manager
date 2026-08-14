@@ -60,6 +60,18 @@ def lifecycle_job_kind(action: LifecycleAction) -> str:
     return f"{LIFECYCLE_JOB_PREFIX}{action.value}"
 
 
+def active_palworld_job(session: Session) -> Job | None:
+    return session.scalar(
+        select(Job)
+        .where(
+            Job.coordination_key == LIFECYCLE_COORDINATION_KEY,
+            Job.status.in_(ACTIVE_JOB_STATUSES),
+        )
+        .order_by(Job.id.desc())
+        .limit(1)
+    )
+
+
 def parse_lifecycle_job_kind(kind: str) -> LifecycleAction:
     if not kind.startswith(LIFECYCLE_JOB_PREFIX):
         raise ValueError("tipo de job não pertence ao ciclo de vida")

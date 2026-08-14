@@ -133,6 +133,9 @@ def test_lifecycle_action_enqueues_job_and_prevents_double_submit(
     assert 'hx-trigger="every 1s"' in accepted.text
     assert conflict.status_code == 200
     assert "Já existe uma ação" in conflict.text
+    assert 'data-lifecycle-job="1"' in conflict.text
+    assert 'data-job-status="PENDING"' in conflict.text
+    assert 'hx-get="/dashboard/lifecycle/jobs/1"' in conflict.text
 
     factory = create_session_factory(engine)
     with session_scope(factory) as session:

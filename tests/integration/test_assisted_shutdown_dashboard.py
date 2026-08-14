@@ -106,6 +106,49 @@ def test_shutdown_can_be_enqueued_and_cancelled_from_htmx_fragment(
         assert session.scalar(select(Job.kind)) == ShutdownJobKind.ASSISTED.value
 
 
+def test_conflicting_start_keeps_shutdown_progress_and_controls_visible(
+    shutdown_client: tuple[TestClient, Engine],
+) -> None:
+    client, _engine = shutdown_client
+    csrf = _login(client)
+    accepted = client.post(
+        "/dashboard/shutdown",
+        data={"countdown_minutes": "5", "confirmation": "STOP", "csrf_token": csrf},
+    )
+    assert accepted.status_code == 202
+
+    conflict = client.post(
+        "/dashboard/lifecycle/START",
+        data={"confirmation": "START", "csrf_token": csrf},
+    )
+
+    assert conflict.status_code == 200
+    assert "Já existe uma ação do servidor em andamento." in conflict.text
+    assert 'data-shutdown-job="1"' in conflict.text
+    assert "Tempo restante: 300 s" in conflict.text
+    assert ">Cancelar</button>" in conflict.text
+    assert ">Forçar agora</button>" in conflict.text
+
+
+def test_dashboard_recovers_active_shutdown_fragment_after_reload(
+    shutdown_client: tuple[TestClient, Engine],
+) -> None:
+    client, _engine = shutdown_client
+    csrf = _login(client)
+    client.post(
+        "/dashboard/shutdown",
+        data={"countdown_minutes": "5", "confirmation": "STOP", "csrf_token": csrf},
+    )
+
+    home = client.get("/")
+    active = client.get("/dashboard/active-job")
+
+    assert 'hx-get="/dashboard/active-job"' in home.text
+    assert active.status_code == 200
+    assert 'data-shutdown-job="1"' in active.text
+    assert ">Cancelar</button>" in active.text
+
+
 def test_forced_routes_require_exact_two_level_confirmations(
     shutdown_client: tuple[TestClient, Engine],
 ) -> None:
