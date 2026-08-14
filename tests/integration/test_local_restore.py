@@ -550,6 +550,25 @@ def test_restore_web_requires_auth_csrf_exact_confirmation_and_only_enqueues(
         assert 'hx-trigger="every 1s"' in accepted.text
         assert "não pode ser cancelado" in accepted.text
         assert client.post("/backups/restore/jobs/1/cancel").status_code in {404, 405}
+        with session_scope(factory) as session:
+            restore_job = session.scalar(
+                select(Job).where(Job.kind == "LOCAL_RESTORE").order_by(Job.id.desc())
+            )
+            assert restore_job is not None
+            restore_job.status = "SUCCEEDED"
+            restore_job.step = "COMPLETED"
+            restore_job.progress = 100
+            restore_job.result = {
+                **(restore_job.result or {}),
+                "requires_manual_review": False,
+                "final_state": "ONLINE",
+            }
+            restore_job_id = restore_job.id
+        completed = client.get(f"/backups/restore/jobs/{restore_job_id}")
+        assert completed.status_code == 200
+        assert "Restore concluído com o Palworld online e verificado." in completed.text
+        assert "Este job não pode ser cancelado." not in completed.text
+        assert "border-positive/30" in completed.text
     unauthenticated = TestClient(create_app(settings), base_url="http://testserver")
     try:
         assert (
