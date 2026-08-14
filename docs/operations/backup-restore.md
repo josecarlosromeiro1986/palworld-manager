@@ -51,6 +51,8 @@ POST /save oficial
 → backup_record válido, auditoria e retenção
 ```
 
+Enquanto o job está ativo, a página **Backups** atualiza etapa, progresso e log a cada segundo. Ao chegar a um estado terminal, o fragmento do job dispara uma atualização única da lista de backups locais, de modo que um novo artefato válido apareça sem recarregar a página inteira.
+
 O mundo vem exclusivamente de `PALWORLD_DIR/Pal/Saved/SaveGames`; `Players/` é copiado e hasheado como conteúdo opaco, sem interpretação. Diretórios internos chamados `backup` ou `backups` e qualquer `secrets.env` são excluídos. `PalWorldSettings.ini` é incluído com campos sensíveis reconhecidos ou suspeitos vazios, e `GameUserSettings.ini`, quando presente, recebe a mesma proteção por nome de chave. As configurações do Manager usam uma allowlist de valores operacionais não sensíveis.
 
 O staging fica sob a área de dados do Manager. O arquivo final usa referência relativa `backups/<nome-gerenciado>.tar.gz`, permissão `0640` e só é publicado após validação integral. Links simbólicos, entradas não regulares, paths absolutos, traversal, escape da raiz e configurações acima do limite são recusados. Falha antes ou depois da publicação remove somente o artefato reconhecido da tentativa atual e nunca cria um `backup_record` válido.

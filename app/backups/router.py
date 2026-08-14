@@ -25,6 +25,7 @@ from app.backups.scheduler import DEFAULT_TIMEZONE, TIMEZONE_KEY
 from app.db.engine import session_scope
 from app.db.models import AppSetting, BackupRecord, Job
 from app.jobs.logs import JobLogStore
+from app.jobs.service import TERMINAL_JOB_STATUSES
 
 router = APIRouter(prefix="/backups")
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
@@ -76,7 +77,7 @@ def _backup_job_response(
             lines = _job_logs(request).tail(job.log_path)
         except (OSError, ValueError):
             lines = ()
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="backups/_job.html",
         context={
@@ -87,31 +88,25 @@ def _backup_job_response(
         },
         status_code=status_code,
     )
+    if job is not None and job.status in TERMINAL_JOB_STATUSES:
+        response.headers["HX-Trigger"] = "localBackupFinished"
+    return response
+
+
+def _backup_list_response(request: Request) -> Response:
+    with session_scope(_session_factory(request)) as session:
+        items = _backup_list_items(session)
+    return templates.TemplateResponse(
+        request=request,
+        name="backups/_list.html",
+        context={"backups": items},
+    )
 
 
 @router.get("", response_class=HTMLResponse, include_in_schema=False)
 def backups_page(request: Request) -> Response:
     with session_scope(_session_factory(request)) as session:
-        timezone = _configured_timezone(session)
-        records = tuple(
-            session.scalars(select(BackupRecord).order_by(BackupRecord.created_at.desc()))
-        )
-        jobs = {
-            job.id: job
-            for job in session.scalars(
-                select(Job).where(
-                    Job.id.in_([record.job_id for record in records if record.job_id])
-                )
-            )
-        }
-        items = tuple(
-            _list_item(
-                record,
-                jobs.get(record.job_id) if record.job_id is not None else None,
-                timezone,
-            )
-            for record in records
-        )
+        items = _backup_list_items(session)
         latest = latest_backup_job(session)
         latest_view = backup_job_view(latest) if latest is not None else None
         latest_lines = (
@@ -132,6 +127,11 @@ def backups_page(request: Request) -> Response:
             "error": None,
         },
     )
+
+
+@router.get("/list", response_class=HTMLResponse, include_in_schema=False)
+def backup_list(request: Request) -> Response:
+    return _backup_list_response(request)
 
 
 @router.post("", response_class=HTMLResponse, include_in_schema=False)
@@ -196,6 +196,25 @@ def _configured_timezone(session: Session) -> ZoneInfo:
         return ZoneInfo(value)
     except Exception:
         return ZoneInfo(DEFAULT_TIMEZONE)
+
+
+def _backup_list_items(session: Session) -> tuple[BackupListItem, ...]:
+    timezone = _configured_timezone(session)
+    records = tuple(session.scalars(select(BackupRecord).order_by(BackupRecord.created_at.desc())))
+    jobs = {
+        job.id: job
+        for job in session.scalars(
+            select(Job).where(Job.id.in_([record.job_id for record in records if record.job_id]))
+        )
+    }
+    return tuple(
+        _list_item(
+            record,
+            jobs.get(record.job_id) if record.job_id is not None else None,
+            timezone,
+        )
+        for record in records
+    )
 
 
 def _list_item(record: BackupRecord, job: Job | None, timezone: ZoneInfo) -> BackupListItem:

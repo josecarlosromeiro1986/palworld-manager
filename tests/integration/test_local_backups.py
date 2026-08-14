@@ -366,6 +366,7 @@ def test_backup_web_actions_require_authentication_and_csrf_and_enqueue_only(
     assert "storage_path" not in page.text
     assert rejected.status_code == 403
     assert accepted.status_code == 202
+    assert 'hx-trigger="every 1s"' in accepted.text
     factory = create_session_factory(backup_web_context.engine)
     with session_scope(factory) as session:
         job = session.scalar(select(Job).where(Job.kind == LOCAL_BACKUP_JOB_KIND))
@@ -396,3 +397,45 @@ def test_backup_web_actions_require_authentication_and_csrf_and_enqueue_only(
         assert unauthenticated.post("/backups").status_code == 401
     finally:
         unauthenticated.close()
+
+
+def test_terminal_backup_refreshes_local_backup_list_without_page_reload(
+    backup_web_context: BackupWebContext,
+) -> None:
+    client = backup_web_context.client
+    csrf = client.cookies.get(SESSION_CSRF_COOKIE_NAME)
+    assert csrf is not None
+    accepted = client.post("/backups", data={"csrf_token": csrf})
+    assert accepted.status_code == 202
+
+    factory = create_session_factory(backup_web_context.engine)
+    with session_scope(factory) as session:
+        job = session.scalar(select(Job).where(Job.kind == LOCAL_BACKUP_JOB_KIND))
+        assert job is not None
+        job.status = "SUCCEEDED"
+        job.step = "COMPLETED"
+        job.progress = 100
+        job.is_cancellable = False
+        session.add(
+            BackupRecord(
+                job_id=job.id,
+                filename="palworld-manager-backup-test.tar.gz",
+                location="LOCAL",
+                status="VALID",
+                sha256="a" * 64,
+                size_bytes=1024,
+                storage_path="backups/palworld-manager-backup-test.tar.gz",
+            )
+        )
+        job_id = job.id
+
+    terminal = client.get(f"/backups/jobs/{job_id}")
+    refreshed_list = client.get("/backups/list")
+
+    assert terminal.status_code == 200
+    assert terminal.headers["HX-Trigger"] == "localBackupFinished"
+    assert 'hx-trigger="every 1s"' not in terminal.text
+    assert refreshed_list.status_code == 200
+    assert 'hx-trigger="localBackupFinished from:body"' in refreshed_list.text
+    assert "palworld-manager-backup-test.tar.gz" in refreshed_list.text
+    assert f"#{job_id} · SUCCEEDED" in refreshed_list.text

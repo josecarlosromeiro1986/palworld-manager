@@ -1,0 +1,13 @@
+<section
+  id="local-backups"
+  aria-labelledby="local-backups-title"
+  class="rounded-md border bg-surface"
+  hx-get="/backups/list"
+  hx-trigger="localBackupFinished from:body"
+  hx-swap="outerHTML"
+>
+  <div class="border-b px-4 py-3"><h2 id="local-backups-title" class="text-sm font-semibold text-ink">Backups locais</h2><p class="mt-1 text-xs text-muted">Somente artefatos gerenciados e validados são listados.</p></div>
+  {% if backups %}
+    <div class="overflow-x-auto"><table class="w-full min-w-[760px] text-left text-sm"><thead class="text-xs text-muted"><tr><th class="px-4 py-3">Arquivo</th><th class="px-4 py-3">Data</th><th class="px-4 py-3">Tamanho</th><th class="px-4 py-3">Integridade</th><th class="px-4 py-3">Job</th></tr></thead><tbody class="divide-y">{% for backup in backups %}<tr><td class="px-4 py-3 font-mono text-xs text-ink">{{ backup.filename }}</td><td class="px-4 py-3 text-muted">{{ backup.created_at }}</td><td class="px-4 py-3 tabular-nums text-muted">{{ backup.size }}</td><td class="px-4 py-3"><span class="text-positive">{{ backup.status }}</span><p class="mt-1 max-w-44 truncate font-mono text-[10px] text-muted" title="SHA-256">{{ backup.sha256 }}</p></td><td class="px-4 py-3 text-muted">{% if backup.job_id %}#{{ backup.job_id }} · {% endif %}{{ backup.job_status }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="px-4 py-8 text-center text-sm text-muted">Nenhum backup local válido disponível.</p>{% endif %}
+</section>
