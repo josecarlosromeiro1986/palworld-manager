@@ -10,6 +10,8 @@ Pytest será a base da suíte automatizada.
 
 Playwright não deve cobrir cada botão. A maior parte do comportamento deve ser validada por testes rápidos e determinísticos abaixo da camada de interface.
 
+As regressões dos fragmentos de jobs verificam também que o estado aberto de "Log do job" é preservado durante as atualizações periódicas do HTMX.
+
 Comandos disponíveis:
 
 ```bash

@@ -214,6 +214,35 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
   }
 });
 
+const openJobLogKeys = new Set();
+
+function rememberOpenJobLogs(root) {
+  root?.querySelectorAll?.("details[data-job-log-key]").forEach((details) => {
+    const key = details.dataset.jobLogKey;
+    if (!key) {
+      return;
+    }
+    if (details.open) {
+      openJobLogKeys.add(key);
+    } else {
+      openJobLogKeys.delete(key);
+    }
+  });
+}
+
+function restoreOpenJobLogs() {
+  document.querySelectorAll("details[data-job-log-key]").forEach((details) => {
+    if (openJobLogKeys.has(details.dataset.jobLogKey)) {
+      details.open = true;
+    }
+  });
+}
+
+document.body.addEventListener("htmx:beforeSwap", (event) => {
+  rememberOpenJobLogs(event.detail.target);
+});
+document.body.addEventListener("htmx:afterSwap", restoreOpenJobLogs);
+
 function initializeLogViewer(root = document) {
   const viewer = root.querySelector("[data-log-viewer]");
   if (!viewer || viewer.dataset.initialized === "true") {

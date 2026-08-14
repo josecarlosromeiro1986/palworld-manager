@@ -39,7 +39,7 @@
       <p class="mt-1 text-xs text-warning">A execução não foi retomada. Verifique o estado real antes de agir novamente.</p>
     {% endif %}
     {% if job_log_lines %}
-      <details class="mt-2">
+      <details class="mt-2" data-job-log-key="shutdown-{{ job.id }}">
         <summary class="cursor-pointer text-xs text-muted">Log do job</summary>
         <pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-surface p-2 text-xs text-muted">{{ job_log_lines | join('\n') }}</pre>
       </details>
