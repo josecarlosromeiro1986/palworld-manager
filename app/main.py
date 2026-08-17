@@ -33,6 +33,7 @@ from app.players.administration import PlayerAdministrationService
 from app.players.router import router as players_router
 from app.players.service import ManualPlayersService
 from app.system.palworld_service import create_palworld_service
+from app.updates.router import router as updates_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -100,6 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(players_router)
     application.include_router(logs_router)
     application.include_router(palworld_settings_router)
+    application.include_router(updates_router)
     return application
 
 

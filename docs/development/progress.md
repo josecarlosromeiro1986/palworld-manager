@@ -27,10 +27,11 @@ Nenhuma etapa em andamento.
 - Etapa 19 — Restore local.
 - Etapa 20 — Google Drive/rclone.
 - Etapa 21 — Restore remoto.
+- Etapa 22 — SteamCMD Update.
 
 ## Próxima etapa
 
-Etapa 22 — SteamCMD Update.
+Etapa 23 — Discord.
 
 ## Observações
 

@@ -48,6 +48,14 @@ O editor do `PalWorldSettings.ini` já usa o caminho fixo de `PALWORLD_SETTINGS`
 
 O health check do Palworld usa adapters com executáveis e argumentos fixos, unidade validada, `MainPID` confirmado por `psutil` e `GET /info` autenticado com timeout. Start, Stop e Restart já são executados pelo worker com `/usr/bin/sudo --non-interactive`, `systemctl --no-block`, ação fechada e unidade validada. A escalada manual usa somente `systemctl kill --kill-whom=main` com SIGTERM ou SIGKILL fixos. A etapa de deploy ainda deve instalar e validar regras de sudoers exclusivas para esses cinco comandos, nunca `sudo ALL`.
 
+Updates usam o executável estrutural `STEAMCMD` diretamente pelo worker não-root,
+com login anônimo e App ID fixo `2394010`. O deploy deverá validar que o binário é
+regular e executável por `palmanager` e conceder, por grupo dedicado, somente a
+leitura do manifesto `PALWORLD_DIR/steamapps/appmanifest_2394010.acf` e a
+leitura/escrita necessárias para o SteamCMD atualizar o conteúdo dentro de
+`PALWORLD_DIR`. Não será criada regra de sudoers para SteamCMD, e nenhum acesso de
+escrita fora desse diretório será concedido por causa do Update.
+
 Node.js e npm serão necessários apenas para o build de assets, não como serviço de produção. Permissões, arquivos de unidade do Manager, `sudoers`, scripts e configuração do Tailscale ainda serão implementados e validados na etapa de deploy; por isso, este documento não é um tutorial executável.
 
 Consulte [Segurança](../architecture/security.md) e os requisitos completos em [SPECIFICATION.md](../../SPECIFICATION.md).

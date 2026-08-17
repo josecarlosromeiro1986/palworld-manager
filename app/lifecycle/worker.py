@@ -26,6 +26,7 @@ from app.shutdown.jobs import (
     fail_shutdown_job,
 )
 from app.shutdown.service import AssistedShutdownExecutor, ForcedShutdownExecutor
+from app.updates.jobs import UPDATE_JOB_KINDS, UpdateJobExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class LifecycleJobWorker:
         backup_executor: LocalBackupJobExecutor | None = None,
         restore_executor: LocalRestoreJobExecutor | None = None,
         drive_executor: DriveJobExecutor | None = None,
+        update_executor: UpdateJobExecutor | None = None,
     ) -> None:
         if not worker_id:
             raise ValueError("o identificador do worker é obrigatório")
@@ -55,6 +57,7 @@ class LifecycleJobWorker:
         self._backup_executor = backup_executor
         self._restore_executor = restore_executor
         self._drive_executor = drive_executor
+        self._update_executor = update_executor
 
     @property
     def _supported_kinds(self) -> tuple[str, ...]:
@@ -68,7 +71,8 @@ class LifecycleJobWorker:
         backups = (LOCAL_BACKUP_JOB_KIND,) if self._backup_executor is not None else ()
         restores = RESTORE_JOB_KINDS if self._restore_executor is not None else ()
         drive = DRIVE_JOB_KINDS if self._drive_executor is not None else ()
-        return lifecycle + shutdown + backups + restores + drive
+        updates = UPDATE_JOB_KINDS if self._update_executor is not None else ()
+        return lifecycle + shutdown + backups + restores + drive + updates
 
     def process_next(self) -> bool:
         with session_scope(self._session_factory) as session:
@@ -101,6 +105,10 @@ class LifecycleJobWorker:
                 assert self._drive_executor is not None
                 self._append_log(job_log_path, "Operação gerenciada no Google Drive iniciada.")
                 self._drive_executor.execute(job_id)
+            elif job_kind in UPDATE_JOB_KINDS:
+                assert self._update_executor is not None
+                self._append_log(job_log_path, "Operação manual de Update iniciada.")
+                self._update_executor.execute(job_id)
             elif job_kind in {kind.value for kind in ShutdownJobKind}:
                 if job_kind == ShutdownJobKind.ASSISTED.value:
                     assert self._assisted_shutdown_executor is not None
@@ -118,7 +126,14 @@ class LifecycleJobWorker:
                     execute_lifecycle_job(session, job, self._executor)
         except Exception:
             self._append_log(job_log_path, "Execução falhou de forma inesperada.")
-            if job_kind in {LOCAL_BACKUP_JOB_KIND, *RESTORE_JOB_KINDS, *DRIVE_JOB_KINDS}:
+            if job_kind in UPDATE_JOB_KINDS:
+                assert self._update_executor is not None
+                self._update_executor.fail_unexpected(job_id)
+            elif job_kind in {
+                LOCAL_BACKUP_JOB_KIND,
+                *RESTORE_JOB_KINDS,
+                *DRIVE_JOB_KINDS,
+            }:
                 pass
             elif job_kind in {kind.value for kind in ShutdownJobKind}:
                 fail_shutdown_job(self._session_factory, job_id)

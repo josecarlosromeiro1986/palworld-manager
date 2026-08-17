@@ -1,0 +1,70 @@
+{% if error %}
+  <p class="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
+{% endif %}
+{% if job %}
+  {% set terminal = job.status in ["SUCCEEDED", "FAILED", "CANCELLED", "INTERRUPTED"] %}
+  {% set step_labels = {
+    "WAITING": "aguardando worker", "CHECKING": "consultando SteamCMD", "CHECKING_DISK": "verificando espaço",
+    "VERIFYING": "confirmando versão", "PREVENTIVE_BACKUP": "criando backup pré-update",
+    "PREVENTIVE_SAFE_SAVE": "solicitando salvamento seguro", "PREVENTIVE_COPYING_WORLD": "copiando mundo",
+    "PREVENTIVE_COPYING_DATABASE": "copiando banco", "PREVENTIVE_BUILDING_MANIFEST": "criando manifest",
+    "PREVENTIVE_COMPRESSING": "compactando backup", "PREVENTIVE_VALIDATING": "validando backup",
+    "PREVENTIVE_PUBLISHING": "publicando backup", "ASSISTED_SHUTDOWN": "preparando desligamento",
+    "COUNTDOWN": "contagem regressiva", "STOPPING": "parando Palworld", "UPDATING": "executando SteamCMD",
+    "STARTING": "iniciando e validando health", "VERIFYING_VERSION": "validando versão e logs",
+    "COMPLETED": "concluído", "FAILED": "falhou", "CANCELLED": "cancelado", "INTERRUPTED": "interrompido"
+  } %}
+  <article
+    data-update-job="{{ job.id }}"
+    data-job-status="{{ job.status }}"
+    {% if not terminal %}hx-get="/updates/jobs/{{ job.id }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}
+    class="rounded-md border bg-surface-raised p-3"
+  >
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <p class="text-sm font-medium text-ink">{{ "Verificação" if job.kind == "PALWORLD_UPDATE_CHECK" else "Update manual" }} · Job #{{ job.id }}</p>
+        <p class="mt-1 text-xs text-muted">{{ step_labels.get(job.step, job.step) }} · {{ job.progress }}%</p>
+      </div>
+      <span class="text-xs font-semibold {% if job.status == 'SUCCEEDED' %}text-positive{% elif job.status in ['FAILED', 'INTERRUPTED'] %}text-danger{% elif job.status == 'CANCELLED' %}text-warning{% else %}text-accent{% endif %}">{{ job.status }}</span>
+    </div>
+    <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-canvas"><div class="h-full bg-accent" style="width: {{ job.progress }}%"></div></div>
+
+    {% if job.installed_build_id and job.available_build_id %}
+      <dl class="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+        <div><dt class="text-muted">Instalada</dt><dd class="font-mono text-ink">{{ job.installed_build_id }}</dd></div>
+        <div><dt class="text-muted">Disponível</dt><dd class="font-mono text-ink">{{ job.available_build_id }}</dd></div>
+        <div><dt class="text-muted">Publicada</dt><dd class="text-ink">{{ job.available_at.strftime('%d/%m/%Y %H:%M UTC') if job.available_at else 'data indisponível' }}</dd></div>
+      </dl>
+    {% endif %}
+    {% if job.message %}<p class="mt-3 text-xs {{ 'text-danger' if job.status == 'FAILED' else 'text-muted' }}">{{ job.message }}</p>{% endif %}
+    {% if job.disk_critical %}<p class="mt-3 text-xs font-medium text-danger">Espaço livre em nível crítico. O Update está bloqueado.</p>{% endif %}
+    {% if job.preventive_backup_record_id %}<p class="mt-2 text-xs text-muted">Backup pré-update preservado no registro #{{ job.preventive_backup_record_id }}.</p>{% endif %}
+    {% if job.requires_manual_review %}<p class="mt-2 text-xs font-medium text-warning">O estado exige revisão manual. O job não foi retomado nem executou rollback automático.</p>{% endif %}
+
+    {% if mode == "check" and job.status == "SUCCEEDED" and job.update_available and not job.disk_critical %}
+      <form class="mt-4 flex flex-wrap items-end gap-2" hx-post="/updates" hx-target="#update-operation" hx-swap="innerHTML" data-confirm data-confirm-key="palworld-update-{{ job.id }}" data-confirm-title="Atualizar o Palworld?" data-confirm-message="O processo criará um backup, avisará jogadores, parará o servidor e executará o SteamCMD. Não há rollback automático." data-confirm-button="Iniciar Update" data-confirm-tone="warning">
+        <label class="text-xs text-muted">Digite ATUALIZAR<input class="mt-1 block min-h-9 rounded-md border bg-canvas px-3 text-sm text-ink" name="confirmation" autocomplete="off" required></label>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="min-h-9 rounded-md bg-warning px-3 text-xs font-semibold text-canvas">Iniciar Update</button>
+      </form>
+    {% elif mode == "check" and job.status == "SUCCEEDED" and job.update_available is false %}
+      <p class="mt-3 text-xs text-positive">A instalação já corresponde à branch pública.</p>
+    {% endif %}
+
+    {% if job.is_cancellable and job.kind == "PALWORLD_UPDATE" %}
+      <form class="mt-3" hx-post="/updates/jobs/{{ job.id }}/cancel" hx-target="closest article[data-update-job]" hx-swap="outerHTML" data-confirm data-confirm-key="update-cancel-{{ job.id }}" data-confirm-title="Cancelar Update?" data-confirm-message="O worker cancelará somente se ainda estiver em um ponto seguro." data-confirm-button="Cancelar Update" data-confirm-tone="warning">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="min-h-9 rounded-md border px-3 text-xs font-medium text-warning hover:border-warning">Cancelar em ponto seguro</button>
+      </form>
+    {% elif not terminal and job.kind == "PALWORLD_UPDATE" %}
+      <p class="mt-3 text-xs text-warning">O Stop ou a etapa crítica já começou; este job não pode mais ser cancelado.</p>
+    {% endif %}
+    {% if job_log_lines %}
+      <details class="mt-3" data-job-log-key="update-{{ job.id }}"><summary class="cursor-pointer text-xs text-muted">Log do job</summary><pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-canvas p-2 text-xs text-muted">{{ job_log_lines | join('\n') }}</pre></details>
+    {% endif %}
+  </article>
+{% elif mode == "check" and not error %}
+  <p class="text-sm text-muted">Nenhuma verificação executada nesta instalação.</p>
+{% elif mode == "update" and not error %}
+  <p class="text-sm text-muted">Nenhum Update manual executado nesta instalação.</p>
+{% endif %}

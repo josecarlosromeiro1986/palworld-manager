@@ -1,10 +1,10 @@
 # Visão geral da arquitetura
 
-> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, métricas, health checks, controles do Palworld, logs, integração REST administrativa, editor do INI e backup/Restore local e remoto via rclone estão implementados; integrações e regras operacionais adicionais permanecem planejadas.
+> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, métricas, health checks, controles do Palworld, logs, integração REST administrativa, editor do INI, backup/Restore local e remoto via rclone e Update manual via SteamCMD estão implementados; integrações e regras operacionais adicionais permanecem planejadas.
 
 O Palworld Manager é uma aplicação Python leve e modular por domínio. FastAPI coordena as rotas e os serviços da aplicação; Jinja2 renderiza as páginas no servidor; HTMX atualiza as métricas e atualizará outros formulários e fragmentos; e SSE já entrega logs em tempo real com reconexão por cursor. Tailwind CSS fornece o layout administrativo responsivo; Chart.js exibe o histórico de 15 minutos mantido somente em memória.
 
-SQLite é o banco do Manager, acessado por SQLAlchemy e versionado por migrations do Alembic. Também funciona como fila e mecanismo persistente de coordenação entre a aplicação web e um worker Python independente. O worker processa ações de ciclo de vida, backup/Restore local ou remoto e transferências do Google Drive sob coordenação persistente; update reutilizará a infraestrutura na etapa própria.
+SQLite é o banco do Manager, acessado por SQLAlchemy e versionado por migrations do Alembic. Também funciona como fila e mecanismo persistente de coordenação entre a aplicação web e um worker Python independente. O worker processa ações de ciclo de vida, backup/Restore local ou remoto, transferências do Google Drive e Update manual via SteamCMD sob coordenação persistente e maintenance lock quando necessário.
 
 Em produção, `palworld-manager.service` executará o FastAPI e a interação web, enquanto `palworld-manager-worker.service` consumirá e executará jobs. Ambos rodarão como `palmanager`, nunca como `root`, e serão controlados por systemd. O worker acionará SteamCMD e rclone para operações demoradas e será o único componente autorizado a entregar notificações ao Discord. Tailscale Serve publicará somente a aplicação web, que escutará em localhost, e journald receberá os logs dos dois serviços.
 

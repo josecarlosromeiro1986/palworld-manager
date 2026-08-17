@@ -506,9 +506,27 @@ intactos tanto no sucesso quanto na falha do Restore.
 
 ## 28. Atualizações do Palworld
 
-Somente manual, com botão **Verificar atualizações**. Mostrar versão instalada/disponível e data quando confiável. Sem changelog de terceiros.
+Somente manual, com botão **Verificar atualizações**. A verificação é executada como
+job persistente pelo worker e nunca inicia o Update automaticamente. A versão
+instalada é o `buildid` lido do manifesto local oficial do Steam para o App ID
+`2394010`; a versão disponível é o `buildid` da branch pública retornada pelo
+próprio SteamCMD. A data disponível só é exibida quando o `timeupdated` dessa
+branch puder ser validado como timestamp Unix. Ausência, indisponibilidade ou
+resposta inválida produzem estado indisponível/falha controlada, sem inferir uma
+versão e sem usar changelog ou serviço de terceiros.
 
-Update: espaço → verificar → lock → backup pré-update → shutdown assistido → Stop → SteamCMD → Start → REST API → health check → versão → erros críticos → resultado → auditoria → Discord. Timeout pós-start 120 s. Sem rollback automático; preservar backup pré-update.
+Update: espaço → verificar novamente sob lock → backup pré-update válido →
+shutdown assistido → Stop seguro → SteamCMD com argumentos fixos, App ID
+`2394010`, login anônimo, `PALWORLD_DIR` allowlisted e `app_update 2394010
+validate` → Start → REST API → health check → versão → erros críticos → resultado
+→ auditoria → evento persistente para Discord. Timeout pós-start 120 s. O job
+pode ser cancelado enquanto aguarda, cria o backup ou executa a contagem; o ponto
+de cancelamento é fechado antes do Stop e permanece fechado enquanto o SteamCMD
+modifica arquivos. Se o SteamCMD ou a validação posterior falhar, não há retomada
+nem rollback automático: o backup pré-update é preservado, o estado exige revisão
+manual e o Manager não tenta iniciar silenciosamente uma instalação de estado
+ambíguo. Web e worker nunca executam como `root`, não usam `shell=True` e não
+registram a saída bruta do SteamCMD.
 
 ## 29. Espaço em disco
 

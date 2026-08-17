@@ -24,7 +24,8 @@ Development e test não dependerão de:
 - webhook real do Discord;
 - Google Drive real;
 - operações reais de systemd ou journald; web e worker compartilham pelo SQLite um fake do serviço, processo, porta e REST API;
-- alterações reais via SteamCMD.
+- alterações reais via SteamCMD; a verificação e o Update usam um fake integral
+  em memória, sem executar processos externos ou acessar `PALWORLD_DIR`.
 
 Os simuladores futuros devem permitir cenários de sucesso, timeout e falha sem expor credenciais nem alterar o host.
 

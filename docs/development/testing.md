@@ -70,6 +70,15 @@ aplicação exige revisão manual e preserva o backup preventivo e o remoto. Em
 todos os resultados, apenas temporários reconhecidos são limpos e Manager,
 secrets e saves de jogadores opacos seguem as garantias do fluxo local.
 
+Os testes de Update validam o parser KeyValues, `buildid` local e público,
+timestamp opcional, argumentos fixos do SteamCMD, limites de resposta e rejeição
+de paths estruturais inválidos. A integração cobre verificação manual sem Update
+automático, espaço crítico, backup pré-update e salvamento seguro, Stop/Start e
+health, falha do SteamCMD sem rollback, auditoria e eventos sem secrets,
+maintenance lock, double-submit, cancelamento seguro e recovery `INTERRUPTED` sem
+requeue. As rotas exigem autenticação, CSRF e confirmação literal `ATUALIZAR`;
+development e test usam fakes sem processos externos ou filesystem estrutural.
+
 Os testes de logs validam os argumentos read-only e allowlisted do `journalctl`, parsing, classificação, proteção de secrets, fake completo, autenticação, histórico de 100/500/1000 linhas, filtros e ausência de persistência no SQLite. O aceite de reconexão abre o SSE com o cursor do histórico, simula nova conexão com `Last-Event-ID` e confirma que a entrega continua no evento seguinte sem repetir o último recebido.
 
 Os testes da REST API administrativa validam os campos oficiais tipados de jogadores, Basic Auth, timeout, servidor offline, indisponibilidade, autenticação, respostas inválidas e falhas inesperadas sem abrir rede nem expor detalhes internos. A integração web confirma que abrir ou reler a página não consulta jogadores, que somente o POST manual atualiza o cache em memória, que uma falha preserva o último snapshot válido e que anúncios exigem CSRF e repetição literal da mensagem. Sucesso e falha do anúncio são verificados na auditoria.

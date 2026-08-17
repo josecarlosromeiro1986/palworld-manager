@@ -20,7 +20,21 @@ Procedimento a validar com o cliente oficial e seus erros tipados.
 
 ## SteamCMD
 
-Procedimento a validar durante a implementação de updates.
+1. Consulte o job na página **Atualizações** e confirme a categoria pública da
+   falha; a saída bruta do SteamCMD não é exposta pela UI nem persistida.
+2. Verifique se o worker não-root consegue executar o path estrutural `STEAMCMD`
+   e ler/escrever somente a instalação em `PALWORLD_DIR`.
+3. Confirme a presença de
+   `PALWORLD_DIR/steamapps/appmanifest_2394010.acf`, como arquivo regular sem
+   symlink, e a conectividade do host com o Steam.
+4. Se o job falhou depois do Stop ou foi interrompido, trate o estado como
+   ambíguo: não reenvie automaticamente o job. Verifique instalação, serviço,
+   REST/health e logs do Palworld antes de decidir por nova tentativa ou
+   recuperação manual com o backup pré-update preservado.
+
+O Manager nunca executa rollback automático nem inicia silenciosamente o servidor
+depois de uma falha do SteamCMD. A verificação manual pode ser repetida com
+segurança quando não houver outro job incompatível ativo.
 
 ## Google Drive / rclone
 

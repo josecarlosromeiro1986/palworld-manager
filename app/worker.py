@@ -15,7 +15,7 @@ from app.backups.service import LocalBackupService
 from app.backups.source import create_backup_payload_source
 from app.config import Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import Job
+from app.db.models import Job, NotificationEvent
 from app.integrations.google_drive import GoogleDriveError, create_google_drive_storage
 from app.integrations.palworld_rest import create_palworld_rest_client
 from app.jobs.heartbeat import WorkerHeartbeatPublisher
@@ -27,6 +27,8 @@ from app.logs.service import create_palworld_log_source
 from app.restores.jobs import LocalRestoreJobExecutor
 from app.restores.service import LocalRestoreService, create_restore_target
 from app.shutdown.service import create_shutdown_executors
+from app.updates.jobs import UPDATE_JOB_KIND, UpdateJobExecutor
+from app.updates.service import create_disk_space_source, create_steamcmd_gateway
 
 logger = logging.getLogger(__name__)
 shutdown_requested = Event()
@@ -61,6 +63,15 @@ def run() -> None:
                     log_path,
                     "Worker reiniciado; job interrompido e bloqueado para revisão manual.",
                 )
+                if interrupted.kind == UPDATE_JOB_KIND:
+                    session.add(
+                        NotificationEvent(
+                            event_type="UPDATE_INTERRUPTED",
+                            channel="DISCORD",
+                            status="PENDING",
+                            job_id=interrupted.id,
+                        )
+                    )
         removed_logs = job_logs.prune()
         rest_client = create_palworld_rest_client(settings)
         backup_service = LocalBackupService(
@@ -125,6 +136,16 @@ def run() -> None:
                 drive_service,
             ),
             drive_executor=DriveJobExecutor(session_factory, drive_service),
+            update_executor=UpdateJobExecutor(
+                session_factory,
+                create_steamcmd_gateway(settings),
+                create_disk_space_source(settings),
+                backup_service,
+                assisted_shutdown,
+                lifecycle_executor,
+                create_palworld_log_source(settings),
+                job_logs=job_logs,
+            ),
         )
         logger.info(
             "Worker iniciado em %s; %d job(s) recuperado(s), %d log(s) expirado(s) removido(s).",

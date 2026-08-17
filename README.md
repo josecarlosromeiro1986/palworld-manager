@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos e Restore local/remoto estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto e Update manual via SteamCMD estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -54,6 +54,14 @@ Backups remotos válidos também oferecem **Restore remoto**. A web exige
 tar.gz, manifest e payload antes de criar o backup preventivo e tocar no
 Palworld. O download não vira uma cópia local permanente, e o artefato remoto é
 preservado independentemente do resultado.
+
+A página **Atualizações** verifica manualmente os `buildid` instalado e público
+do App ID `2394010` e nunca inicia Update automaticamente. Após confirmação com
+`ATUALIZAR`, o worker verifica espaço e versão novamente sob lock, cria e preserva
+um backup pré-update válido, executa o desligamento assistido, chama o SteamCMD
+com argumentos fixos e valida Start, REST/health, versão e logs críticos. O fluxo
+não executa rollback automático; development e test usam fakes sem SteamCMD ou
+filesystem estrutural reais.
 
 ## Documentação
 
