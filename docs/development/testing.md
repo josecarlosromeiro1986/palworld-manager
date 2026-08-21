@@ -79,6 +79,14 @@ maintenance lock, double-submit, cancelamento seguro e recovery `INTERRUPTED` se
 requeue. As rotas exigem autenticação, CSRF e confirmação literal `ATUALIZAR`;
 development e test usam fakes sem processos externos ou filesystem estrutural.
 
+Os testes do Discord cobrem validação estrita do webhook oficial HTTPS, payload
+allowlisted com menções desativadas, timeout, limite de resposta, classificação
+segura de falhas e fake integral sem rede. A integração verifica claim atômico,
+transições `PENDING`/`SENDING`/`SENT`/`FAILED`, backoff exato de 5 e 30 segundos,
+limite de 3 tentativas, falha permanente sem configuração, recovery at least once
+e ausência de URL, token, resposta externa ou resultado livre do job no banco e
+nas mensagens.
+
 Os testes de logs validam os argumentos read-only e allowlisted do `journalctl`, parsing, classificação, proteção de secrets, fake completo, autenticação, histórico de 100/500/1000 linhas, filtros e ausência de persistência no SQLite. O aceite de reconexão abre o SSE com o cursor do histórico, simula nova conexão com `Last-Event-ID` e confirma que a entrega continua no evento seguinte sem repetir o último recebido.
 
 Os testes da REST API administrativa validam os campos oficiais tipados de jogadores, Basic Auth, timeout, servidor offline, indisponibilidade, autenticação, respostas inválidas e falhas inesperadas sem abrir rede nem expor detalhes internos. A integração web confirma que abrir ou reler a página não consulta jogadores, que somente o POST manual atualiza o cache em memória, que uma falha preserva o último snapshot válido e que anúncios exigem CSRF e repetição literal da mensagem. Sucesso e falha do anúncio são verificados na auditoria.

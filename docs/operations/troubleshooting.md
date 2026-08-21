@@ -42,7 +42,21 @@ Procedimento a validar sem excluir arquivos fora da área gerenciada.
 
 ## Discord
 
-Procedimento a validar sem exibir o webhook completo.
+1. Confirme que o worker está ativo; a aplicação web apenas persiste o evento e
+   nunca entrega a mensagem diretamente.
+2. Consulte o estado do `notification_event`: falhas transitórias aguardam 5 e
+   30 segundos, e a terceira tentativa termina em `FAILED`. Falhas permanentes,
+   inclusive webhook ausente, terminam na primeira tentativa.
+3. Em production, confirme que `DISCORD_WEBHOOK_URL` está definido no arquivo
+   protegido de secrets e contém uma URL HTTPS oficial do Discord. Nunca copie a
+   URL completa para logs, tickets ou capturas de tela.
+4. Depois de corrigir a configuração, reinicie somente o worker. Eventos já
+   terminais não são reenviados automaticamente; gere um novo evento controlado
+   para validar a entrega.
+
+Um evento deixado em `SENDING` por interrupção volta a `PENDING` quando ainda há
+tentativas disponíveis. Como o Discord pode ter aceitado a requisição anterior,
+essa recuperação at least once pode produzir uma mensagem duplicada.
 
 ## Tailscale
 

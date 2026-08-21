@@ -28,10 +28,11 @@ Nenhuma etapa em andamento.
 - Etapa 20 — Google Drive/rclone.
 - Etapa 21 — Restore remoto.
 - Etapa 22 — SteamCMD Update.
+- Etapa 23 — Discord.
 
 ## Próxima etapa
 
-Etapa 23 — Discord.
+Etapa 24 — Configurações do Painel.
 
 ## Observações
 

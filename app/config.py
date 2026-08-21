@@ -1,7 +1,9 @@
+import re
 from enum import StrEnum
 from ipaddress import ip_address
 from pathlib import Path
 from typing import Annotated, Self
+from urllib.parse import urlsplit
 
 from pydantic import (
     AnyHttpUrl,
@@ -77,6 +79,10 @@ class Settings(BaseSettings):
         default="palworld-manager",
         validation_alias="RCLONE_REMOTE",
     )
+    discord_webhook_url: SecretStr | None = Field(
+        default=None,
+        validation_alias="DISCORD_WEBHOOK_URL",
+    )
     app_host: IPvAnyAddress = Field(
         default=ip_address("127.0.0.1"),
         validation_alias="APP_HOST",
@@ -98,6 +104,13 @@ class Settings(BaseSettings):
     def require_absolute_path(cls, value: Path) -> Path:
         if not value.is_absolute():
             raise ValueError("o caminho deve ser absoluto")
+        return value
+
+    @field_validator("discord_webhook_url", mode="before")
+    @classmethod
+    def empty_discord_webhook_is_unconfigured(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
         return value
 
     @model_validator(mode="after")
@@ -137,4 +150,25 @@ class Settings(BaseSettings):
                 raise ValueError("PALWORLD_REST_USERNAME possui formato inválido")
             if "\r" in password or "\n" in password:
                 raise ValueError("PALWORLD_REST_PASSWORD possui formato inválido")
+            if self.discord_webhook_url is not None:
+                validate_discord_webhook_url(self.discord_webhook_url.get_secret_value())
         return self
+
+
+def validate_discord_webhook_url(value: str) -> None:
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError as error:
+        raise ValueError("DISCORD_WEBHOOK_URL possui formato inválido") from error
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != "discord.com"
+        or port is not None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or re.fullmatch(r"/api(?:/v\d+)?/webhooks/\d+/[A-Za-z0-9._-]+", parsed.path) is None
+    ):
+        raise ValueError("DISCORD_WEBHOOK_URL deve usar o endpoint HTTPS oficial do Discord")

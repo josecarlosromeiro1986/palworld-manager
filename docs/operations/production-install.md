@@ -30,6 +30,12 @@ terminal sob `palmanager`; o arquivo de configuração do rclone deve permanecer
 restrito a esse usuário e nunca é copiado para SQLite, logs ou backups. O
 procedimento completo de instalação e validação será consolidado na Etapa 29.
 
+O webhook opcional do Discord usa `DISCORD_WEBHOOK_URL` no mesmo arquivo
+protegido de secrets. Quando configurado, deve ser uma URL HTTPS oficial do
+Discord, sem query, fragmento ou credenciais adicionais. Somente o worker utiliza
+esse valor; ele nunca é persistido no SQLite, exibido na UI ou reproduzido em
+logs e auditoria.
+
 Os serviços web e worker serão processos independentes configurados via systemd. Ambos serão executados pelo usuário `palmanager`, nunca como `root`, usarão a mesma configuração estrutural apropriada e acessarão o mesmo banco SQLite quando necessário.
 
 `palworld-manager.service` executará o FastAPI e escutará somente em `127.0.0.1`. Seu `/health` verificará exclusivamente a aplicação web. `palworld-manager-worker.service` consumirá os jobs persistidos, executará as operações demoradas ou críticas e será o único processo autorizado a entregar notificações externas.

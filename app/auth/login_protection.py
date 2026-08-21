@@ -14,6 +14,7 @@ from app.audit.service import (
 from app.auth.passwords import verify_password_or_dummy
 from app.auth.service import MAXIMUM_USERNAME_LENGTH
 from app.db.models import LoginAttempt, User
+from app.notifications.service import LOGIN_BLOCKED, enqueue_discord_notification
 
 MAXIMUM_FAILED_ATTEMPTS = 5
 LOGIN_BLOCK_DURATION = timedelta(minutes=15)
@@ -200,5 +201,6 @@ def attempt_administrator_login(
             target=tracked_username,
             details=details,
         )
+        enqueue_discord_notification(session, LOGIN_BLOCKED, created_at=current_time)
     session.flush()
     return LoginResult(user=None, blocked_until=new_block)

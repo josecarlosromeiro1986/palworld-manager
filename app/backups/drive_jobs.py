@@ -18,7 +18,7 @@ from app.backups.drive_service import DriveTransferService
 from app.backups.jobs import apply_local_retention, register_backup_artifact
 from app.backups.service import BACKUP_FILENAME_PATTERN
 from app.db.engine import session_scope
-from app.db.models import BackupRecord, Job, NotificationEvent
+from app.db.models import BackupRecord, Job
 from app.integrations.google_drive import GoogleDriveCancelled, GoogleDriveError
 from app.jobs.service import (
     ACTIVE_JOB_STATUSES,
@@ -32,6 +32,7 @@ from app.jobs.service import (
     JOB_STEP_FAILED,
     JOB_STEP_WAITING,
 )
+from app.notifications.service import DRIVE_FAILED, enqueue_discord_notification
 
 DRIVE_CHECK_JOB_KIND: Final = "DRIVE_CHECK"
 DRIVE_UPLOAD_JOB_KIND: Final = "DRIVE_UPLOAD"
@@ -519,15 +520,7 @@ class DriveJobExecutor:
                 target="Google Drive",
                 details={**_safe_audit_details(result), "error": "DRIVE_FAILED"},
             )
-            session.add(
-                NotificationEvent(
-                    event_type="DRIVE_FAILED",
-                    channel="DISCORD",
-                    status="PENDING",
-                    job_id=job.id,
-                    attempts=0,
-                )
-            )
+            enqueue_discord_notification(session, DRIVE_FAILED, job_id=job.id)
 
 
 def drive_job_view(job: Job) -> DriveJobView:

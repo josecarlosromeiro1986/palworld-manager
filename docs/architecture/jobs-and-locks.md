@@ -18,7 +18,12 @@ O primeiro consumidor implementado é o ciclo de vida do Palworld. A web cria jo
 
 O desligamento usa `PALWORLD_ASSISTED_SHUTDOWN`, `PALWORLD_FORCE_SIGTERM` e `PALWORLD_FORCE_SIGKILL` sob a mesma chave. A contagem grava progresso e pedidos de cancelamento ou execução imediata no SQLite. O worker fecha o ponto de cancelamento antes de iniciar o Stop. SIGKILL nunca é criado como consequência automática: somente uma nova requisição autenticada, após falha de SIGTERM, pode enfileirá-lo.
 
-Além dos jobs, o worker será o único processo que entrega `notification_events` a integrações externas. FastAPI e worker já podem criar esses eventos no SQLite, mas FastAPI não chama o Discord diretamente. Aquisição, entrega e reconciliação de notificações permanecem reservadas à Etapa 23.
+Além dos jobs, o worker é o único processo que entrega `notification_events` a
+integrações externas. FastAPI e worker podem criar esses eventos no SQLite, mas
+FastAPI não chama o Discord diretamente. O claim muda atomicamente um evento
+elegível de `PENDING` para `SENDING` e incrementa a tentativa antes do POST,
+impedindo aquisição duplicada. O loop processa no máximo um job e uma
+notificação por iteração para evitar starvation entre as filas.
 
 ## Execução e observabilidade
 
@@ -56,6 +61,10 @@ O reinício do serviço web não implica reinício do worker. Um job já em exec
 
 Se o worker reiniciar após perder o lease anterior, localiza jobs ainda em `RUNNING`, muda cada um para `INTERRUPTED`, encerra o ponto de cancelamento, libera o lock e registra auditoria e log. Nenhum job interrompido é recolocado na fila. A UI exige revisão manual e o health atual do Palworld permite verificar o estado real antes de uma nova ação.
 
-A reconciliação de eventos de notificação deixados em `SENDING` continua planejada para a Etapa 23, junto da entrega ao Discord; a Etapa 17 não antecipa esse consumidor.
+No startup, eventos `SENDING` com uma ou duas tentativas retornam a `PENDING`
+para nova entrega; com três tentativas passam a `FAILED`. Essa reconciliação
+preserva a semântica at least once e admite duplicidade quando o Discord aceitou
+o POST antes da interrupção. Falhas transitórias usam backoff de 5 e 30 segundos
+e nunca ultrapassam três tentativas.
 
 Redis, Celery, RabbitMQ e Kafka não fazem parte da V1 porque a fila local persistida e um worker independente atendem ao escopo de uma instalação pequena, evitando serviços adicionais em produção. Consulte [SPECIFICATION.md](../../SPECIFICATION.md) para os fluxos e critérios de aceite completos.

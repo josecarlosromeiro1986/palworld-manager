@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto e Update manual via SteamCMD estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD e notificações Discord estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -62,6 +62,12 @@ um backup pré-update válido, executa o desligamento assistido, chama o SteamCM
 com argumentos fixos e valida Start, REST/health, versão e logs críticos. O fluxo
 não executa rollback automático; development e test usam fakes sem SteamCMD ou
 filesystem estrutural reais.
+
+Notificações administrativas e de falha são persistidas no SQLite e entregues
+exclusivamente pelo worker ao webhook oficial do Discord. A entrega usa claim
+atômico, até 3 tentativas com backoff limitado e recuperação at least once. O
+secret `DISCORD_WEBHOOK_URL` permanece somente no ambiente; development e test
+usam um fake integral sem acesso à rede.
 
 ## Documentação
 

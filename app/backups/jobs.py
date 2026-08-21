@@ -29,6 +29,7 @@ from app.jobs.service import (
     JOB_STEP_FAILED,
     JOB_STEP_WAITING,
 )
+from app.notifications.service import BACKUP_FAILED, enqueue_discord_notification
 
 LOCAL_BACKUP_JOB_KIND: Final = "LOCAL_BACKUP"
 LOCAL_BACKUP_COORDINATION_KEY: Final = "LOCAL_BACKUP"
@@ -234,6 +235,8 @@ class LocalBackupJobExecutor:
                     target="Backup local",
                     details={"error": "BACKUP_FAILED", "trigger": trigger},
                 )
+                if trigger == "AUTOMATIC":
+                    enqueue_discord_notification(session, BACKUP_FAILED, job_id=job.id)
             raise
 
     def _checkpoint(self, job_id: int, step: str, progress: int, cancellable: bool) -> None:

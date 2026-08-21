@@ -17,7 +17,7 @@ from app.auth.login_protection import (
 )
 from app.auth.service import create_administrator
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import AuditEvent, LoginAttempt
+from app.db.models import AuditEvent, LoginAttempt, NotificationEvent
 
 
 @dataclass(frozen=True)
@@ -88,6 +88,7 @@ def test_fifth_consecutive_failure_blocks_login_and_is_audited(
     with session_scope(login_protection_context.factory) as session:
         attempts = list(session.scalars(select(LoginAttempt).order_by(LoginAttempt.id)))
         events = list(session.scalars(select(AuditEvent).order_by(AuditEvent.id)))
+        notifications = list(session.scalars(select(NotificationEvent)))
 
     assert len(attempts) == 6
     assert all(attempt.source_address == "198.51.100.10" for attempt in attempts)
@@ -96,6 +97,8 @@ def test_fifth_consecutive_failure_blocks_login_and_is_audited(
     assert len(blocked_events) == 1
     assert blocked_events[0].result == "SUCCESS"
     assert blocked_events[0].origin == "SYSTEM"
+    assert [event.event_type for event in notifications] == ["LOGIN_BLOCKED"]
+    assert notifications[0].job_id is None
     assert "senha-incorreta" not in repr(events)
     assert "senha-ficticia" not in repr(events)
 

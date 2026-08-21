@@ -15,7 +15,7 @@ from app.audit.service import (
     record_audit_event,
 )
 from app.db.engine import session_scope
-from app.db.models import AppSetting, Job, NotificationEvent
+from app.db.models import AppSetting, Job
 from app.health.palworld import PalworldHealthState
 from app.jobs.service import (
     ACTIVE_JOB_STATUSES,
@@ -35,6 +35,7 @@ from app.lifecycle.jobs import (
     lifecycle_timeout,
 )
 from app.lifecycle.service import LifecycleAction
+from app.notifications.service import FORCED_SHUTDOWN, enqueue_discord_notification
 from app.shutdown.service import (
     AssistedShutdownExecutor,
     AssistedShutdownResult,
@@ -426,14 +427,7 @@ def _complete_shutdown_job(
             },
         )
         if notify_forced_shutdown:
-            session.add(
-                NotificationEvent(
-                    event_type="FORCED_SHUTDOWN",
-                    channel="DISCORD",
-                    status="PENDING",
-                    job_id=job_id,
-                )
-            )
+            enqueue_discord_notification(session, FORCED_SHUTDOWN, job_id=job_id)
 
 
 def shutdown_job_view(job: Job) -> ShutdownJobView:

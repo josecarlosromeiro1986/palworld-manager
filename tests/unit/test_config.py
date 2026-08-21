@@ -17,6 +17,7 @@ CONFIG_ENV_VARS = (
     "STEAMCMD",
     "RCLONE",
     "RCLONE_REMOTE",
+    "DISCORD_WEBHOOK_URL",
     "APP_HOST",
     "APP_PORT",
     "MANAGER_DATABASE",
@@ -48,6 +49,7 @@ def test_structural_defaults() -> None:
     assert settings.manager_database == Path("/var/lib/palworld-manager/manager.db")
     assert settings.rclone == Path("/usr/bin/rclone")
     assert settings.rclone_remote == "palworld-manager"
+    assert settings.discord_webhook_url is None
 
 
 @pytest.mark.parametrize("environment", list(AppEnvironment))

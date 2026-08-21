@@ -21,6 +21,13 @@ A aplicação seguirá o princípio do menor privilégio. Em produção, será e
 
 Secrets ficarão fora do SQLite, em arquivo de ambiente com acesso restrito em produção. Senhas, tokens, webhooks, cookies e credenciais não podem aparecer completos na interface, em logs, auditorias, fixtures, diagnósticos ou backups gerenciados/exportados. A cópia técnica pré-save do INI é local, exata e restrita a modo `0600`: ela pode conter os valores que já existiam no arquivo porque precisa permitir recuperação fiel, mas não é exibida, persistida no SQLite nem transferida nesta etapa. Logs devem mascarar valores sensíveis e evitar registrar headers ou ambientes indiscriminadamente.
 
+O Discord usa exclusivamente `DISCORD_WEBHOOK_URL` como secret estrutural. Em
+production, URLs configuradas são limitadas ao endpoint HTTPS oficial, sem
+query, fragmento ou credenciais adicionais. Somente o worker usa o secret e
+executa o POST; a web apenas persiste eventos. Mensagens usam textos allowlisted
+e menções desabilitadas, enquanto falhas persistem apenas categorias seguras.
+Development e test usam fake em memória, sem rede ou webhook real.
+
 A configuração estrutural já é validada com Pydantic Settings no startup de web e worker. Erros de validação ocultam os valores recebidos, e o ambiente `production` rejeita `APP_HOST` que não seja loopback. `PALWORLD_REST_USERNAME` e `PALWORLD_REST_PASSWORD` são secrets obrigatórios em production; não existe username padrão nem fallback para `admin`. Eles serão fornecidos por variáveis de processo provenientes do arquivo protegido previsto para produção.
 
 ## Comandos, caminhos e arquivos

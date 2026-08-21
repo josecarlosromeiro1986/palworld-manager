@@ -39,9 +39,18 @@ PENDING → SENDING → SENT
                   ↘ FAILED
 ```
 
-Falhas transitórias permitem no máximo 3 tentativas totais, com pequeno backoff. Ao esgotá-las, o evento permanece `FAILED`; não há retry infinito. A estratégia exata de backoff e o schema SQL serão definidos durante a implementação.
+Falhas transitórias permitem no máximo 3 tentativas totais. A primeira falha
+agenda `next_attempt_at` para 5 segundos depois, a segunda para 30 segundos e a
+terceira permanece `FAILED`; falhas permanentes terminam na primeira tentativa.
+O schema inicial já contém todos os campos e constraints necessários, portanto
+a Etapa 23 não exige migration.
 
 A entrega segue semântica at least once. No startup, o worker reconcilia eventos deixados em `SENDING`: com menos de 3 tentativas, retornam a `PENDING` e uma nova tentativa será contabilizada; com 3 tentativas, passam a `FAILED`. Se a entrega externa tiver ocorrido antes da interrupção, mas `SENT` não tiver sido persistido, a nova tentativa pode produzir uma mensagem duplicada.
+
+`last_error` recebe somente uma categoria controlada; URL, token, headers, corpo
+remoto e exceções livres não são persistidos. O conteúdo enviado é derivado do
+tipo allowlisted e de IDs/timestamps já presentes, sem adicionar payload livre
+ou duplicar a auditoria.
 
 Exemplos conceituais incluem `BACKUP_FAILED`, `RESTORE_FAILED`, `UPDATE_COMPLETED`, `UPDATE_FAILED`, `DISK_CRITICAL`, `SERVER_CRASH`, `SERVER_RECOVERED`, `FORCED_SHUTDOWN` e `LOGIN_BLOCKED`.
 

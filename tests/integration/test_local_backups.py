@@ -28,7 +28,14 @@ from app.backups.service import LocalBackupService
 from app.backups.source import FakeBackupPayloadSource
 from app.config import AppEnvironment, Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import AppSetting, AuditEvent, BackupRecord, Job, MaintenanceLock
+from app.db.models import (
+    AppSetting,
+    AuditEvent,
+    BackupRecord,
+    Job,
+    MaintenanceLock,
+    NotificationEvent,
+)
 from app.integrations.palworld_rest import FakePalworldRestClient, PalworldRestErrorKind
 from app.jobs.logs import MemoryJobLogStore
 from app.jobs.service import GLOBAL_MAINTENANCE_LOCK, recover_interrupted_jobs
@@ -159,6 +166,11 @@ def test_safe_save_failure_creates_no_valid_record_or_artifact(
             select(AuditEvent).where(AuditEvent.job_id == job_id, AuditEvent.action == "BACKUP")
         )
         assert audit is not None and audit.result == "FAILURE"
+        notification = session.scalar(
+            select(NotificationEvent).where(NotificationEvent.job_id == job_id)
+        )
+        assert notification is not None
+        assert notification.event_type == "BACKUP_FAILED"
     assert list((backup_context.database_path.parent / "backups").glob("*.tar.gz")) == []
     assert list((backup_context.database_path.parent / "tmp/backups").glob("job-*")) == []
 

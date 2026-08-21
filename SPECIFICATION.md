@@ -550,9 +550,27 @@ SENT
 FAILED
 ```
 
-Falhas transitórias permitem no máximo 3 tentativas totais, com pequeno backoff. Após esgotar as tentativas, o estado é `FAILED`; não existe retry infinito. Os detalhes exatos do backoff serão definidos durante a implementação.
+Falhas transitórias permitem no máximo 3 tentativas totais. A primeira falha
+agenda nova tentativa após 5 segundos, a segunda após 30 segundos e a terceira
+torna o evento `FAILED`; falhas permanentes encerram na primeira tentativa. Não
+existe retry infinito. Cada tentativa é contabilizada atomicamente antes da
+chamada externa, e somente um worker pode adquirir o mesmo evento.
 
 A entrega tem semântica **at least once**. Se o worker reiniciar e encontrar um `notification_event` deixado em `SENDING` pelo processo anterior, deve reconciliá-lo: com menos de 3 tentativas, retorna a `PENDING` e a próxima entrega conta como nova tentativa; com 3 tentativas, passa a `FAILED`. Uma mensagem pode ser entregue mais de uma vez se o Discord a tiver aceitado antes da interrupção, mas o worker não tiver persistido `SENT`.
+
+O webhook é lido somente do secret estrutural `DISCORD_WEBHOOK_URL`, nunca do
+SQLite. Em production, quando configurado, deve ser uma URL HTTPS oficial do
+Discord sem query, fragmento ou credenciais adicionais. A ausência do secret
+não impede o startup do Manager, mas qualquer entrega pendente falha de forma
+permanente e controlada, sem descarte silencioso. Development e test usam um
+fake integral e nunca acessam o Discord real.
+
+O worker executa o webhook com `POST` JSON, timeout curto e corpo limitado. O
+payload usa somente textos versionados e allowlisted por tipo de evento, o ID do
+evento, o ID numérico do job quando existir e o timestamp UTC; não copia
+`jobs.result`, auditoria, nomes de usuário, paths ou mensagens de erro livres.
+Menções são desabilitadas por `allowed_mentions`. URL, token, headers, corpo de
+erro remoto e resposta bruta nunca entram em logs, SQLite, auditoria ou UI.
 
 ## 31. Reiniciar/desligar Ubuntu
 

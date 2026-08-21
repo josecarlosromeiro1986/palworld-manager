@@ -21,7 +21,7 @@ from app.backups.jobs import (
 )
 from app.backups.service import BackupArtifact, LocalBackupService
 from app.db.engine import session_scope
-from app.db.models import AppSetting, Job, NotificationEvent
+from app.db.models import AppSetting, Job
 from app.jobs.logs import JobLogStore, MemoryJobLogStore
 from app.jobs.service import (
     ACTIVE_JOB_STATUSES,
@@ -40,6 +40,12 @@ from app.jobs.service import (
 from app.lifecycle.jobs import LIFECYCLE_COORDINATION_KEY, lifecycle_timeout
 from app.lifecycle.service import LifecycleAction, LifecycleExecutor, LifecycleOutcome
 from app.logs.service import LogCategory, PalworldLogError, PalworldLogSource
+from app.notifications.service import (
+    DISK_CRITICAL,
+    UPDATE_COMPLETED,
+    UPDATE_FAILED,
+    enqueue_discord_notification,
+)
 from app.shutdown.jobs import assisted_shutdown_default
 from app.shutdown.service import (
     AssistedShutdownExecutor,
@@ -354,7 +360,7 @@ class UpdateJobExecutor:
             free_bytes = self._disk_space.free_bytes()
             critical_bytes = cast(int, request_data["disk_critical_gb"]) * 1024**3
             if free_bytes < critical_bytes:
-                self._notification(job_id, "DISK_CRITICAL")
+                self._notification(job_id, DISK_CRITICAL)
                 raise UpdateExecutionError(
                     "DISK_CRITICAL",
                     "O Update foi bloqueado porque o espaço livre está em nível crítico.",
@@ -574,14 +580,7 @@ class UpdateJobExecutor:
                     "final_state": "ONLINE",
                 },
             )
-            session.add(
-                NotificationEvent(
-                    event_type="UPDATE_COMPLETED",
-                    channel="DISCORD",
-                    status="PENDING",
-                    job_id=job_id,
-                )
-            )
+            enqueue_discord_notification(session, UPDATE_COMPLETED, job_id=job_id)
         self._append_log(job_id, "Update validado; Palworld está ONLINE.")
 
     def _complete_no_update(
@@ -677,14 +676,7 @@ class UpdateJobExecutor:
                 },
             )
             if notify:
-                session.add(
-                    NotificationEvent(
-                        event_type="UPDATE_FAILED",
-                        channel="DISCORD",
-                        status="PENDING",
-                        job_id=job_id,
-                    )
-                )
+                enqueue_discord_notification(session, UPDATE_FAILED, job_id=job_id)
         self._append_log(job_id, f"Falha controlada: {category}.")
 
     def _merge_result(self, job_id: int, values: dict[str, object]) -> None:
@@ -694,14 +686,7 @@ class UpdateJobExecutor:
 
     def _notification(self, job_id: int, event_type: str) -> None:
         with session_scope(self._session_factory) as session:
-            session.add(
-                NotificationEvent(
-                    event_type=event_type,
-                    channel="DISCORD",
-                    status="PENDING",
-                    job_id=job_id,
-                )
-            )
+            enqueue_discord_notification(session, event_type, job_id=job_id)
 
     def _append_log(self, job_id: int, message: str) -> None:
         with session_scope(self._session_factory) as session:

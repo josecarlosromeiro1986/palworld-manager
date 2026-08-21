@@ -15,7 +15,8 @@ from app.backups.service import LocalBackupService
 from app.backups.source import create_backup_payload_source
 from app.config import Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import Job, NotificationEvent
+from app.db.models import Job
+from app.integrations.discord import create_discord_webhook
 from app.integrations.google_drive import GoogleDriveError, create_google_drive_storage
 from app.integrations.palworld_rest import create_palworld_rest_client
 from app.jobs.heartbeat import WorkerHeartbeatPublisher
@@ -24,10 +25,16 @@ from app.jobs.service import TERMINAL_JOB_STATUSES, recover_interrupted_jobs
 from app.lifecycle.service import create_lifecycle_executor
 from app.lifecycle.worker import LifecycleJobWorker
 from app.logs.service import create_palworld_log_source
+from app.notifications.service import (
+    OPERATION_INTERRUPTED,
+    DiscordNotificationDispatcher,
+    enqueue_discord_notification,
+    reconcile_sending_notifications,
+)
 from app.restores.jobs import LocalRestoreJobExecutor
 from app.restores.service import LocalRestoreService, create_restore_target
 from app.shutdown.service import create_shutdown_executors
-from app.updates.jobs import UPDATE_JOB_KIND, UpdateJobExecutor
+from app.updates.jobs import UpdateJobExecutor
 from app.updates.service import create_disk_space_source, create_steamcmd_gateway
 
 logger = logging.getLogger(__name__)
@@ -54,23 +61,22 @@ def run() -> None:
         heartbeat.start()
         with session_scope(session_factory) as session:
             interrupted_jobs = recover_interrupted_jobs(session)
+            notification_recovery = reconcile_sending_notifications(session)
             for interrupted in interrupted_jobs:
+                interrupted_job = session.get_one(Job, interrupted.id)
                 log_path = interrupted.log_path
                 if log_path is None:
                     log_path = job_logs.create(interrupted.id, interrupted.kind)
-                    session.get_one(Job, interrupted.id).log_path = log_path
+                    interrupted_job.log_path = log_path
                 job_logs.append(
                     log_path,
                     "Worker reiniciado; job interrompido e bloqueado para revisão manual.",
                 )
-                if interrupted.kind == UPDATE_JOB_KIND:
-                    session.add(
-                        NotificationEvent(
-                            event_type="UPDATE_INTERRUPTED",
-                            channel="DISCORD",
-                            status="PENDING",
-                            job_id=interrupted.id,
-                        )
+                if interrupted_job.requires_maintenance_lock:
+                    enqueue_discord_notification(
+                        session,
+                        OPERATION_INTERRUPTED,
+                        job_id=interrupted.id,
                     )
         removed_logs = job_logs.prune()
         rest_client = create_palworld_rest_client(settings)
@@ -147,10 +153,16 @@ def run() -> None:
                 job_logs=job_logs,
             ),
         )
+        notification_dispatcher = DiscordNotificationDispatcher(
+            session_factory,
+            create_discord_webhook(settings),
+        )
         logger.info(
-            "Worker iniciado em %s; %d job(s) recuperado(s), %d log(s) expirado(s) removido(s).",
+            "Worker iniciado em %s; %d job(s) recuperado(s), %d notificação(ões) "
+            "reconciliada(s), %d log(s) expirado(s) removido(s).",
             settings.environment.value,
             len(interrupted_jobs),
+            notification_recovery.requeued + notification_recovery.failed,
             removed_logs,
         )
         if removed_temporary_backups:
@@ -176,8 +188,9 @@ def run() -> None:
         while not shutdown_requested.is_set():
             with session_scope(session_factory) as session:
                 schedule_daily_backup(session)
-            processed = worker.process_next()
-            if not processed:
+            job_processed = worker.process_next()
+            notification_processed = notification_dispatcher.process_next()
+            if not job_processed and not notification_processed:
                 shutdown_requested.wait(1.0)
     finally:
         heartbeat.stop()

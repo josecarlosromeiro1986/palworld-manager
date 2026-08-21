@@ -37,6 +37,11 @@ from app.jobs.service import (
 from app.lifecycle.jobs import lifecycle_timeout
 from app.lifecycle.service import LifecycleAction, LifecycleExecutor, LifecycleOutcome
 from app.logs.service import LogCategory, PalworldLogError, PalworldLogSource
+from app.notifications.service import (
+    RESTORE_COMPLETED,
+    RESTORE_FAILED,
+    enqueue_discord_notification,
+)
 from app.restores.service import LocalRestoreService, PreparedRestore, RestoreError
 
 LOCAL_RESTORE_JOB_KIND: Final = "LOCAL_RESTORE"
@@ -460,6 +465,7 @@ class LocalRestoreJobExecutor:
                     "scope": "PALWORLD_ONLY",
                 },
             )
+            enqueue_discord_notification(session, RESTORE_COMPLETED, job_id=job.id)
 
     def _fail(
         self,
@@ -504,6 +510,7 @@ class LocalRestoreJobExecutor:
                     "requires_manual_review": destructive_started,
                 },
             )
+            enqueue_discord_notification(session, RESTORE_FAILED, job_id=job.id)
 
 
 def restore_job_view(job: Job) -> RestoreJobView:

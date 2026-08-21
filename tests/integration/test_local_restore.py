@@ -16,7 +16,15 @@ from app.backups.service import LocalBackupService
 from app.backups.source import FakeBackupPayloadSource
 from app.config import AppEnvironment, Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import AppSetting, AuditEvent, BackupRecord, Job, MaintenanceLock, User
+from app.db.models import (
+    AppSetting,
+    AuditEvent,
+    BackupRecord,
+    Job,
+    MaintenanceLock,
+    NotificationEvent,
+    User,
+)
 from app.health.palworld import PalworldHealthState
 from app.integrations.palworld_rest import FakePalworldRestClient, PalworldRestErrorKind
 from app.jobs.logs import MemoryJobLogStore
@@ -194,6 +202,9 @@ def test_valid_restore_preserves_manager_state_secrets_and_creates_preventive_ba
         job = session.get_one(Job, job_id)
         records = tuple(session.scalars(select(BackupRecord).order_by(BackupRecord.id)))
         audits = tuple(session.scalars(select(AuditEvent).where(AuditEvent.job_id == job_id)))
+        notification = session.scalar(
+            select(NotificationEvent).where(NotificationEvent.job_id == job_id)
+        )
         assert job.status == "SUCCEEDED"
         assert job.is_cancellable is False
         assert job.result is not None
@@ -209,6 +220,8 @@ def test_valid_restore_preserves_manager_state_secrets_and_creates_preventive_ba
             "BACKUP",
             "RESTORE",
         }
+        assert notification is not None
+        assert notification.event_type == "RESTORE_COMPLETED"
     assert restore_context.lifecycle.actions == [LifecycleAction.STOP, LifecycleAction.START]
     assert restore_context.rest.save_requests == 2
     assert any(
@@ -247,6 +260,11 @@ def test_external_sha_failure_happens_before_preventive_backup_stop_or_world_cha
         assert job.result["error"] == "ARCHIVE_SHA256_MISMATCH"
         assert job.result["requires_manual_review"] is False
         assert session.scalar(select(func.count()).select_from(BackupRecord)) == 1
+        notification = session.scalar(
+            select(NotificationEvent).where(NotificationEvent.job_id == job_id)
+        )
+        assert notification is not None
+        assert notification.event_type == "RESTORE_FAILED"
     assert restore_context.lifecycle.actions == []
     assert restore_context.rest.save_requests == 1
     assert restore_context.target.apply_calls == 0
