@@ -1,6 +1,6 @@
 # Visão geral da arquitetura
 
-> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, métricas, health checks, controles do Palworld, logs, integração REST administrativa, editor do INI, backup/Restore local e remoto via rclone e Update manual via SteamCMD estão implementados; integrações e regras operacionais adicionais permanecem planejadas.
+> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, métricas, health checks, controles do Palworld, logs, integração REST administrativa, editor do INI, backup/Restore local e remoto via rclone, Update manual via SteamCMD, Discord, configurações operacionais e diagnóstico estão implementados; integrações e regras operacionais adicionais permanecem planejadas.
 
 O Palworld Manager é uma aplicação Python leve e modular por domínio. FastAPI coordena as rotas e os serviços da aplicação; Jinja2 renderiza as páginas no servidor; HTMX atualiza as métricas e atualizará outros formulários e fragmentos; e SSE já entrega logs em tempo real com reconexão por cursor. Tailwind CSS fornece o layout administrativo responsivo; Chart.js exibe o histórico de 15 minutos mantido somente em memória.
 
@@ -29,6 +29,12 @@ O serviço web cria e acompanha jobs, mas não executa diretamente operações l
 Qualquer componente pode persistir um `notification_event`; somente o worker muda a entrega para execução e chama o Discord. FastAPI não envia ao webhook diretamente. A entrega é at least once: um evento deixado em `SENDING` após interrupção volta a `PENDING` quando ainda houver tentativa disponível, portanto uma mensagem pode ser entregue mais de uma vez.
 
 O worker não tem servidor HTTP. Sua saúde é derivada do systemd e de um heartbeat gravado no SQLite a cada 10 segundos. Enquanto o serviço estiver ativo e ainda não houver heartbeat, fica `STARTING` com menos de 30 segundos desde a ativação e `UNRESPONSIVE` a partir de 30 segundos. Com heartbeat, idade inferior a 30 segundos é `HEALTHY` e idade igual ou superior é `UNRESPONSIVE`; serviço inativo é `OFFLINE`. O mesmo registro impede uma segunda identidade enquanto o lease estiver recente. O `/health` pertence exclusivamente à aplicação web.
+
+O domínio de diagnóstico executa somente leituras e não usa o maintenance lock.
+Ele reutiliza health, métricas e logs redigidos, combina sinais controlados do
+host e lê do SQLite os últimos checks externos executados pelo worker. Dessa
+forma, a aplicação web não chama SteamCMD, rclone ou Discord para montar o
+relatório. Development e test substituem também os sinais de host por fakes.
 
 Dev e testes usam fakes nas integrações implementadas. O cliente fake da REST API oferece info, jogadores, anúncios, Kick, Ban, Unban, salvamento seguro e falhas controláveis sem rede. O payload fake de backup contém mundo, `Players/` e INI representativos sem ler os paths estruturais do host; somente a área temporária controlada do Manager e um SQLite isolado são usados. O `mock-services` também expõe os contratos oficiais simulados já confirmados. Consulte a [especificação da V1](../../SPECIFICATION.md) para os requisitos e a [documentação Docker](../development/docker.md) para o ambiente planejado.
 

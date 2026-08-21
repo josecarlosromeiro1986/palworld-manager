@@ -30,10 +30,11 @@ Nenhuma etapa em andamento.
 - Etapa 22 — SteamCMD Update.
 - Etapa 23 — Discord.
 - Etapa 24 — Configurações do Painel.
+- Etapa 25 — Diagnóstico.
 
 ## Próxima etapa
 
-Etapa 25 — Diagnóstico.
+Etapa 26 — Auditoria completa.
 
 ## Observações
 

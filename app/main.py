@@ -13,6 +13,8 @@ from app.config import AppEnvironment, Settings
 from app.dashboard.metrics import HostMetricsService
 from app.dashboard.router import router as dashboard_router
 from app.db.engine import create_database_engine, create_session_factory
+from app.diagnostics.router import router as diagnostics_router
+from app.diagnostics.service import create_diagnostics_service
 from app.health.palworld import create_palworld_health_check
 from app.health.router import router as health_router
 from app.integrations.palworld_rest import create_palworld_rest_client
@@ -88,6 +90,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.palworld_service = palworld_service
     application.state.palworld_health_check = palworld_health_check
     application.state.worker_health_check = WorkerHealthChecker(session_factory, worker_service)
+    application.state.diagnostics_service = create_diagnostics_service(
+        resolved_settings,
+        session_factory,
+        palworld_health_check,
+        application.state.worker_health_check,
+        application.state.metrics_service,
+        application.state.palworld_log_source,
+    )
     application.add_middleware(AuthenticationMiddleware, session_factory=session_factory)
     application.mount(
         "/static",
@@ -99,6 +109,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(backups_router)
     application.include_router(drive_backups_router)
     application.include_router(dashboard_router)
+    application.include_router(diagnostics_router)
     application.include_router(players_router)
     application.include_router(logs_router)
     application.include_router(manager_settings_router)

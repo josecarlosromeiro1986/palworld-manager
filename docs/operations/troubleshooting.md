@@ -1,6 +1,6 @@
 # Troubleshooting
 
-> Status: Planejado para a V1.
+> Status: Em desenvolvimento. A tela de Diagnóstico está implementada; procedimentos de correção serão ampliados somente após validação operacional real.
 
 Este documento é um índice inicial e deverá crescer a partir de problemas reais e procedimentos validados. Enquanto os componentes não estiverem implementados, não há comandos de correção suportados para registrar.
 
@@ -74,4 +74,6 @@ Procedimento a validar com SQLAlchemy e Alembic.
 
 Procedimento a validar com a reconciliação de jobs; operações destrutivas não devem ser retomadas automaticamente.
 
-Consulte também a futura tela de diagnóstico e [SPECIFICATION.md](../../SPECIFICATION.md).
+Comece pela tela **Diagnóstico**, copie somente o relatório sanitizado e consulte
+[Diagnóstico](diagnostics.md) para entender as fontes de cada check. Consulte
+também [SPECIFICATION.md](../../SPECIFICATION.md).

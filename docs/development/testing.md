@@ -87,6 +87,12 @@ limite de 3 tentativas, falha permanente sem configuração, recovery at least o
 e ausência de URL, token, resposta externa ou resultado livre do job no banco e
 nas mensagens.
 
+Os testes de diagnóstico cobrem a severidade agregada, relatório copiável,
+comandos read-only fixos de systemd e Tailscale, fakes sem acesso ao host,
+autenticação das rotas, atualização HTMX e leitura dos últimos estados seguros
+de SteamCMD, Drive e Discord. A integração também confirma que gerar o relatório
+não cria auditoria, jobs ou notificações e não expõe secrets ou paths.
+
 Os testes de logs validam os argumentos read-only e allowlisted do `journalctl`, parsing, classificação, proteção de secrets, fake completo, autenticação, histórico de 100/500/1000 linhas, filtros e ausência de persistência no SQLite. O aceite de reconexão abre o SSE com o cursor do histórico, simula nova conexão com `Last-Event-ID` e confirma que a entrega continua no evento seguinte sem repetir o último recebido.
 
 Os testes da REST API administrativa validam os campos oficiais tipados de jogadores, Basic Auth, timeout, servidor offline, indisponibilidade, autenticação, respostas inválidas e falhas inesperadas sem abrir rede nem expor detalhes internos. A integração web confirma que abrir ou reler a página não consulta jogadores, que somente o POST manual atualiza o cache em memória, que uma falha preserva o último snapshot válido e que anúncios exigem CSRF e repetição literal da mensagem. Sucesso e falha do anúncio são verificados na auditoria.

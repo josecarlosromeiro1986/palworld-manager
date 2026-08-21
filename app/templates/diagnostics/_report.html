@@ -1,0 +1,42 @@
+{% set tones = {
+  "OK": "border-positive/30 bg-positive/10 text-positive",
+  "ATTENTION": "border-warning/30 bg-warning/10 text-warning",
+  "FAILURE": "border-danger/30 bg-danger/10 text-danger"
+} %}
+
+<section id="diagnostics-report" aria-live="polite" data-diagnostics-report>
+  <div class="mb-4 flex flex-col gap-2 rounded-md border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+    <div>
+      <p class="text-xs font-medium text-muted">RESULTADO GERAL</p>
+      <p class="mt-1 text-sm font-semibold {{ tones[report.overall_status.value] }}" data-diagnostics-overall="{{ report.overall_status.value }}">
+        {{ report.overall_status.symbol }} {{ report.overall_status.label }}
+      </p>
+    </div>
+    <p class="text-xs text-muted">Gerado em <time datetime="{{ report.generated_at.isoformat() }}">{{ report.generated_at.strftime("%d/%m/%Y %H:%M:%S UTC") }}</time></p>
+  </div>
+
+  <div class="space-y-6">
+    {% for section, checks in report.sections %}
+      <section aria-labelledby="diagnostics-section-{{ loop.index }}">
+        <div class="mb-3 border-b pb-2">
+          <h2 id="diagnostics-section-{{ loop.index }}" class="text-sm font-semibold text-ink">{{ section }}</h2>
+        </div>
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {% for check in checks %}
+            <article class="rounded-md border bg-surface p-3 sm:p-4" data-diagnostic-check="{{ check.identifier }}" data-diagnostic-status="{{ check.status.value }}">
+              <div class="flex items-start justify-between gap-3">
+                <h3 class="text-sm font-medium text-ink">{{ check.label }}</h3>
+                <span class="shrink-0 rounded-full border px-2 py-1 text-xs font-semibold {{ tones[check.status.value] }}">
+                  {{ check.status.symbol }} {{ check.status.label }}
+                </span>
+              </div>
+              <p class="mt-2 text-xs leading-5 text-muted">{{ check.summary }}</p>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+
+  <pre class="sr-only" data-diagnostics-copy-source>{{ report.copy_text() }}</pre>
+</section>

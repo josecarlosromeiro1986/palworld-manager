@@ -680,3 +680,29 @@ function initializeConfirmationModal(root = document) {
 }
 
 initializeConfirmationModal();
+
+document.addEventListener("click", async (event) => {
+  const button = event.target.closest?.("[data-diagnostics-copy]");
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+  const source = document.querySelector("[data-diagnostics-copy-source]");
+  const feedback = document.querySelector("[data-diagnostics-copy-feedback]");
+  const text = source?.textContent?.trim() || "";
+  if (!text) {
+    if (feedback) {
+      feedback.textContent = "Nenhum diagnóstico disponível para copiar.";
+    }
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    if (feedback) {
+      feedback.textContent = "Diagnóstico copiado sem dados sensíveis.";
+    }
+  } catch {
+    if (feedback) {
+      feedback.textContent = "Não foi possível copiar automaticamente.";
+    }
+  }
+});

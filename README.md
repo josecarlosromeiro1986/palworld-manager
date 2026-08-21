@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord e configurações operacionais do painel estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais e diagnóstico estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -75,6 +75,13 @@ assistido, disco e timeouts. Ela também troca a senha com confirmação da senh
 atual, revoga todas as sessões e oferece testes de Discord e Drive que apenas
 criam eventos e jobs para o worker. Secrets, paths, executáveis, serviços,
 sudoers e infraestrutura Tailscale permanecem fora da interface e do SQLite.
+
+A página **Diagnóstico** agrega checks somente leitura do Manager, Palworld,
+worker, host, integrações, SQLite/migrations, versão/commit e erros recentes.
+SteamCMD, Drive e Discord são representados pelos últimos resultados seguros do
+worker; development e test usam fakes e não consultam o host ou a rede. O
+relatório pode ser atualizado e copiado sem incluir secrets, paths estruturais
+ou saídas brutas.
 
 ## Documentação
 

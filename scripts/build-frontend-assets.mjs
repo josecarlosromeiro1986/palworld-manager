@@ -11,6 +11,7 @@ const assets = [
 const selectedIcons = {
   activity: icons.Activity,
   archive: icons.Archive,
+  copy: icons.Copy,
   cpu: icons.Cpu,
   eye: icons.Eye,
   "hard-drive": icons.HardDrive,
