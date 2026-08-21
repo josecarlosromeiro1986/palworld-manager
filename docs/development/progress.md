@@ -29,10 +29,11 @@ Nenhuma etapa em andamento.
 - Etapa 21 — Restore remoto.
 - Etapa 22 — SteamCMD Update.
 - Etapa 23 — Discord.
+- Etapa 24 — Configurações do Painel.
 
 ## Próxima etapa
 
-Etapa 24 — Configurações do Painel.
+Etapa 25 — Diagnóstico.
 
 ## Observações
 

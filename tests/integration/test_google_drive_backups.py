@@ -30,7 +30,7 @@ from app.backups.service import LocalBackupService
 from app.backups.source import FakeBackupPayloadSource
 from app.config import AppEnvironment, Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import AuditEvent, BackupRecord, Job, NotificationEvent
+from app.db.models import AppSetting, AuditEvent, BackupRecord, Job, NotificationEvent
 from app.integrations.google_drive import FakeGoogleDriveStorage
 from app.integrations.palworld_rest import FakePalworldRestClient
 from app.jobs.logs import MemoryJobLogStore
@@ -410,15 +410,28 @@ def test_quota_removes_only_oldest_database_managed_remote(
     assert drive_context.drive.contains("arquivo-do-usuario.txt")
 
 
-def test_remote_retention_keeps_exactly_ten_and_preserves_unmanaged_file(
+@pytest.mark.parametrize(
+    ("configured_retention", "expected_retention"),
+    [(None, 10), (3, 3)],
+)
+def test_remote_retention_uses_default_or_configured_value_and_preserves_unmanaged_file(
     drive_context: DriveContext,
+    configured_retention: int | None,
+    expected_retention: int,
 ) -> None:
     local = _create_local(drive_context)
     factory = create_session_factory(drive_context.engine)
     now = datetime(2026, 8, 14, 12, 0, tzinfo=UTC)
     oldest = _managed_filename(0)
     with session_scope(factory) as session:
-        for index in range(10):
+        if configured_retention is not None:
+            session.add(
+                AppSetting(
+                    key="drive_backup_retention",
+                    value=configured_retention,
+                )
+            )
+        for index in range(expected_retention):
             filename = _managed_filename(index)
             content = bytes([index])
             drive_context.drive.seed(filename, content)
@@ -448,7 +461,7 @@ def test_remote_retention_keeps_exactly_ten_and_preserves_unmanaged_file(
         records = tuple(
             session.scalars(select(BackupRecord).where(BackupRecord.location == "DRIVE"))
         )
-    assert len(records) == 10
+    assert len(records) == expected_retention
     assert not drive_context.drive.contains(oldest)
     assert drive_context.drive.contains("foto-da-familia.jpg")
 

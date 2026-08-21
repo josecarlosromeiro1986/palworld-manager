@@ -186,6 +186,19 @@ disk_warning_gb = 20
 disk_critical_gb = 10
 ```
 
+Limites editáveis do painel:
+
+```text
+local_backup_retention = 1..30
+drive_backup_retention = 1..100
+metrics_interval_seconds = 1..60
+disk_warning_gb = 1..1024
+disk_critical_gb = 1..1024 e sempre menor que disk_warning_gb
+```
+
+Esses limites devem ser validados no backend antes da persistência. Os demais
+campos operacionais preservam os formatos e limites definidos em seus domínios.
+
 Timestamps persistidos em UTC e exibidos no timezone configurado.
 
 ### Segredos
@@ -247,6 +260,13 @@ V1 com um administrador, mas modelo preparado para múltiplos usuários futuros.
 - inatividade máxima: 1 hora;
 - logout invalida sessão;
 - troca de senha invalida todas as sessões;
+- troca de senha pelo painel exige a senha atual, a nova senha e a confirmação
+  exata da nova senha;
+- a validação da senha atual usa a mesma proteção contra tentativas abusivas do
+  login; após o sucesso, todas as sessões, inclusive a atual, são revogadas, os
+  cookies de autenticação são removidos e o administrador retorna ao login;
+- a alteração é auditada sem registrar senha, hash ou qualquer outro valor
+  sensível;
 - cookies `HttpOnly` e `SameSite=Strict` em todos os ambientes; o cookie de sessão usa `Secure` obrigatoriamente em produção e pode omiti-lo somente em development/test para permitir o acesso HTTP local;
 - 5 tentativas erradas consecutivas para o mesmo usuário → bloqueio desse usuário por 15 minutos; um login bem-sucedido ou a expiração do bloqueio reinicia a contagem; o endereço de origem observado é registrado para auditoria, mas não compõe a chave do bloqueio;
 - tentativas/bloqueios auditados;
@@ -378,6 +398,12 @@ Definições versionadas no projeto e baseadas na documentação oficial. Sem sc
 ## 21. Configurações do Painel
 
 Editar somente parâmetros operacionais seguros: backup, horário, retenção, timezone, métricas, aviso assistido, limites de disco, timeouts, senha, teste Discord e Drive.
+
+A troca de senha no painel exige senha atual, nova senha e confirmação. A senha
+atual passa pela proteção contra tentativas abusivas já usada no login. Depois
+de uma alteração válida com Argon2id e a política mínima vigente, todas as
+sessões são revogadas, os cookies de autenticação são removidos, a ação é
+auditada sem valores sensíveis e o administrador retorna à tela de login.
 
 Não permitir alterar pela UI `sudoers`, serviços arbitrários, executáveis arbitrários, infraestrutura Tailscale ou caminhos críticos livres.
 

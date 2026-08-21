@@ -29,6 +29,7 @@ Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **
 - [Deploy](operations/deploy.md): sequência planejada de publicação e rollback manual.
 - [Backup e restore](operations/backup-restore.md): conteúdo, integridade, retenção e restauração segura.
 - [Atualizações](operations/updates.md): atualização manual do Palworld via SteamCMD.
+- [Configurações do Painel](operations/manager-settings.md): allowlist operacional, limites, troca de senha e testes seguros de integrações.
 - [Troubleshooting](operations/troubleshooting.md): índice inicial de investigação de falhas.
 
 ## Integrações

@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD e notificações Discord estão implementados; as demais funcionalidades operacionais da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord e configurações operacionais do painel estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -68,6 +68,13 @@ exclusivamente pelo worker ao webhook oficial do Discord. A entrega usa claim
 atômico, até 3 tentativas com backoff limitado e recuperação at least once. O
 secret `DISCORD_WEBHOOK_URL` permanece somente no ambiente; development e test
 usam um fake integral sem acesso à rede.
+
+A página **Configurações do Painel** mantém uma allowlist tipada de parâmetros
+operacionais de backup, horário, timezone, retenções, métricas, desligamento
+assistido, disco e timeouts. Ela também troca a senha com confirmação da senha
+atual, revoga todas as sessões e oferece testes de Discord e Drive que apenas
+criam eventos e jobs para o worker. Secrets, paths, executáveis, serviços,
+sudoers e infraestrutura Tailscale permanecem fora da interface e do SQLite.
 
 ## Documentação
 

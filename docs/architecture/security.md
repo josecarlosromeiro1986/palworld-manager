@@ -15,6 +15,7 @@ A aplicação seguirá o princípio do menor privilégio. Em produção, será e
 - Cookies de autenticação usam `HttpOnly` e `SameSite=Strict`. `Secure` é obrigatório em produção e omitido somente em development/test para permitir HTTP local.
 - Cinco tentativas inválidas consecutivas para o mesmo usuário causam bloqueio por 15 minutos. Login bem-sucedido ou expiração do bloqueio reinicia a contagem.
 - O endereço de origem observado é armazenado para auditoria, mas não compõe a chave do bloqueio. Tentativas e bloqueios são auditados sem registrar senhas.
+- A troca de senha pelo painel exige a senha atual, a nova senha e sua confirmação exata. A validação da senha atual reutiliza a proteção contra tentativas abusivas do login; uma troca bem-sucedida grava somente o novo hash Argon2id, revoga inclusive a sessão atual, remove os cookies de autenticação, registra a ação sem valores sensíveis e retorna o administrador ao login.
 - Login, logout, controles do servidor, anúncios e gravação do `PalWorldSettings.ini` já validam CSRF. O anúncio também exige que a confirmação repita literalmente o texto livre que será enviado.
 
 ## Secrets e registros

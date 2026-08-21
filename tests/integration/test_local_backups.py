@@ -228,15 +228,29 @@ def test_backup_requires_global_lock_and_duplicate_request_is_rejected(
             enqueue_local_backup(session, user_id=None, trigger="AUTOMATIC")
 
 
-def test_retention_keeps_exactly_three_managed_backups_and_preserves_external_file(
+@pytest.mark.parametrize(
+    ("configured_retention", "expected_retention"),
+    [(None, 3), (2, 2)],
+)
+def test_retention_uses_default_or_configured_value_and_preserves_external_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    configured_retention: int | None,
+    expected_retention: int,
 ) -> None:
     database_path = tmp_path / "manager.db"
     monkeypatch.setenv("MANAGER_DATABASE", str(database_path))
     command.upgrade(Config("alembic.ini"), "head")
     engine = create_database_engine(database_path)
     factory = create_session_factory(engine)
+    if configured_retention is not None:
+        with session_scope(factory) as session:
+            session.add(
+                AppSetting(
+                    key="local_backup_retention",
+                    value=configured_retention,
+                )
+            )
     rest = FakePalworldRestClient()
     times = iter(datetime(2026, 8, 14, hour, tzinfo=UTC) for hour in range(4))
     identifiers = iter(UUID(int=value) for value in range(1, 5))
@@ -266,8 +280,10 @@ def test_retention_keeps_exactly_three_managed_backups_and_preserves_external_fi
 
     with session_scope(factory) as session:
         records = tuple(session.scalars(select(BackupRecord).order_by(BackupRecord.created_at)))
-    assert len(records) == 3
-    assert len(list(backups_directory.glob("palworld-manager-backup-*.tar.gz"))) == 3
+    assert len(records) == expected_retention
+    assert (
+        len(list(backups_directory.glob("palworld-manager-backup-*.tar.gz"))) == expected_retention
+    )
     assert external.read_bytes() == b"preservar"
     engine.dispose()
 

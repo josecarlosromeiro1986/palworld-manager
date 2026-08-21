@@ -29,12 +29,11 @@ from app.jobs.service import (
     JOB_STEP_FAILED,
     JOB_STEP_WAITING,
 )
+from app.manager_settings.service import configured_local_retention
 from app.notifications.service import BACKUP_FAILED, enqueue_discord_notification
 
 LOCAL_BACKUP_JOB_KIND: Final = "LOCAL_BACKUP"
 LOCAL_BACKUP_COORDINATION_KEY: Final = "LOCAL_BACKUP"
-DEFAULT_LOCAL_RETENTION: Final = 3
-LOCAL_RETENTION_KEY: Final = "local_backup_retention"
 
 
 class BackupJobConflictError(RuntimeError):
@@ -156,7 +155,11 @@ class LocalBackupJobExecutor:
             with session_scope(self._session_factory) as session:
                 job = session.get_one(Job, job_id)
                 record = register_backup_artifact(session, artifact, job_id=job.id)
-                _apply_retention(session, self._service, DEFAULT_LOCAL_RETENTION)
+                _apply_retention(
+                    session,
+                    self._service,
+                    configured_local_retention(session),
+                )
                 drive_upload_job_id: int | None = None
                 if trigger == "AUTOMATIC" and self._automatic_drive_uploads:
                     from app.backups.drive_jobs import enqueue_drive_upload

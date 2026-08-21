@@ -1,0 +1,138 @@
+{% extends 'layouts/app.html' %}
+{% from 'components/icon.html' import icon with context %}
+
+{% macro number_setting(name, label, value, minimum, maximum, help_text) %}
+  <label class='block text-sm font-medium text-ink'>
+    {{ label }}
+    <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' type='number' name='{{ name }}' value='{{ value }}' min='{{ minimum }}' max='{{ maximum }}' required>
+    <span class='mt-1 block text-xs font-normal text-muted'>{{ help_text }}</span>
+  </label>
+{% endmacro %}
+
+{% block content %}
+<div class='mb-6'>
+  <p class='mb-1 text-xs font-medium text-accent'>ADMINISTRAÇÃO SEGURA</p>
+  <h1 class='text-xl font-semibold text-ink sm:text-2xl'>Configurações do Painel</h1>
+  <p class='mt-1 text-sm text-muted'>Somente parâmetros operacionais allowlisted. Infraestrutura, paths e secrets permanecem fora desta interface.</p>
+</div>
+
+<section class='rounded-md border bg-surface p-4 sm:p-5' aria-labelledby='operational-title'>
+  <div class='mb-5'>
+    <h2 id='operational-title' class='text-base font-semibold text-ink'>Operação</h2>
+    <p class='mt-1 text-xs text-muted'>Os valores são validados no backend e aplicados aos serviços existentes.</p>
+  </div>
+  {% if operational_error %}<p class='mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger' role='alert'>{{ operational_error }}</p>{% endif %}
+  {% if operational_saved %}<p class='mb-4 rounded-md border border-positive/30 bg-positive/10 px-3 py-2 text-sm text-positive' role='status'>Configurações operacionais salvas.</p>{% endif %}
+  <form method='post' action='/manager-settings/operational' class='space-y-6'>
+    <input type='hidden' name='csrf_token' value='{{ csrf_token }}'>
+    <input type='hidden' name='settings_version' value='{{ settings_version }}'>
+
+    <fieldset>
+      <legend class='mb-3 text-sm font-semibold text-ink'>Backup automático</legend>
+      <div class='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+        <label class='flex min-h-10 items-center gap-3 rounded-md border bg-canvas px-3 text-sm text-ink'>
+          <input type='checkbox' name='backup_enabled' value='true' {% if manager_settings.backup_enabled %}checked{% endif %}>
+          Backup diário habilitado
+        </label>
+        <label class='block text-sm font-medium text-ink'>Horário local
+          <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' type='time' name='backup_time' value='{{ manager_settings.backup_time }}' required>
+          <span class='mt-1 block text-xs font-normal text-muted'>Precisão de minutos.</span>
+        </label>
+        {{ number_setting('local_backup_retention', 'Retenção local', manager_settings.local_backup_retention, 1, 30, 'Entre 1 e 30 backups válidos.') }}
+        {{ number_setting('drive_backup_retention', 'Retenção no Drive', manager_settings.drive_backup_retention, 1, 100, 'Entre 1 e 100 backups gerenciados.') }}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class='mb-3 text-sm font-semibold text-ink'>Horário e acompanhamento</legend>
+      <div class='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
+        <label class='block text-sm font-medium text-ink'>Timezone IANA
+          <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 font-mono text-sm text-ink' name='timezone' value='{{ manager_settings.timezone }}' maxlength='100' autocomplete='off' required>
+          <span class='mt-1 block text-xs font-normal text-muted'>Exemplo: America/Sao_Paulo.</span>
+        </label>
+        {{ number_setting('metrics_interval_seconds', 'Intervalo das métricas', manager_settings.metrics_interval_seconds, 1, 60, 'Entre 1 e 60 segundos.') }}
+        <label class='block text-sm font-medium text-ink'>Aviso assistido padrão
+          <select class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' name='assisted_shutdown_default_minutes'>
+            {% for value, label in [(0, 'Agora'), (1, '1 minuto'), (5, '5 minutos'), (10, '10 minutos')] %}
+              <option value='{{ value }}' {% if value == manager_settings.assisted_shutdown_default_minutes %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class='mb-3 text-sm font-semibold text-ink'>Limites de disco</legend>
+      <div class='grid gap-4 md:grid-cols-2'>
+        {{ number_setting('disk_warning_gb', 'Aviso de espaço livre', manager_settings.disk_warning_gb, 1, 1024, 'Entre 1 e 1024 GB.') }}
+        {{ number_setting('disk_critical_gb', 'Espaço livre crítico', manager_settings.disk_critical_gb, 1, 1024, 'Entre 1 e 1024 GB e sempre menor que o aviso.') }}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend class='mb-3 text-sm font-semibold text-ink'>Timeouts do Palworld</legend>
+      <div class='grid gap-4 md:grid-cols-3'>
+        {{ number_setting('start_timeout_seconds', 'Start', manager_settings.start_timeout_seconds, 1, 600, 'Entre 1 e 600 segundos.') }}
+        {{ number_setting('restart_timeout_seconds', 'Restart', manager_settings.restart_timeout_seconds, 1, 600, 'Entre 1 e 600 segundos.') }}
+        {{ number_setting('stop_timeout_seconds', 'Stop', manager_settings.stop_timeout_seconds, 1, 300, 'Entre 1 e 300 segundos.') }}
+      </div>
+    </fieldset>
+
+    <div class='flex justify-end'>
+      <button type='submit' class='min-h-10 rounded-md bg-accent px-4 text-sm font-semibold text-canvas'>Salvar configurações</button>
+    </div>
+  </form>
+</section>
+
+<section class='mt-6 rounded-md border bg-surface p-4 sm:p-5' aria-labelledby='integrations-title'>
+  <h2 id='integrations-title' class='text-base font-semibold text-ink'>Testes de integração</h2>
+  <p class='mt-1 text-xs text-muted'>A web apenas cria eventos e jobs persistentes. A entrega externa pertence ao worker.</p>
+  <div class='mt-4 grid gap-4 lg:grid-cols-2'>
+    <article class='rounded-md border bg-canvas p-4'>
+      <div class='flex flex-wrap items-center justify-between gap-3'>
+        <div><h3 class='text-sm font-semibold text-ink'>Discord</h3><p class='mt-1 text-xs text-muted'>Enfileira uma mensagem fixa, sem exibir o webhook.</p></div>
+        <form hx-post='/manager-settings/discord-test' hx-target='#discord-test-status' hx-swap='innerHTML'>
+          <input type='hidden' name='csrf_token' value='{{ csrf_token }}'>
+          <button type='submit' class='min-h-9 rounded-md border px-3 text-xs font-semibold text-accent hover:border-accent'>Testar Discord</button>
+        </form>
+      </div>
+      <div id='discord-test-status' class='mt-3' aria-live='polite'>
+        {% include 'manager_settings/_discord_test.html' %}
+      </div>
+    </article>
+    <article class='rounded-md border bg-canvas p-4'>
+      <div class='flex flex-wrap items-center justify-between gap-3'>
+        <div><h3 class='text-sm font-semibold text-ink'>Google Drive</h3><p class='mt-1 text-xs text-muted'>Cria um job de conexão e quota no namespace gerenciado.</p></div>
+        <form hx-post='/manager-settings/drive-test' hx-target='#drive-test-status' hx-swap='innerHTML'>
+          <input type='hidden' name='csrf_token' value='{{ csrf_token }}'>
+          <button type='submit' class='min-h-9 rounded-md border px-3 text-xs font-semibold text-accent hover:border-accent'>Testar Drive</button>
+        </form>
+      </div>
+      <div id='drive-test-status' class='mt-3' aria-live='polite'>
+        {% include 'manager_settings/_drive_test.html' %}
+      </div>
+    </article>
+  </div>
+</section>
+
+<section class='mt-6 rounded-md border bg-surface p-4 sm:p-5' aria-labelledby='password-title'>
+  <h2 id='password-title' class='text-base font-semibold text-ink'>Alterar senha</h2>
+  <p class='mt-1 text-xs text-muted'>A troca revoga todas as sessões e retorna ao login.</p>
+  {% if password_error %}<p class='mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger' role='alert'>{{ password_error }}</p>{% endif %}
+  <form method='post' action='/manager-settings/password' class='mt-4 grid gap-4 md:grid-cols-3' data-confirm data-confirm-title='Alterar senha?' data-confirm-message='Todas as sessões, inclusive esta, serão encerradas.' data-confirm-button='Alterar senha' data-confirm-tone='warning'>
+    <input type='hidden' name='csrf_token' value='{{ csrf_token }}'>
+    <label class='block text-sm font-medium text-ink'>Senha atual
+      <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' type='password' name='current_password' autocomplete='current-password' required>
+    </label>
+    <label class='block text-sm font-medium text-ink'>Nova senha
+      <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' type='password' name='new_password' minlength='6' autocomplete='new-password' required>
+    </label>
+    <label class='block text-sm font-medium text-ink'>Confirmar nova senha
+      <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' type='password' name='new_password_confirmation' minlength='6' autocomplete='new-password' required>
+    </label>
+    <div class='md:col-span-3 md:text-right'>
+      <button type='submit' class='min-h-10 rounded-md border px-4 text-sm font-semibold text-warning hover:border-warning'>Alterar senha e sair</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

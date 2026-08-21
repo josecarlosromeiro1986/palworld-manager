@@ -6,7 +6,7 @@ Este documento resume a operação prevista. [SPECIFICATION.md](../../SPECIFICAT
 
 ## Backup
 
-O backup automático é diário às `04:00` no timezone configurado, inicialmente `America/Sao_Paulo`. O worker cria no máximo um job automático por data local e respeita `backup_enabled`, `backup_time` e `timezone` quando esses valores operacionais já existem no SQLite; a interface completa para editá-los permanece na Etapa 24. O Manager mantém exatamente 3 backups locais válidos e até 10 backups remotos gerenciados.
+O backup automático é diário às `04:00` no timezone configurado, inicialmente `America/Sao_Paulo`. O worker cria no máximo um job automático por data local e respeita `backup_enabled`, `backup_time` e `timezone` editáveis em **Configurações do Painel**. A retenção inicial é de 3 backups locais válidos e até 10 backups remotos gerenciados. O painel aceita de 1 a 30 backups locais e de 1 a 100 backups no Drive, com validação obrigatória no backend; criação, download, Restore e Update aplicam a retenção configurada sem remover artefatos externos.
 
 Cada backup será um `.tar.gz` com `manifest.json`, hash SHA-256 e teste de integridade. Só será considerado válido após essas verificações. Antes da cópia, o Manager solicitará um salvamento seguro pelo mecanismo oficial disponível; uma falha nessa etapa invalida a operação.
 

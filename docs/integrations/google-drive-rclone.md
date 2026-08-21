@@ -10,7 +10,7 @@ O Manager trabalha nesse namespace exclusivo para:
 - enviar backups válidos;
 - listar e baixar backups gerenciados;
 - baixar e validar um backup remoto para a área local;
-- aplicar retenção de até 10 backups próprios.
+- aplicar a retenção configurada, inicialmente 10 e editável entre 1 e 100 backups próprios.
 
 Antes de um upload, o Manager verificará o armazenamento gratuito disponível. A retenção só poderá remover backups reconhecidos como próprios; se ainda não houver quota, o upload será cancelado e o backup local permanecerá intacto.
 
@@ -56,6 +56,12 @@ pertencem a jobs terminais conhecidos.
 Development e test usam `FakeGoogleDriveStorage`, sem processo rclone, rede ou
 credencial real. O fake cobre quota, listagem, upload, download, exclusão,
 cancelamento e falhas controladas.
+
+O botão de teste em **Configurações do Painel** apenas cria um job persistente
+`DRIVE_CHECK` e acompanha seu resultado seguro. Somente o worker executa a
+consulta de conexão e quota; um double-submit não cria outro job enquanto já
+existe uma operação Drive incompatível ativa. Remote, executável, namespace e
+credenciais não são exibidos nem editados nessa página.
 
 Consulte [backup e restore](../operations/backup-restore.md) e
 [SPECIFICATION.md](../../SPECIFICATION.md).

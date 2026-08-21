@@ -24,6 +24,7 @@ from app.lifecycle.jobs import (
     lifecycle_job_view,
 )
 from app.lifecycle.service import LifecycleAction
+from app.manager_settings.service import configured_disk_thresholds
 from app.shutdown.jobs import (
     InvalidForcedShutdownError,
     ShutdownJobConflictError,
@@ -106,6 +107,16 @@ def _chart_data(snapshot: MetricsSnapshot) -> dict[str, list[float] | list[str]]
 def metrics_fragment(request: Request) -> Response:
     snapshot = _metrics_service(request).collect()
     current = snapshot.current
+    with session_scope(_session_factory(request)) as session:
+        disk_warning_gb, disk_critical_gb = configured_disk_thresholds(session)
+    disk_free_gb = current.disk_free_bytes / 1024**3
+    disk_state = (
+        "CRITICAL"
+        if disk_free_gb < disk_critical_gb
+        else "WARNING"
+        if disk_free_gb < disk_warning_gb
+        else "OK"
+    )
     return templates.TemplateResponse(
         request=request,
         name="dashboard/_metrics.html",
@@ -115,6 +126,7 @@ def metrics_fragment(request: Request) -> Response:
             "memory_total": _format_bytes(current.memory_total_bytes),
             "disk_free": _format_bytes(current.disk_free_bytes),
             "disk_total": _format_bytes(current.disk_total_bytes),
+            "disk_state": disk_state,
             "network_received": _format_bytes(current.network_received_bytes_per_second),
             "network_sent": _format_bytes(current.network_sent_bytes_per_second),
             "chart_data": _chart_data(snapshot),

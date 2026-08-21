@@ -38,7 +38,7 @@ Durante a contagem, **Cancelar** permanece disponível somente até o ponto segu
 
 SIGTERM só pode ser solicitado após falha do Stop. O administrador precisa digitar `FORCAR`. Se esse job também falhar, a UI libera o último recurso, SIGKILL, que exige nova confirmação digitada como `SIGKILL`. Nenhum timeout ou erro promove SIGTERM para SIGKILL automaticamente.
 
-Cada tentativa é auditada. A execução de SIGTERM ou SIGKILL também cria um `notification_event` `FORCED_SHUTDOWN`; a entrega ao Discord permanece exclusivamente com o worker e será habilitada na Etapa 23.
+Cada tentativa é auditada. A execução de SIGTERM ou SIGKILL também cria um `notification_event` `FORCED_SHUTDOWN`; a entrega ao Discord permanece exclusivamente com o worker.
 
 Os timeouts são lidos no momento da criação do job e persistidos com ele:
 
@@ -48,7 +48,7 @@ Os timeouts são lidos no momento da criação do job e persistidos com ele:
 | Restart | `restart_timeout_seconds` | 120 s |
 | Stop | `stop_timeout_seconds` | 60 s |
 
-Os valores podem ser mantidos em `app_settings`; sua edição pelo painel será entregue na etapa de Configurações do Painel. Start/Restart aceitam de 1 a 600 segundos e Stop, de 1 a 300 segundos. Valor persistido inválido falha claramente e não executa o comando.
+Os valores são mantidos em `app_settings` e editados em **Configurações do Painel**. Start/Restart aceitam de 1 a 600 segundos e Stop, de 1 a 300 segundos. Valor persistido inválido falha claramente e não executa o comando.
 
 ## Concorrência e segurança
 

@@ -26,6 +26,7 @@ from app.auth.sessions import (
 )
 from app.config import Settings
 from app.db.engine import session_scope
+from app.manager_settings.service import configured_metrics_interval
 from app.shutdown.jobs import assisted_shutdown_default
 
 router = APIRouter()
@@ -126,6 +127,7 @@ def home(request: Request) -> Response:
     csrf_token = request.cookies.get(SESSION_CSRF_COOKIE_NAME)
     with session_scope(_session_factory(request)) as session:
         shutdown_default = assisted_shutdown_default(session)
+        metrics_interval = configured_metrics_interval(session)
     return templates.TemplateResponse(
         request=request,
         name="home.html",
@@ -134,6 +136,7 @@ def home(request: Request) -> Response:
             "csrf_token": csrf_token,
             "active_navigation": "dashboard",
             "assisted_shutdown_default_minutes": shutdown_default,
+            "metrics_interval_seconds": metrics_interval,
         },
     )
 

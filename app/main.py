@@ -26,6 +26,7 @@ from app.jobs.logs import create_job_log_store
 from app.lifecycle.fake import PersistentFakePalworldEnvironment
 from app.logs.router import router as logs_router
 from app.logs.service import create_palworld_log_source
+from app.manager_settings.router import router as manager_settings_router
 from app.palworld_settings.router import router as palworld_settings_router
 from app.palworld_settings.service import PalworldSettingsService
 from app.palworld_settings.storage import create_palworld_settings_storage
@@ -100,6 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(dashboard_router)
     application.include_router(players_router)
     application.include_router(logs_router)
+    application.include_router(manager_settings_router)
     application.include_router(palworld_settings_router)
     application.include_router(updates_router)
     return application

@@ -23,6 +23,12 @@
           <p class="mt-1 text-sm text-muted">Use sua conta de administrador.</p>
         </div>
 
+        {% if request.query_params.get('password_changed') == '1' %}
+          <div class='mb-4 rounded-md border border-positive/30 bg-positive/10 px-3 py-2.5 text-sm text-positive' role='status'>
+            Senha alterada. Entre novamente.
+          </div>
+        {% endif %}
+
         {% if error %}
           <div class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger" role="alert" aria-live="polite">
             {{ error }}

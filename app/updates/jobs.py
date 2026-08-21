@@ -15,13 +15,12 @@ from app.audit.service import (
     record_audit_event,
 )
 from app.backups.jobs import (
-    DEFAULT_LOCAL_RETENTION,
     apply_local_retention,
     register_backup_artifact,
 )
 from app.backups.service import BackupArtifact, LocalBackupService
 from app.db.engine import session_scope
-from app.db.models import AppSetting, Job
+from app.db.models import Job
 from app.jobs.logs import JobLogStore, MemoryJobLogStore
 from app.jobs.service import (
     ACTIVE_JOB_STATUSES,
@@ -40,6 +39,10 @@ from app.jobs.service import (
 from app.lifecycle.jobs import LIFECYCLE_COORDINATION_KEY, lifecycle_timeout
 from app.lifecycle.service import LifecycleAction, LifecycleExecutor, LifecycleOutcome
 from app.logs.service import LogCategory, PalworldLogError, PalworldLogSource
+from app.manager_settings.service import (
+    configured_disk_thresholds,
+    configured_local_retention,
+)
 from app.notifications.service import (
     DISK_CRITICAL,
     UPDATE_COMPLETED,
@@ -59,8 +62,6 @@ UPDATE_CHECK_JOB_KIND: Final = "PALWORLD_UPDATE_CHECK"
 UPDATE_JOB_KIND: Final = "PALWORLD_UPDATE"
 UPDATE_JOB_KINDS: Final = (UPDATE_CHECK_JOB_KIND, UPDATE_JOB_KIND)
 UPDATE_CHECK_COORDINATION_KEY: Final = "PALWORLD_UPDATE_CHECK"
-DISK_CRITICAL_KEY: Final = "disk_critical_gb"
-DEFAULT_DISK_CRITICAL_GB: Final = 10
 
 
 class UpdateJobConflictError(RuntimeError):
@@ -398,7 +399,7 @@ class UpdateJobExecutor:
                 apply_local_retention(
                     session,
                     self._backup_service,
-                    DEFAULT_LOCAL_RETENTION,
+                    configured_local_retention(session),
                     preserve_record_ids=(record.id,),
                 )
                 record_audit_event(
@@ -501,7 +502,7 @@ class UpdateJobExecutor:
         _required_build_id(data, "requested_available_build_id")
         _required_int(data, "countdown_minutes", minimum=0, maximum=10)
         _required_int(data, "stop_timeout_seconds", minimum=1, maximum=300)
-        _required_int(data, "start_timeout_seconds", minimum=1, maximum=300)
+        _required_int(data, "start_timeout_seconds", minimum=1, maximum=600)
         _required_int(data, "disk_critical_gb", minimum=1, maximum=1024)
         return data
 
@@ -815,13 +816,7 @@ def _mark_cancelled(
 
 
 def _disk_critical_gb(session: Session) -> int:
-    setting = session.get(AppSetting, DISK_CRITICAL_KEY)
-    if setting is None:
-        return DEFAULT_DISK_CRITICAL_GB
-    value = setting.value
-    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 1024:
-        raise ValueError("disk_critical_gb possui valor inválido")
-    return value
+    return configured_disk_thresholds(session)[1]
 
 
 def _build_result(build: SteamBuildInfo) -> dict[str, object]:

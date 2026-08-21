@@ -147,7 +147,7 @@
 <section
   data-metrics-panel
   hx-get="/dashboard/metrics"
-  hx-trigger="load, every 5s"
+  hx-trigger="load, every {{ metrics_interval_seconds }}s"
   hx-swap="innerHTML"
   aria-label="Métricas do host"
 >

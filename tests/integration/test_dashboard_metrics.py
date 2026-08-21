@@ -9,12 +9,14 @@ from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.auth.cookies import LOGIN_CSRF_COOKIE_NAME
 from app.auth.service import create_administrator
 from app.config import AppEnvironment, Settings
 from app.dashboard.metrics import HostMetricsService, RawHostMetrics
 from app.db.engine import create_database_engine, create_session_factory, session_scope
+from app.db.models import AppSetting
 from app.health.palworld import PalworldHealthSnapshot, PalworldHealthState
 from app.integrations.palworld_rest import RestApiState
 from app.main import create_app
@@ -115,6 +117,25 @@ def test_dashboard_polls_and_renders_host_metrics(metrics_client: TestClient) ->
     assert "data-resource-chart" in metrics.text
     assert "data-network-chart" in metrics.text
     assert '"cpu": [12.5]' in metrics.text
+
+
+def test_dashboard_applies_configured_disk_thresholds(metrics_client: TestClient) -> None:
+    login(metrics_client)
+    application = cast(FastAPI, metrics_client.app)
+    factory = cast(sessionmaker[Session], application.state.session_factory)
+    with session_scope(factory) as session:
+        session.add_all(
+            [
+                AppSetting(key="disk_warning_gb", value=200),
+                AppSetting(key="disk_critical_gb", value=100),
+            ]
+        )
+
+    warning = metrics_client.get("/dashboard/metrics")
+
+    assert warning.status_code == 200
+    assert 'data-disk-state="WARNING"' in warning.text
+    assert "Espaço livre em aviso" in warning.text
 
 
 def test_dashboard_polls_and_renders_palworld_health_state(

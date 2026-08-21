@@ -26,13 +26,18 @@
       <p class="mt-1 text-xs text-muted">{{ memory_used }} de {{ memory_total }}</p>
     </article>
 
-    <article class="min-h-24 rounded-md border bg-surface p-3 sm:min-h-28 sm:p-4">
+    <article data-disk-state="{{ disk_state }}" class="min-h-24 rounded-md border bg-surface p-3 sm:min-h-28 sm:p-4">
       <div class="flex items-center justify-between gap-2 text-muted">
         <h3 class="text-sm font-medium">Disco</h3>
         {{ icon("hard-drive") }}
       </div>
       <p class="mt-3 text-xl font-semibold tabular-nums text-ink sm:mt-5">{{ "%.1f" | format(metrics.disk_percent) }}%</p>
       <p class="mt-1 text-xs text-muted">{{ disk_free }} livres de {{ disk_total }}</p>
+      {% if disk_state == "CRITICAL" %}
+        <p class="mt-1 text-xs font-medium text-danger">Espaço livre crítico</p>
+      {% elif disk_state == "WARNING" %}
+        <p class="mt-1 text-xs font-medium text-warning">Espaço livre em aviso</p>
+      {% endif %}
     </article>
 
     <article class="min-h-24 rounded-md border bg-surface p-3 sm:min-h-28 sm:p-4">

@@ -32,6 +32,10 @@ from app.jobs.service import (
     JOB_STEP_FAILED,
     JOB_STEP_WAITING,
 )
+from app.manager_settings.service import (
+    configured_drive_retention,
+    configured_local_retention,
+)
 from app.notifications.service import DRIVE_FAILED, enqueue_discord_notification
 
 DRIVE_CHECK_JOB_KIND: Final = "DRIVE_CHECK"
@@ -44,8 +48,6 @@ DRIVE_JOB_KINDS: Final = (
     DRIVE_DOWNLOAD_JOB_KIND,
     DRIVE_DELETE_JOB_KIND,
 )
-DEFAULT_DRIVE_RETENTION: Final = 10
-DEFAULT_LOCAL_RETENTION: Final = 3
 
 
 class DriveJobRequestError(RuntimeError):
@@ -353,7 +355,7 @@ class DriveJobExecutor:
                 apply_local_retention(
                     session,
                     self._service.local_backups,
-                    DEFAULT_LOCAL_RETENTION,
+                    configured_local_retention(session),
                     preserve_record_ids=(local_record.id,),
                 )
                 local_record_id = local_record.id
@@ -394,7 +396,9 @@ class DriveJobExecutor:
         self._finish_success(job_id, result, audit_action="DRIVE_DELETE")
 
     def _prepare_capacity(self, job_id: int, required_bytes: int) -> None:
-        while self._managed_remote_count() >= DEFAULT_DRIVE_RETENTION:
+        with session_scope(self._session_factory) as session:
+            retention = configured_drive_retention(session)
+        while self._managed_remote_count() >= retention:
             self._remove_oldest_managed_remote(job_id)
         quota = self._service.quota()
         available_bytes = quota.free_bytes

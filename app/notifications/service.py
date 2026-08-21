@@ -22,6 +22,8 @@ NOTIFICATION_STATUS_FAILED: Final = "FAILED"
 MAX_NOTIFICATION_ATTEMPTS: Final = 3
 NOTIFICATION_RETRY_DELAYS: Final = (timedelta(seconds=5), timedelta(seconds=30))
 
+DISCORD_TEST: Final = "DISCORD_TEST"
+
 BACKUP_FAILED: Final = "BACKUP_FAILED"
 DISK_CRITICAL: Final = "DISK_CRITICAL"
 DRIVE_FAILED: Final = "DRIVE_FAILED"
@@ -37,6 +39,7 @@ UPDATE_FAILED: Final = "UPDATE_FAILED"
 
 SUPPORTED_DISCORD_EVENT_TYPES: Final = frozenset(
     {
+        DISCORD_TEST,
         BACKUP_FAILED,
         DISK_CRITICAL,
         DRIVE_FAILED,
@@ -53,6 +56,10 @@ SUPPORTED_DISCORD_EVENT_TYPES: Final = frozenset(
 )
 
 EVENT_TEXT: Final = {
+    DISCORD_TEST: (
+        "Teste de notificação",
+        "A integração do Palworld Manager com o Discord está funcionando.",
+    ),
     BACKUP_FAILED: ("Falha no backup automático", "O backup diário não foi concluído."),
     DISK_CRITICAL: ("Espaço em disco crítico", "Uma operação foi bloqueada por falta de espaço."),
     DRIVE_FAILED: ("Falha no Google Drive", "Uma operação de backup remoto falhou."),

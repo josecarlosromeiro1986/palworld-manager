@@ -15,7 +15,6 @@ from app.audit.service import (
 )
 from app.backups.drive_service import DriveTransferService, TemporaryDriveDownload
 from app.backups.jobs import (
-    DEFAULT_LOCAL_RETENTION,
     apply_local_retention,
     register_backup_artifact,
 )
@@ -37,6 +36,7 @@ from app.jobs.service import (
 from app.lifecycle.jobs import lifecycle_timeout
 from app.lifecycle.service import LifecycleAction, LifecycleExecutor, LifecycleOutcome
 from app.logs.service import LogCategory, PalworldLogError, PalworldLogSource
+from app.manager_settings.service import configured_local_retention
 from app.notifications.service import (
     RESTORE_COMPLETED,
     RESTORE_FAILED,
@@ -280,7 +280,7 @@ class LocalRestoreJobExecutor:
                 apply_local_retention(
                     session,
                     self._backup_service,
-                    DEFAULT_LOCAL_RETENTION,
+                    configured_local_retention(session),
                     preserve_record_ids=(
                         cast(int, request_data["backup_record_id"]),
                         preventive_record.id,

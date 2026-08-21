@@ -13,40 +13,15 @@ from app.config import AppEnvironment, Settings
 from app.db.engine import session_scope
 from app.db.models import AppSetting
 from app.integrations.palworld_rest import PalworldRestClient
+from app.manager_settings.service import DEFAULT_MANAGER_SETTINGS, OPERATIONAL_SETTING_KEYS
 from app.palworld_settings.definitions import SETTING_DEFINITIONS, SettingKind
 from app.palworld_settings.ini import parse_ini
 
 WORLD_RELATIVE_ROOT: Final = Path("Pal/Saved/SaveGames")
 PROHIBITED_DIRECTORY_NAMES: Final = {"backup", "backups"}
 PROHIBITED_FILE_NAMES: Final = {"secrets.env"}
-SAFE_MANAGER_SETTING_KEYS: Final = {
-    "timezone",
-    "backup_enabled",
-    "backup_time",
-    "local_backup_retention",
-    "drive_backup_retention",
-    "metrics_interval_seconds",
-    "assisted_shutdown_default_minutes",
-    "start_timeout_seconds",
-    "restart_timeout_seconds",
-    "stop_timeout_seconds",
-    "disk_warning_gb",
-    "disk_critical_gb",
-}
-SAFE_MANAGER_SETTING_DEFAULTS: Final[dict[str, object]] = {
-    "timezone": "America/Sao_Paulo",
-    "backup_enabled": True,
-    "backup_time": "04:00",
-    "local_backup_retention": 3,
-    "drive_backup_retention": 10,
-    "metrics_interval_seconds": 5,
-    "assisted_shutdown_default_minutes": 5,
-    "start_timeout_seconds": 120,
-    "restart_timeout_seconds": 120,
-    "stop_timeout_seconds": 60,
-    "disk_warning_gb": 20,
-    "disk_critical_gb": 10,
-}
+SAFE_MANAGER_SETTING_KEYS: Final = OPERATIONAL_SETTING_KEYS
+SAFE_MANAGER_SETTING_DEFAULTS: Final[dict[str, object]] = dict(DEFAULT_MANAGER_SETTINGS)
 SENSITIVE_KEY_PATTERN = re.compile(
     r"(?i)(password|passwd|secret|token|cookie|webhook|credential|api[_-]?key)"
 )

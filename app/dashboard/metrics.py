@@ -8,6 +8,7 @@ from typing import Protocol
 import psutil
 
 METRICS_INTERVAL_SECONDS = 5
+MINIMUM_METRICS_INTERVAL_SECONDS = 1
 METRICS_HISTORY_MINUTES = 15
 
 
@@ -98,7 +99,7 @@ class HostMetricsService:
         self._source = source or PsutilHostMetricsSource()
         self._clock = clock or (lambda: datetime.now(UTC))
         self._history_window = history_window
-        maximum_points = int(history_window.total_seconds() / interval_seconds) + 1
+        maximum_points = int(history_window.total_seconds() / MINIMUM_METRICS_INTERVAL_SECONDS) + 1
         self._history: deque[MetricsPoint] = deque(maxlen=maximum_points)
         self._previous_network: tuple[datetime, int, int] | None = None
         self._lock = Lock()

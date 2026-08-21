@@ -22,7 +22,12 @@ Registra as informações mínimas usadas pela proteção contra brute force: us
 
 ### `app_settings`
 
-Armazena configurações operacionais seguras e editáveis pelo painel, como timezone, retenções e timeouts. Configurações estruturais e secrets permanecem fora dessa entidade.
+Armazena exclusivamente a allowlist de configurações operacionais seguras da
+página **Configurações do Painel**: backup diário, horário, timezone, retenções,
+intervalo das métricas, aviso assistido, limites de disco e timeouts. A gravação
+valida tipos, limites e versão concorrente; a auditoria recebe apenas nomes de
+chaves. Configurações estruturais e secrets permanecem fora dessa entidade. A
+Etapa 24 reutiliza a entidade existente e não exige migration.
 
 ### `audit_events`
 

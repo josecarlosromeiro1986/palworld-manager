@@ -1,0 +1,9 @@
+{% if discord_test %}
+  {% set terminal = discord_test.status in ['SENT', 'FAILED'] %}
+  <div {% if not terminal %}hx-get='/manager-settings/discord-tests/{{ discord_test.id }}' hx-trigger='every 1s' hx-swap='outerHTML'{% endif %} class='rounded-md border bg-surface p-3'>
+    <p class='text-xs font-medium {% if discord_test.status == 'SENT' %}text-positive{% elif discord_test.status == 'FAILED' %}text-danger{% else %}text-accent{% endif %}'>Evento #{{ discord_test.id }} · {{ discord_test.status }}</p>
+    <p class='mt-1 text-xs text-muted'>Tentativas: {{ discord_test.attempts }} de 3{% if discord_test.last_error %} · {{ discord_test.last_error }}{% endif %}</p>
+  </div>
+{% else %}
+  <p class='text-xs text-muted'>Nenhum teste solicitado.</p>
+{% endif %}

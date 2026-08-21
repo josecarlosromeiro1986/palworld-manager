@@ -10,10 +10,12 @@ O webhook é o secret estrutural `DISCORD_WEBHOOK_URL`, mantido fora do SQLite.
 Em production, quando configurado, ele deve usar HTTPS e o endpoint oficial do
 Discord, sem query, fragmento ou credenciais adicionais. A ausência não impede
 o startup, mas uma entrega pendente termina como falha permanente e controlada;
-nenhum evento é descartado silenciosamente. A interface de teste ou substituição
-pertence à etapa de configurações do painel e nunca mostrará o valor completo.
-Logs, auditoria, diagnósticos e mensagens de erro também não reproduzem a URL ou
-o token.
+nenhum evento é descartado silenciosamente. A interface de teste implementada
+em **Configurações do Painel** nunca mostra o valor do webhook. Logs, auditoria,
+diagnósticos e mensagens de erro também não reproduzem a URL ou o token. A web cria somente
+um `notification_event` `DISCORD_TEST` de conteúdo fixo e acompanha seu estado;
+a web não acessa o webhook. Solicitações repetidas enquanto o teste está
+`PENDING` ou `SENDING` reutilizam o evento ativo.
 
 ## Entrega
 
