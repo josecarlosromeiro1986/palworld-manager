@@ -31,6 +31,7 @@ Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **
 - [Atualizações](operations/updates.md): atualização manual do Palworld via SteamCMD.
 - [Configurações do Painel](operations/manager-settings.md): allowlist operacional, limites, troca de senha e testes seguros de integrações.
 - [Diagnóstico](operations/diagnostics.md): checks somente leitura, estados operacionais e relatório copiável sem secrets.
+- [Histórico e auditoria](operations/audit.md): trilha persistente, filtros, retenção e proteção de dados sensíveis.
 - [Troubleshooting](operations/troubleshooting.md): índice inicial de investigação de falhas.
 
 ## Integrações

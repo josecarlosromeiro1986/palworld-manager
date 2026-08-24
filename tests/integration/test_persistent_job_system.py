@@ -139,6 +139,7 @@ def test_worker_recovery_interrupts_running_jobs_without_requeue(jobs_engine: En
         assert session.get(MaintenanceLock, GLOBAL_MAINTENANCE_LOCK) is None
         assert audit is not None
         assert audit.action == "JOB_INTERRUPTED"
+        assert audit.result == "INTERRUPTED"
     with session_scope(factory) as session:
         assert claim_next_job(session, "new-worker", ("PALWORLD_RESTART",)) is None
 

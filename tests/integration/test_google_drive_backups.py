@@ -129,6 +129,14 @@ def test_valid_daily_backup_enqueues_and_completes_independent_upload(
         local_job = session.get_one(Job, local.job_id)
         assert local_job.status == "SUCCEEDED"
         assert (local_job.result or {}).get("drive_upload_job_id") == upload.id
+        upload_audit = session.scalar(
+            select(AuditEvent).where(
+                AuditEvent.job_id == upload.id,
+                AuditEvent.action == "DRIVE_UPLOAD_REQUESTED",
+            )
+        )
+        assert upload_audit is not None
+        assert upload_audit.origin == "AUTOMATIC"
 
     assert drive_context.worker.process_next()
 

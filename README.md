@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais e diagnóstico estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais, diagnóstico e auditoria completa estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -82,6 +82,13 @@ SteamCMD, Drive e Discord são representados pelos últimos resultados seguros d
 worker; development e test usam fakes e não consultam o host ou a rede. O
 relatório pode ser atualizado e copiado sem incluir secrets, paths estruturais
 ou saídas brutas.
+
+A página **Histórico / Auditoria** reúne ações administrativas, automáticas e de
+sistema com resultado, usuário, alvo, motivo, duração e job relacionado quando
+aplicável. Período, ação, resultado, origem, usuário e alvo podem ser combinados
+em filtros; a listagem usa 50 registros por página e retenção de 90 dias. A
+gravação e a leitura aplicam proteção defensiva contra secrets e detalhes
+externos livres. Exportação CSV não faz parte da V1.
 
 ## Documentação
 

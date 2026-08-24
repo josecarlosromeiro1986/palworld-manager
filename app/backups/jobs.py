@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.audit.service import (
     AUDIT_ORIGIN_ADMINISTRATOR,
+    AUDIT_ORIGIN_AUTOMATIC,
     AUDIT_ORIGIN_SYSTEM,
     AUDIT_RESULT_CANCELLED,
     AUDIT_RESULT_FAILURE,
@@ -90,7 +91,13 @@ def enqueue_local_backup(
         occurred_at=occurred_at or datetime.now(UTC),
         action="BACKUP_REQUESTED",
         result=AUDIT_RESULT_SUCCESS,
-        origin=(AUDIT_ORIGIN_ADMINISTRATOR if user_id is not None else AUDIT_ORIGIN_SYSTEM),
+        origin=(
+            AUDIT_ORIGIN_ADMINISTRATOR
+            if user_id is not None
+            else AUDIT_ORIGIN_AUTOMATIC
+            if trigger == "AUTOMATIC"
+            else AUDIT_ORIGIN_SYSTEM
+        ),
         user_id=user_id,
         job_id=job.id,
         target="Backup local",

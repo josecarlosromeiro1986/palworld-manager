@@ -5,6 +5,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.audit.history import AuditHistoryService
+from app.audit.router import router as audit_router
 from app.auth.middleware import AuthenticationMiddleware
 from app.auth.router import router as auth_router
 from app.backups.drive_router import router as drive_backups_router
@@ -58,6 +60,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.state.settings = resolved_settings
     application.state.session_factory = session_factory
+    application.state.audit_history_service = AuditHistoryService(
+        resolved_settings,
+        session_factory,
+    )
     application.state.metrics_service = HostMetricsService()
     application.state.palworld_log_source = create_palworld_log_source(resolved_settings)
     application.state.job_log_store = create_job_log_store(resolved_settings.manager_database)
@@ -106,6 +112,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.include_router(health_router)
     application.include_router(auth_router)
+    application.include_router(audit_router)
     application.include_router(backups_router)
     application.include_router(drive_backups_router)
     application.include_router(dashboard_router)

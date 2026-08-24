@@ -101,4 +101,11 @@ Kick, Ban e Unban têm testes dos endpoints e payloads oficiais exatos, fake sem
 
 O editor do INI tem testes unitários do parser conservador, tipos, limites documentados, estruturas aninhadas, backup idêntico ao original, modo `0600`, substituição atômica, conflito por versão e rejeição de symlink. A integração web cobre autenticação, CSRF, fake sem filesystem real, ocultação de campos sensíveis, preservação de desconhecidos, falha segura, auditoria apenas com nomes de campos e oferta do Restart pelo modal compartilhado. A regressão do estado terminal verifica que `SUCCEEDED` substitui a ação repetível pela confirmação de Restart concluído.
 
+Os testes de auditoria cobrem validação e redação defensiva na gravação,
+retenção exata de 90 dias, duração derivada de jobs, origens administrativa,
+automática e de sistema e classificação separada de cancelamento e interrupção.
+A integração confirma autenticação, timezone configurado, filtros combináveis,
+ordenação, paginação fixa de 50 registros, remoção de expirados, ausência de CSV
+e proteção de valores sensíveis inclusive em registros anteriores.
+
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.

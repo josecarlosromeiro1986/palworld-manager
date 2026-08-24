@@ -31,10 +31,11 @@ Nenhuma etapa em andamento.
 - Etapa 23 — Discord.
 - Etapa 24 — Configurações do Painel.
 - Etapa 25 — Diagnóstico.
+- Etapa 26 — Auditoria completa.
 
 ## Próxima etapa
 
-Etapa 26 — Auditoria completa.
+Etapa 27 — Power controls Ubuntu.
 
 ## Observações
 

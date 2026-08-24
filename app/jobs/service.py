@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.audit.service import (
     AUDIT_ORIGIN_SYSTEM,
-    AUDIT_RESULT_FAILURE,
+    AUDIT_RESULT_INTERRUPTED,
     record_audit_event,
 )
 from app.db.models import Job, MaintenanceLock
@@ -145,7 +145,7 @@ def recover_interrupted_jobs(
             session,
             occurred_at=now,
             action="JOB_INTERRUPTED",
-            result=AUDIT_RESULT_FAILURE,
+            result=AUDIT_RESULT_INTERRUPTED,
             origin=AUDIT_ORIGIN_SYSTEM,
             job_id=job.id,
             target=job.kind,

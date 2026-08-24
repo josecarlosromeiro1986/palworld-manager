@@ -31,7 +31,9 @@ Etapa 24 reutiliza a entidade existente e não exige migration.
 
 ### `audit_events`
 
-Registra a trilha do que aconteceu no sistema, quem ou qual origem executou e qual foi o resultado. Pode referenciar usuário e job responsáveis, além de ações como `UPDATE_SERVER`, `BACKUP`, `RESTORE`, `BAN`, `UNBAN` e `LOGIN_BLOCKED`. A fundação implementada já recebe eventos de autenticação, ciclo de vida, desligamento, anúncios, administração de jogadores e salvamento do INI. `PALWORLD_SETTINGS_UPDATE` registra apenas nomes das chaves, versão do schema, nome da cópia pré-save e categoria segura de erro; valores do arquivo e caminhos absolutos não entram no SQLite. Consulta completa e retenção operacional pertencem à Etapa 26.
+Registra a trilha do que aconteceu no sistema, quem ou qual origem executou e qual foi o resultado. Pode referenciar usuário e job responsáveis, além de ações como `UPDATE_SERVER`, `BACKUP`, `RESTORE`, `BAN`, `UNBAN` e `LOGIN_BLOCKED`. Os eventos distinguem origem administrativa, automática e de sistema, além de sucesso, falha, cancelamento e interrupção. A duração é derivada dos timestamps do job relacionado quando disponível.
+
+A página autenticada oferece filtros combináveis de período, ação, resultado, origem, usuário e alvo, ordenação decrescente e páginas fixas de 50 registros. A retenção remove eventos com mais de 90 dias durante gravações e consultas. Campos textuais e detalhes estruturados passam por redação defensiva e limites antes da persistência; a leitura também protege valores estruturais sensíveis configurados no ambiente. `PALWORLD_SETTINGS_UPDATE` registra apenas nomes das chaves, versão do schema, nome da cópia pré-save e categoria segura de erro; valores do arquivo e caminhos absolutos não entram no SQLite.
 
 ### `notification_events`
 
@@ -116,6 +118,6 @@ explicitamente como cópia local cria o par `LOCAL` correspondente.
 
 ### `ban_history`
 
-Mantém o histórico administrativo implementado de Kick, Ban e Unban, incluindo ação, alvo, `userId`, administrador, motivo, resultado e timestamp. Complementa a auditoria, mas não substitui o estado mantido pelo Palworld. A página de jogadores exibe até 50 registros recentes; filtros e retenção geral pertencem à auditoria completa da Etapa 26.
+Mantém o histórico administrativo implementado de Kick, Ban e Unban, incluindo ação, alvo, `userId`, administrador, motivo, resultado e timestamp. Complementa a auditoria, mas não substitui o estado mantido pelo Palworld. A página de jogadores exibe até 50 registros recentes; a página geral de auditoria oferece filtros e retenção de 90 dias para seus próprios eventos.
 
 O detalhamento futuro deve preservar transações, integridade referencial e preparação para múltiplos usuários. A migration atual está em `migrations/versions/` e deve ser aplicada com `make db-upgrade`. Consulte os requisitos de banco e auditoria em [SPECIFICATION.md](../../SPECIFICATION.md).

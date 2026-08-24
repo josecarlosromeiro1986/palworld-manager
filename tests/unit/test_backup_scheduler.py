@@ -9,7 +9,7 @@ from sqlalchemy import Engine, select
 
 from app.backups.scheduler import schedule_daily_backup
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import AppSetting, Job
+from app.db.models import AppSetting, AuditEvent, Job
 
 
 @pytest.fixture
@@ -37,6 +37,9 @@ def test_daily_scheduler_uses_configured_timezone_and_runs_once(
     with session_scope(factory) as session:
         assert not schedule_daily_backup(session, now=due)
         assert len(tuple(session.scalars(select(Job)))) == 1
+        audit = session.scalar(select(AuditEvent).where(AuditEvent.action == "BACKUP_REQUESTED"))
+        assert audit is not None
+        assert audit.origin == "AUTOMATIC"
 
 
 def test_daily_scheduler_honors_disabled_setting(scheduler_engine: Engine) -> None:

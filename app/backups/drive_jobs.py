@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.audit.service import (
     AUDIT_ORIGIN_ADMINISTRATOR,
+    AUDIT_ORIGIN_AUTOMATIC,
     AUDIT_ORIGIN_SYSTEM,
     AUDIT_RESULT_CANCELLED,
     AUDIT_RESULT_FAILURE,
@@ -593,7 +594,13 @@ def _enqueue(
         occurred_at=datetime.now(UTC),
         action=audit_action,
         result=AUDIT_RESULT_SUCCESS,
-        origin=AUDIT_ORIGIN_ADMINISTRATOR if user_id is not None else AUDIT_ORIGIN_SYSTEM,
+        origin=(
+            AUDIT_ORIGIN_ADMINISTRATOR
+            if user_id is not None
+            else AUDIT_ORIGIN_AUTOMATIC
+            if result.get("trigger") == "AUTOMATIC"
+            else AUDIT_ORIGIN_SYSTEM
+        ),
         user_id=user_id,
         job_id=job.id,
         target="Google Drive",

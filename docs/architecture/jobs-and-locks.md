@@ -59,7 +59,7 @@ Contagens regressivas, backups locais, uploads e downloads independentes podem s
 
 O reinício do serviço web não implica reinício do worker. Um job já em execução continuará de forma independente quando isso for seguro.
 
-Se o worker reiniciar após perder o lease anterior, localiza jobs ainda em `RUNNING`, muda cada um para `INTERRUPTED`, encerra o ponto de cancelamento, libera o lock e registra auditoria e log. Nenhum job interrompido é recolocado na fila. A UI exige revisão manual e o health atual do Palworld permite verificar o estado real antes de uma nova ação.
+Se o worker reiniciar após perder o lease anterior, localiza jobs ainda em `RUNNING`, muda cada um para `INTERRUPTED`, encerra o ponto de cancelamento, libera o lock e registra auditoria com resultado `INTERRUPTED`, além do log. Nenhum job interrompido é recolocado na fila. A UI exige revisão manual e o health atual do Palworld permite verificar o estado real antes de uma nova ação.
 
 No startup, eventos `SENDING` com uma ou duas tentativas retornam a `PENDING`
 para nova entrega; com três tentativas passam a `FAILED`. Essa reconciliação
