@@ -18,3 +18,5 @@ coverage.xml
 *.db-wal
 node_modules/
 app/static/dist/
+playwright-report/
+test-results/

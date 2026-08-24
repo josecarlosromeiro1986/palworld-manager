@@ -1,8 +1,8 @@
 # Desenvolvimento com Docker
 
-> Status: Em desenvolvimento. Os três containers base, os fakes do Palworld, o sistema persistente de jobs, os contratos REST administrativos e a entrega simulada do Discord estão implementados; integrações adicionais continuam planejadas.
+> Status: Em desenvolvimento. Os três containers base, o serviço E2E opt-in, os fakes do Palworld, o sistema persistente de jobs, os contratos REST administrativos e a entrega simulada do Discord estão implementados; integrações adicionais continuam planejadas.
 
-O Docker Compose de desenvolvimento possui três containers e preserva a separação entre aplicação web e worker usada em produção. Todos usam a mesma imagem de desenvolvimento com comandos diferentes.
+O Docker Compose de desenvolvimento possui três containers base e preserva a separação entre aplicação web e worker usada em produção. `app`, `worker` e `mock-services` usam a imagem normal com comandos diferentes; `e2e` possui perfil e estágio próprios, usados somente sob demanda.
 
 `app` e `worker` compartilham o volume nomeado `manager-data`, montado em `/var/lib/palworld-manager`. `mock-services` não recebe acesso ao banco do Manager.
 
@@ -17,6 +17,15 @@ Executa um processo Python separado, valida a mesma configuração estrutural e 
 ## `mock-services`
 
 Publica na porta `8090` um serviço simulado com `/health` e os contratos oficiais confirmados `GET /v1/api/info`, `GET /v1/api/players`, `POST /v1/api/announce`, Kick, Ban, Unban e `POST /v1/api/save`. O fake usado diretamente por development e test também permite controlar respostas e falhas sem abrir rede.
+
+## `e2e`
+
+O serviço opt-in instala Chromium somente no estágio Playwright, roda como
+`palmanager` e não publica portas. Cada execução cria um SQLite temporário,
+aplica migrations e inicia web e worker em `APP_ENVIRONMENT=test`; todos os
+adapters externos permanecem fake. Execute `make e2e` ou
+`docker compose run --build --rm e2e`. Resultados e traces temporários ficam
+dentro do container e são removidos com ele.
 
 Development e test não dependem de:
 

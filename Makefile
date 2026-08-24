@@ -53,4 +53,8 @@ precommit:
 check: frontend-check lint format-check typecheck test
 
 e2e:
-	@echo "Os testes E2E serão adicionados na Etapa 28."
+ifeq ($(IN_CONTAINER),1)
+	npm run e2e
+else
+	$(COMPOSE) run --build --rm e2e
+endif

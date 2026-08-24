@@ -65,5 +65,24 @@ services:
       retries: 5
       start_period: 5s
 
+  e2e:
+    image: palworld-manager-e2e:dev
+    build:
+      context: .
+      target: e2e
+    environment:
+      APP_ENVIRONMENT: test
+      APP_HOST: 127.0.0.1
+      APP_PORT: "8081"
+      E2E_HOST: 127.0.0.1
+      E2E_PORT: "8081"
+      IN_CONTAINER: "1"
+      PLAYWRIGHT_OUTPUT_DIR: /tmp/palworld-manager-playwright-results
+      PYTHONPATH: /workspace
+    command: ["npm", "run", "e2e"]
+    init: true
+    profiles: ["e2e"]
+    shm_size: "1gb"
+
 volumes:
   manager-data:

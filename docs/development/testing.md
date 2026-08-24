@@ -1,6 +1,6 @@
 # Testes
 
-> Status: Em desenvolvimento. Pytest e o gate base estão implementados; a suíte crescerá por etapa.
+> Status: Implementado para a V1 até a Etapa 28. Pytest, gate base e fluxos Playwright críticos estão disponíveis.
 
 Pytest será a base da suíte automatizada.
 
@@ -17,9 +17,10 @@ Comandos disponíveis:
 ```bash
 make test
 make check
+make e2e
 ```
 
-`make check` recompila e valida os assets de frontend, executa Ruff, verificação de formatação, Mypy e Pytest dentro do container. A configuração de pre-commit pode ser executada com `make precommit` e inclui o mesmo gate de frontend.
+`make check` recompila e valida os assets de frontend, executa Ruff, verificação de formatação, Mypy e Pytest dentro do container. A configuração de pre-commit pode ser executada com `make precommit` e inclui o mesmo gate de frontend. Os E2E são executados separadamente por `make e2e` ou, sem GNU Make, por `docker compose run --build --rm e2e`.
 
 Os testes de configuração isolam variáveis de ambiente e arquivos locais. A suíte de integração também verifica que uma configuração inválida impede o startup sem reproduzir o valor recebido na saída de erro.
 
@@ -29,7 +30,7 @@ Os testes de credenciais verificam o formato Argon2id, a senha mínima, rejeiç�
 
 Os testes de autenticação cobrem rotas privadas por padrão, login e logout, CSRF, atributos dos cookies, revogação por troca de senha e limites exatos de 8 horas totais e 1 hora de inatividade. Também verificam o bloqueio na quinta falha consecutiva, reset por sucesso ou expiração, separação por usuário, aquisição transacional sob concorrência e auditoria sem senhas. O cliente ASGI usa `httpx2`, conforme a integração suportada pelo Starlette atual.
 
-Os testes estruturais do layout verificam que login e Dashboard usam assets locais, controles acessíveis, navegação prevista e arquivos estáticos públicos sem liberar páginas privadas. A inspeção visual automatizada com Playwright permanece reservada aos fluxos E2E críticos da Etapa 28.
+Os testes estruturais do layout verificam que login e Dashboard usam assets locais, controles acessíveis, navegação prevista e arquivos estáticos públicos sem liberar páginas privadas. Playwright complementa essa camada somente nos fluxos críticos definidos na Etapa 28.
 
 As confirmações visuais têm teste estrutural próprio: o layout autenticado inclui um único modal compartilhado, formulários protegidos usam `data-confirm`, fragmentos HTMX não usam `hx-confirm` e o JavaScript-fonte não pode chamar diálogos nativos do navegador. Regras de confirmação e CSRF continuam cobertas nas rotas do backend.
 
@@ -115,4 +116,11 @@ digitadas exatas, modal compartilhado, double-submit, maintenance lock,
 auditoria, Stop seguro do Palworld antes da ação e bloqueio absoluto do comando
 do host quando esse Stop falha. Development e test usam somente fake.
 
-`make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.
+Os E2E usam Chromium headless em um estágio Docker separado, executado como
+`palmanager`. O preparador aplica todas as migrations em um SQLite temporário,
+cria somente o administrador fictício da suíte, desativa o agendamento diário
+para evitar corridas e inicia web e worker no ambiente `test`. Os quatro cenários
+seriais cobrem login/logout e redirecionamento de rota privada, Stop e Restart
+pelos fakes, criação de backup seguida de Restore com `RESTAURAR` e gravação de
+uma configuração reconhecida pelo modal compartilhado. Nenhum serviço, path ou
+secret real é usado.

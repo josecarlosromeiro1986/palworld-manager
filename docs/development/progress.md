@@ -33,10 +33,11 @@ Nenhuma etapa em andamento.
 - Etapa 25 — Diagnóstico.
 - Etapa 26 — Auditoria completa.
 - Etapa 27 — Power controls Ubuntu.
+- Etapa 28 — Playwright crítico.
 
 ## Próxima etapa
 
-Etapa 28 — Playwright crítico.
+Etapa 29 — Deploy produção.
 
 ## Observações
 

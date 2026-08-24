@@ -19,7 +19,7 @@ Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **
 
 - [Preparação do ambiente](development/setup.md): requisitos planejados para trabalhar no projeto.
 - [Docker](development/docker.md): responsabilidades dos containers de desenvolvimento.
-- [Testes](development/testing.md): estratégia de testes e gate de qualidade.
+- [Testes](development/testing.md): estratégia Pytest/Playwright e gates de qualidade.
 - [Estilo de código](development/code-style.md): ferramentas, organização e fluxo de entrega.
 - [Progresso de implementação](development/progress.md): etapa concluída mais recente e próximo trabalho previsto.
 

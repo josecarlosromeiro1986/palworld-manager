@@ -1,6 +1,6 @@
 FROM node:24-slim AS node-runtime
 
-FROM python:3.12-slim
+FROM python:3.12-slim AS runtime-build
 
 ENV IN_CONTAINER=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -27,6 +27,19 @@ COPY app ./app
 COPY scripts ./scripts
 RUN pip install --no-cache-dir ".[dev]"
 RUN npm ci && npm run build
+
+FROM runtime-build AS e2e
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx playwright install --with-deps chromium \
+    && chown --recursive palmanager:palmanager /ms-playwright
+
+COPY --chown=palmanager:palmanager . .
+
+USER palmanager
+CMD ["npm", "run", "e2e"]
+
+FROM runtime-build AS app
 
 COPY --chown=palmanager:palmanager . .
 
