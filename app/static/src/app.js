@@ -243,7 +243,12 @@ document.body.addEventListener("htmx:beforeSwap", (event) => {
 });
 document.body.addEventListener("htmx:afterSwap", restoreOpenJobLogs);
 
-const validationErrorPanelIds = new Set(["restore-job", "drive-job", "update-operation"]);
+const validationErrorPanelIds = new Set([
+  "restore-job",
+  "drive-job",
+  "update-operation",
+  "host-power-feedback",
+]);
 
 document.body.addEventListener("htmx:beforeSwap", (event) => {
   const target = event.detail.target;

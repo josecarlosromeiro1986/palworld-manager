@@ -19,6 +19,7 @@ from app.diagnostics.router import router as diagnostics_router
 from app.diagnostics.service import create_diagnostics_service
 from app.health.palworld import create_palworld_health_check
 from app.health.router import router as health_router
+from app.host_power.router import router as host_power_router
 from app.integrations.palworld_rest import create_palworld_rest_client
 from app.jobs.health import (
     FakeWorkerService,
@@ -113,6 +114,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(audit_router)
+    application.include_router(host_power_router)
     application.include_router(backups_router)
     application.include_router(drive_backups_router)
     application.include_router(dashboard_router)

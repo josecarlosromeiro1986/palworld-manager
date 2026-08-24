@@ -2,7 +2,7 @@
 
 > Status: Fila persistente, worker separado, aquisição atômica, heartbeat, recovery, logs de jobs e maintenance lock global implementados.
 
-Desligamentos, ações de ciclo de vida, backups, restores locais/remotos e transferências do Google Drive usam jobs persistentes no SQLite. Updates reutilizarão a mesma infraestrutura na etapa correspondente. Em produção, o worker é um processo independente da aplicação web.
+Desligamentos, ações de ciclo de vida e energia do host, backups, restores locais/remotos, transferências do Google Drive e Updates usam jobs persistentes no SQLite. Em produção, o worker é um processo independente da aplicação web.
 
 ```text
 palworld-manager.service        → FastAPI e interação web
@@ -17,6 +17,8 @@ O worker executa as operações suportadas por handlers explícitos. `LOCAL_BACK
 O primeiro consumidor implementado é o ciclo de vida do Palworld. A web cria jobs `PALWORLD_START`, `PALWORLD_STOP` e `PALWORLD_RESTART`; o worker os adquire e executa. Uma chave de coordenação com índice único parcial impede duas solicitações simultâneas do mesmo domínio, e cada job preserva o timeout vigente no momento da solicitação.
 
 O desligamento usa `PALWORLD_ASSISTED_SHUTDOWN`, `PALWORLD_FORCE_SIGTERM` e `PALWORLD_FORCE_SIGKILL` sob a mesma chave. A contagem grava progresso e pedidos de cancelamento ou execução imediata no SQLite. O worker fecha o ponto de cancelamento antes de iniciar o Stop. SIGKILL nunca é criado como consequência automática: somente uma nova requisição autenticada, após falha de SIGTERM, pode enfileirá-lo.
+
+`HOST_REBOOT` e `HOST_SHUTDOWN` usam a chave `HOST_POWER`, são não canceláveis e exigem o lock global. O worker verifica o Palworld, executa o Stop assistido imediato quando ele não está `OFFLINE` e só então solicita o comando de energia fechado. Falha no tratamento do Palworld bloqueia o comando do host.
 
 Além dos jobs, o worker é o único processo que entrega `notification_events` a
 integrações externas. FastAPI e worker podem criar esses eventos no SQLite, mas
@@ -51,7 +53,7 @@ O Dashboard consulta esse estado a cada 10 segundos. O `/health` continua exclus
 
 ## Maintenance lock
 
-O worker adquire a linha `GLOBAL` de `maintenance_locks` na mesma transação do claim de um job incompatível. Outros jobs que exigem o lock permanecem `PENDING`; trabalhos sem lock podem continuar. O lock é liberado ao terminar e locks órfãos de jobs terminais são removidos com segurança. Backup, Restore e Update usam essa coordenação; o backup pré-update ocorre dentro do lock do próprio Update. Leituras seguras, métricas, logs, verificação manual de versão e diagnósticos não dependem do lock.
+O worker adquire a linha `GLOBAL` de `maintenance_locks` na mesma transação do claim de um job incompatível. Outros jobs que exigem o lock permanecem `PENDING`; trabalhos sem lock podem continuar. O lock é liberado ao terminar e locks órfãos de jobs terminais são removidos com segurança. Backup, Restore, Update, reboot e shutdown do host usam essa coordenação; o backup pré-update ocorre dentro do lock do próprio Update. Leituras seguras, métricas, logs, verificação manual de versão e diagnósticos não dependem do lock.
 
 ## Cancelamento e recuperação
 

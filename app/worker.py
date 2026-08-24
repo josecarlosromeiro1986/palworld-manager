@@ -16,6 +16,7 @@ from app.backups.source import create_backup_payload_source
 from app.config import Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
 from app.db.models import Job
+from app.host_power.jobs import create_host_power_job_executor
 from app.integrations.discord import create_discord_webhook
 from app.integrations.google_drive import GoogleDriveError, create_google_drive_storage
 from app.integrations.palworld_rest import create_palworld_rest_client
@@ -151,6 +152,11 @@ def run() -> None:
                 lifecycle_executor,
                 create_palworld_log_source(settings),
                 job_logs=job_logs,
+            ),
+            host_power_executor=create_host_power_job_executor(
+                settings,
+                session_factory,
+                assisted_shutdown,
             ),
         )
         notification_dispatcher = DiscordNotificationDispatcher(

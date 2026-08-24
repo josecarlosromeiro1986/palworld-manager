@@ -6,6 +6,7 @@ from app.backups.drive_jobs import DRIVE_JOB_KINDS, DriveJobExecutor
 from app.backups.jobs import LOCAL_BACKUP_JOB_KIND, LocalBackupJobExecutor
 from app.db.engine import session_scope
 from app.db.models import Job
+from app.host_power.jobs import HOST_POWER_JOB_KINDS, HostPowerJobExecutor
 from app.jobs.logs import JobLogStore, MemoryJobLogStore
 from app.jobs.service import claim_next_job, release_maintenance_lock
 from app.lifecycle.jobs import (
@@ -45,6 +46,7 @@ class LifecycleJobWorker:
         restore_executor: LocalRestoreJobExecutor | None = None,
         drive_executor: DriveJobExecutor | None = None,
         update_executor: UpdateJobExecutor | None = None,
+        host_power_executor: HostPowerJobExecutor | None = None,
     ) -> None:
         if not worker_id:
             raise ValueError("o identificador do worker é obrigatório")
@@ -58,6 +60,7 @@ class LifecycleJobWorker:
         self._restore_executor = restore_executor
         self._drive_executor = drive_executor
         self._update_executor = update_executor
+        self._host_power_executor = host_power_executor
 
     @property
     def _supported_kinds(self) -> tuple[str, ...]:
@@ -72,7 +75,8 @@ class LifecycleJobWorker:
         restores = RESTORE_JOB_KINDS if self._restore_executor is not None else ()
         drive = DRIVE_JOB_KINDS if self._drive_executor is not None else ()
         updates = UPDATE_JOB_KINDS if self._update_executor is not None else ()
-        return lifecycle + shutdown + backups + restores + drive + updates
+        host_power = HOST_POWER_JOB_KINDS if self._host_power_executor is not None else ()
+        return lifecycle + shutdown + backups + restores + drive + updates + host_power
 
     def process_next(self) -> bool:
         with session_scope(self._session_factory) as session:
@@ -109,6 +113,13 @@ class LifecycleJobWorker:
                 assert self._update_executor is not None
                 self._append_log(job_log_path, "Operação manual de Update iniciada.")
                 self._update_executor.execute(job_id)
+            elif job_kind in HOST_POWER_JOB_KINDS:
+                assert self._host_power_executor is not None
+                self._append_log(
+                    job_log_path,
+                    "Validação do Palworld e controle de energia do Ubuntu iniciados.",
+                )
+                self._host_power_executor.execute(job_id)
             elif job_kind in {kind.value for kind in ShutdownJobKind}:
                 if job_kind == ShutdownJobKind.ASSISTED.value:
                     assert self._assisted_shutdown_executor is not None
@@ -129,6 +140,9 @@ class LifecycleJobWorker:
             if job_kind in UPDATE_JOB_KINDS:
                 assert self._update_executor is not None
                 self._update_executor.fail_unexpected(job_id)
+            elif job_kind in HOST_POWER_JOB_KINDS:
+                assert self._host_power_executor is not None
+                self._host_power_executor.fail_unexpected(job_id)
             elif job_kind in {
                 LOCAL_BACKUP_JOB_KIND,
                 *RESTORE_JOB_KINDS,

@@ -23,7 +23,16 @@ def test_frontend_uses_shared_confirmation_modal_instead_of_native_dialogs() -> 
 def test_action_panels_swap_expected_validation_errors() -> None:
     script = Path("app/static/src/app.js").read_text(encoding="utf-8")
 
-    assert 'new Set(["restore-job", "drive-job", "update-operation"])' in script
+    panel_config_start = script.index("const validationErrorPanelIds")
+    panel_config_end = script.index("]);", panel_config_start)
+    panel_config = script[panel_config_start:panel_config_end]
+    for panel_id in (
+        "restore-job",
+        "drive-job",
+        "update-operation",
+        "host-power-feedback",
+    ):
+        assert f'"{panel_id}"' in panel_config
     assert "validationErrorPanelIds.has(target?.id)" in script
     assert "status === 400 || status === 409" in script
     assert "event.detail.shouldSwap = true" in script

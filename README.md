@@ -21,7 +21,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais, diagnóstico e auditoria completa estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld e do host Ubuntu, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais, diagnóstico e auditoria completa estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
 
 ## Desenvolvimento
 
@@ -89,6 +89,12 @@ aplicável. Período, ação, resultado, origem, usuário e alvo podem ser combi
 em filtros; a listagem usa 50 registros por página e retenção de 90 dias. A
 gravação e a leitura aplicam proteção defensiva contra secrets e detalhes
 externos livres. Exportação CSV não faz parte da V1.
+
+O Dashboard também permite reiniciar ou desligar o Ubuntu com CSRF, modal e
+frase digitada exata. O worker adquire o maintenance lock, trata o Palworld com
+Stop seguro e só então chama um dos dois comandos systemd fixos. Development e
+test usam fake e nunca controlam o host; as regras sudoers exatas serão
+instaladas somente pelo deploy da Etapa 29.
 
 ## Documentação
 

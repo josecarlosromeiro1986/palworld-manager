@@ -32,10 +32,11 @@ Nenhuma etapa em andamento.
 - Etapa 24 — Configurações do Painel.
 - Etapa 25 — Diagnóstico.
 - Etapa 26 — Auditoria completa.
+- Etapa 27 — Power controls Ubuntu.
 
 ## Próxima etapa
 
-Etapa 27 — Power controls Ubuntu.
+Etapa 28 — Playwright crítico.
 
 ## Observações
 

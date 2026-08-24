@@ -108,4 +108,11 @@ A integração confirma autenticação, timezone configurado, filtros combináve
 ordenação, paginação fixa de 50 registros, remoção de expirados, ausência de CSV
 e proteção de valores sensíveis inclusive em registros anteriores.
 
+Os testes de energia do host validam os comandos exatos e não bloqueantes de
+reboot e poweroff, rejeição de ação arbitrária sem executar subprocesso e erros
+sem copiar stdout ou stderr. A integração cobre autenticação, CSRF, frases
+digitadas exatas, modal compartilhado, double-submit, maintenance lock,
+auditoria, Stop seguro do Palworld antes da ação e bloqueio absoluto do comando
+do host quando esse Stop falha. Development e test usam somente fake.
+
 `make e2e` está reservado e apenas informa que os testes de navegador serão adicionados na Etapa 28; ele não representa cobertura E2E implementada nesta fase.
