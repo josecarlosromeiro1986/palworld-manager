@@ -35,10 +35,11 @@ Nenhuma etapa em andamento.
 - Etapa 27 — Power controls Ubuntu.
 - Etapa 28 — Playwright crítico.
 - Etapa 29 — Deploy produção.
+- Etapa 30 — deploy.sh + rollback.
 
 ## Próxima etapa
 
-Etapa 30 — deploy.sh + rollback.
+Etapa 31 — Hardening e V1.
 
 ## Observações
 

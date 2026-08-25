@@ -1,6 +1,6 @@
 # Testes
 
-> Status: Implementado para a V1 até a Etapa 29. Pytest, gate base, fluxos Playwright críticos e validações estruturais do deploy estão disponíveis.
+> Status: Implementado para a V1 até a Etapa 30. Pytest, gate base, fluxos Playwright críticos e validações estruturais do deploy estão disponíveis.
 
 Pytest será a base da suíte automatizada.
 
@@ -129,5 +129,12 @@ Os testes de deploy validam os artefatos sem executar systemd, sudo, Tailscale,
 rclone ou filesystem estrutural reais. Eles verificam units web/worker
 independentes e não-root, entrypoints distintos, loopback, journald, sandboxes,
 grupo compartilhado do Palworld, sudoers limitado aos sete comandos exatos,
-tmpfiles e modos mínimos, configuração sem secrets, package data de
-templates/assets e ausência de `deploy.sh` ou rollback antecipado.
+tmpfiles e modos mínimos, configuração sem secrets e package data de
+templates/assets.
+
+Os testes do deploy recorrente executam apenas `bash -n` e `--help`; nenhuma
+operação privilegiada real é chamada. As demais asserções verificam paths e
+comandos fechados, lock exclusivo, worktree isolado, execução do gate como
+`palmanager`, compatibilidade Alembic, commit anterior, recusa de jobs,
+notificações e maintenance lock ativos, transient services protegidos, ausência
+de rollback automático e validações independentes da web e do worker.

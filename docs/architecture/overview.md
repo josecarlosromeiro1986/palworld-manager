@@ -1,6 +1,6 @@
 # Visão geral da arquitetura
 
-> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, métricas, health checks, controles do Palworld e do host Ubuntu, logs, integração REST administrativa, editor do INI, backup/Restore local e remoto via rclone, Update manual via SteamCMD, Discord, configurações operacionais, diagnóstico, auditoria e instalação nativa de produção estão implementados; deploy recorrente e hardening final permanecem planejados.
+> Status: Em desenvolvimento. A base FastAPI/Jinja2, o layout Tailwind, métricas, health checks, controles do Palworld e do host Ubuntu, logs, integração REST administrativa, editor do INI, backup/Restore local e remoto via rclone, Update manual via SteamCMD, Discord, configurações operacionais, diagnóstico, auditoria, instalação nativa e deploy recorrente estão implementados; o hardening final permanece planejado.
 
 O Palworld Manager é uma aplicação Python leve e modular por domínio. FastAPI coordena as rotas e os serviços da aplicação; Jinja2 renderiza as páginas no servidor; HTMX atualiza as métricas e atualizará outros formulários e fragmentos; e SSE já entrega logs em tempo real com reconexão por cursor. Tailwind CSS fornece o layout administrativo responsivo; Chart.js exibe o histórico de 15 minutos mantido somente em memória.
 

@@ -129,6 +129,18 @@ fila. Verifique o estado real do Palworld, o backup preventivo e o log controlad
 antes de decidir uma nova operação; Restore, Update e energia do host não são
 retomados automaticamente.
 
+## Deploy ou rollback falhou
+
+Não repita o comando nem inicie serviços enquanto checkout, migration ou
+ownership forem incertos. Preserve a saída sem `set -x`, confira o SHA atual e
+o estado dos dois serviços separadamente. O commit anterior fica em
+`/var/lib/palworld-manager/deploy/previous-commit`.
+
+Rollback permanece manual e pode ser bloqueado quando o commit anterior não
+reconhece a revisão Alembic atual. Não use `alembic downgrade`, não edite
+`alembic_version` e não exponha EnvironmentFiles para diagnosticar. Siga
+[Deploy recorrente e rollback](deploy.md).
+
 Comece pela tela **Diagnóstico**, copie somente o relatório sanitizado e consulte
 [Diagnóstico](diagnostics.md) para entender as fontes de cada check. Consulte
 também [SPECIFICATION.md](../../SPECIFICATION.md).

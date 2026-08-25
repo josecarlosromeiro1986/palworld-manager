@@ -171,6 +171,5 @@ def test_python_package_includes_runtime_templates_and_built_assets() -> None:
     assert "static/dist/vendor/*.js" in package_data
 
 
-def test_stage_does_not_add_deploy_or_rollback_scripts() -> None:
-    assert not (PROJECT_ROOT / "deploy.sh").exists()
+def test_production_ops_has_no_standalone_rollback_wrapper() -> None:
     assert not any(path.name.casefold().startswith("rollback") for path in OPS_ROOT.rglob("*"))

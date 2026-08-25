@@ -85,3 +85,18 @@ O sudoers contém `ALL` apenas no campo de host exigido pela sintaxe. O campo de
 comandos referencia aliases fechados; não existe `NOPASSWD: ALL`, curinga,
 SteamCMD ou rclone privilegiado. Consulte o
 [runbook de produção](../operations/production-install.md).
+
+## Deploy recorrente
+
+O `deploy.sh` é um orquestrador administrativo root porque altera o checkout
+root-owned, arquivos em `/etc` e serviços. Ele não executa a aplicação como
+root: dependências, build, gate, configuração, migrations, web e worker usam
+`palmanager`. Paths, serviços, ref remoto e comandos são fixos; o checkout deve
+estar limpo e um `flock` impede deploys concorrentes.
+
+Antes de parar processos, o candidato passa pelo gate em worktree isolado e o
+script recusa job `RUNNING`, notificação `SENDING` ou maintenance lock. O
+commit anterior é persistido como `root:palmanager 0640`. Rollback exige esse
+SHA completo e compatibilidade com a revisão Alembic atual; nunca ocorre por
+trap, falha, downgrade ou restauração automática. Consulte o
+[runbook de deploy](../operations/deploy.md).

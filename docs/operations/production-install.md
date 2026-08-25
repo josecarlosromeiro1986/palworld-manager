@@ -1,8 +1,8 @@
 # Instalação em produção
 
-> Status: Implementado na Etapa 29. Este procedimento instala a aplicação pela
-> primeira vez; atualização de código, `deploy.sh` e rollback pertencem à Etapa
-> 30 e não fazem parte deste runbook.
+> Status: Implementado na Etapa 29 e integrado ao deploy recorrente da Etapa 30.
+> Este procedimento instala a aplicação pela primeira vez; atualizações
+> posteriores usam o [runbook de deploy](deploy.md).
 
 A produção usa Ubuntu Server, Python em ambiente virtual e dois serviços systemd
 nativos, sem Docker:
@@ -302,6 +302,7 @@ sudo install -o root -g root -m 0644 ops/systemd/palworld-manager.service /etc/s
 sudo install -o root -g root -m 0644 ops/systemd/palworld-manager-worker.service /etc/systemd/system/palworld-manager-worker.service
 sudo systemctl daemon-reload
 sudo systemd-analyze verify /etc/systemd/system/palworld-manager.service /etc/systemd/system/palworld-manager-worker.service
+sudo install -o root -g root -m 0750 deploy.sh /usr/local/sbin/palworld-manager-deploy
 sudo systemctl enable --now palworld-manager.service
 sudo systemctl enable --now palworld-manager-worker.service
 ```
@@ -391,8 +392,8 @@ abra a URL HTTPS exibida pelo Serve e confirme login e logout.
 - Não retome Restore ou Update interrompido sem verificar o estado real.
 - Não use este procedimento como atualização recorrente.
 
-A atualização recorrente, validações automatizadas pós-restart e rollback manual
-serão implementados exclusivamente na Etapa 30. Consulte também
+A atualização recorrente, as validações pós-restart e o rollback manual estão no
+[runbook de deploy](deploy.md). Consulte também
 [Segurança](../architecture/security.md), [Jobs e locks](../architecture/jobs-and-locks.md),
 [Backup e restore](backup-restore.md), [Energia do host](host-power.md),
 [Tailscale](../integrations/tailscale.md) e

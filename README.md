@@ -22,7 +22,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld e do host Ubuntu, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais, diagnóstico, auditoria completa, fluxos E2E críticos e instalação nativa de produção estão implementados; deploy recorrente com rollback e o hardening final continuam planejados conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld e do host Ubuntu, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais, diagnóstico, auditoria completa, fluxos E2E críticos, instalação nativa e deploy recorrente com rollback manual estão implementados; o hardening final continua planejado conforme a especificação.
 
 ## Desenvolvimento
 
@@ -114,8 +114,10 @@ por systemd + `/health` e o worker separadamente por systemd + heartbeat no
 SQLite. O worker não publica HTTP e a web escuta somente em
 `127.0.0.1:8080`.
 
-`deploy.sh`, atualização recorrente e rollback ainda não existem; pertencem à
-Etapa 30.
+O [runbook de deploy](docs/operations/deploy.md) documenta atualização recorrente
+por `deploy.sh`, gate antes da ativação, registro do commit anterior e rollback
+manual compatível com a revisão Alembic. Web e worker são reiniciados e validados
+separadamente; falhas nunca acionam rollback automático.
 
 ## Documentação
 
