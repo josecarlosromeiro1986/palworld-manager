@@ -33,6 +33,16 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.setuptools.package-data]
+app = [
+    "static/dist/*.css",
+    "static/dist/*.js",
+    "static/dist/*.svg",
+    "static/dist/vendor/*.js",
+    "templates/*.html",
+    "templates/**/*.html",
+]
+
 [tool.pytest.ini_options]
 addopts = ["-ra", "--strict-config", "--strict-markers"]
 testpaths = ["tests"]

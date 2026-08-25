@@ -1,6 +1,6 @@
 # Testes
 
-> Status: Implementado para a V1 até a Etapa 28. Pytest, gate base e fluxos Playwright críticos estão disponíveis.
+> Status: Implementado para a V1 até a Etapa 29. Pytest, gate base, fluxos Playwright críticos e validações estruturais do deploy estão disponíveis.
 
 Pytest será a base da suíte automatizada.
 
@@ -124,3 +124,10 @@ seriais cobrem login/logout e redirecionamento de rota privada, Stop e Restart
 pelos fakes, criação de backup seguida de Restore com `RESTAURAR` e gravação de
 uma configuração reconhecida pelo modal compartilhado. Nenhum serviço, path ou
 secret real é usado.
+
+Os testes de deploy validam os artefatos sem executar systemd, sudo, Tailscale,
+rclone ou filesystem estrutural reais. Eles verificam units web/worker
+independentes e não-root, entrypoints distintos, loopback, journald, sandboxes,
+grupo compartilhado do Palworld, sudoers limitado aos sete comandos exatos,
+tmpfiles e modos mínimos, configuração sem secrets, package data de
+templates/assets e ausência de `deploy.sh` ou rollback antecipado.

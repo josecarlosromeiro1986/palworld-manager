@@ -1,6 +1,7 @@
-# Deploy
+# Deploy recorrente e rollback
 
-> Status: Planejado para a V1.
+> Status: Planejado para a Etapa 30. A instalação inicial nativa foi implementada
+> na Etapa 29.
 
 O deploy manual seguirá esta ordem:
 
@@ -29,7 +30,10 @@ palworld-manager-worker.service
 
 O worker atualizará o heartbeat a cada 10 segundos e não terá endpoint HTTP próprio. Após o restart, serviço ativo sem heartbeat ficará `STARTING` durante os primeiros 30 segundos; ao atingir 30 segundos sem heartbeat ficará `UNRESPONSIVE`. Um heartbeat com menos de 30 segundos confirma `HEALTHY`; serviço inativo é `OFFLINE`.
 
-`deploy.sh` ainda não existe. As etapas e comandos definitivos só serão documentados depois que o script e as unidades de produção forem implementados e testados.
+`deploy.sh` ainda não existe. As units e o runbook de instalação inicial estão
+implementados, mas não devem ser usados como substituto para atualização
+recorrente ou rollback. As etapas e comandos definitivos deste documento serão
+consolidados somente na Etapa 30.
 
 O rollback do Manager será manual para o commit anterior, seguido pelas validações compatíveis com a versão escolhida. Não haverá rollback automático. Como migrations podem limitar o retorno a versões antigas, o procedimento definitivo deverá declarar explicitamente a compatibilidade e os pré-requisitos antes de qualquer mudança.
 

@@ -1,8 +1,11 @@
 # Segurança
 
-> Status: Em desenvolvimento. Credenciais Argon2id, sessões server-side, cookies, CSRF e proteção contra brute force estão implementados; o restante do hardening será entregue nas etapas correspondentes.
+> Status: Em desenvolvimento. Credenciais Argon2id, sessões server-side, cookies, CSRF, proteção contra brute force e o baseline de produção da Etapa 29 estão implementados; a revisão final de hardening pertence à Etapa 31.
 
-A aplicação seguirá o princípio do menor privilégio. Em produção, será executada pelo usuário Linux dedicado `palmanager`, nunca como `root`. O `sudoers` permitirá somente comandos ou scripts estritamente necessários, com executáveis, serviços, caminhos e argumentos validados; não haverá permissão genérica.
+A aplicação segue o princípio do menor privilégio. Em produção, é executada pelo
+usuário Linux dedicado `palmanager`, nunca como `root`. O `sudoers` permite
+somente os comandos estritamente necessários, com executáveis, serviços e
+argumentos fixos; não existe permissão genérica.
 
 ## Acesso e autenticação
 
@@ -36,9 +39,9 @@ A configuração estrutural já é validada com Pydantic Settings no startup de 
 - Usar chamadas de processo com argumentos separados e `shell=False`; evitar `shell=True`.
 - Aceitar somente comandos, serviços e caminhos previamente permitidos.
 - A consulta implementada do Palworld usa o executável fixo `/usr/bin/systemctl`, aceita somente a unidade configurada com nome validado e aplica timeout. Development e test usam um fake e nunca chamam o systemd do host.
-- Start, Stop e Restart são executados somente pelo worker através de `/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block <ação> <unidade>`. A ação pertence a uma enum fechada, a unidade é validada e `shell=False` permanece obrigatório. A regra mínima de sudoers pertence ao deploy; `sudo ALL` é proibido.
+- Start, Stop e Restart são executados somente pelo worker através de `/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block <ação> <unidade>`. A ação pertence a uma enum fechada, a unidade é validada e `shell=False` permanece obrigatório. A regra mínima instalada pelo deploy contém apenas os comandos exatos; permissão sudo genérica é proibida.
 - SIGTERM e SIGKILL usam `systemctl kill --kill-whom=main --signal=<sinal>` somente para a unidade validada. SIGTERM exige `FORCAR` após falha real do Stop; SIGKILL exige falha do SIGTERM e a confirmação `SIGKILL`. Não existe escalada automática.
-- Reboot e shutdown do Ubuntu são solicitados somente pelo worker, após Stop seguro do Palworld, com `/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block reboot` ou `poweroff`. A enum fechada não aceita ação ou argumento da requisição, `shell=False` permanece obrigatório e development/test usam fake. As regras sudoers exatas serão instaladas na Etapa 29.
+- Reboot e shutdown do Ubuntu são solicitados somente pelo worker, após Stop seguro do Palworld, com `/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block reboot` ou `poweroff`. A enum fechada não aceita ação ou argumento da requisição, `shell=False` permanece obrigatório e development/test usam fake. As regras sudoers exatas são instaladas pelo runbook da Etapa 29.
 - A verificação do processo consulta somente o `MainPID` da mesma unidade validada. O cliente REST usa URL estrutural validada, timeout, limites de resposta e Basic Auth; credenciais não são incluídas na URL, interface, auditoria ou mensagens de erro. Autenticação rejeitada, timeout, servidor offline, API indisponível, resposta inválida e falha inesperada recebem classificações seguras.
 - A leitura de logs usa `/usr/bin/journalctl` sem `sudo`, somente para a unidade validada, com limites fechados, campos mínimos, argumentos separados e `shell=False`. Cursores de reconexão são validados, stderr não é exibido e valores sensíveis conhecidos são mascarados antes do SSE.
 - O editor do INI usa somente o caminho estrutural `PALWORLD_SETTINGS`, rejeita arquivos não regulares e qualquer componente symlink, limita a leitura a 1 MiB e detecta alterações concorrentes por SHA-256. A cópia pré-save é criada com modo `0600`; a gravação usa arquivo temporário no mesmo diretório e substituição atômica. Senhas presentes no INI são preservadas, mas nunca exibidas ou incluídas na auditoria.
@@ -57,3 +60,28 @@ A configuração estrutural já é validada com Pydantic Settings no startup de 
 - O usuário `palmanager` receberá no deploy apenas execução do binário SteamCMD e acesso de leitura/escrita necessário ao diretório do Palworld por grupo dedicado. O Update não usa `sudo` para ampliar acesso ao filesystem e não altera binários fora de `PALWORLD_DIR`; Start/Stop continuam restritos às regras fechadas de systemd já definidas.
 
 Operações destrutivas exigem confirmações explícitas, locks e auditoria. Uma operação interrompida não é retomada automaticamente. Os requisitos completos estão em [SPECIFICATION.md](../../SPECIFICATION.md), especialmente nas seções de autenticação, jobs, backup e hardening.
+
+## Baseline de produção
+
+Os artefatos em `ops/` materializam o menor privilégio da instalação:
+
+- web e worker usam `User=palmanager`, `Group=palmanager` e units separadas;
+- `UMask=0027`, `ProtectSystem=strict`, capabilities vazias e paths graváveis
+  explícitos limitam o filesystem;
+- a web usa `NoNewPrivileges=true` e só grava dados do Manager e o diretório
+  dos INIs;
+- o worker grava dados do Manager e `PALWORLD_DIR`; a ausência de
+  `NoNewPrivileges` permite somente o sudo setuid necessário aos sete comandos
+  exatos do sudoers;
+- o grupo compartilhado `palworld-manager` e o drop-in de
+  `palworld.service` preservam modos `0770/0660` sem root;
+- `systemd-journal` fornece leitura não-root, enquanto o adapter restringe a
+  consulta à unit validada;
+- `secrets.env` é `root:palmanager 0640` e o rclone usa configuração separada
+  `palmanager:palmanager 0600`;
+- a web permanece em loopback e somente Tailscale Serve publica HTTPS privado.
+
+O sudoers contém `ALL` apenas no campo de host exigido pela sintaxe. O campo de
+comandos referencia aliases fechados; não existe `NOPASSWD: ALL`, curinga,
+SteamCMD ou rclone privilegiado. Consulte o
+[runbook de produção](../operations/production-install.md).

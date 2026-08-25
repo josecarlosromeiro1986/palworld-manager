@@ -4,6 +4,26 @@
 
 rclone conecta o Manager ao Google Drive. A configuração inicial e a autenticação do remote são feitas manualmente no terminal, sob o mesmo usuário `palmanager` que executa o worker; credenciais não são exibidas nem armazenadas no SQLite. `RCLONE=/usr/bin/rclone` define o executável estrutural e `RCLONE_REMOTE=palworld-manager` define o nome validado do remote. O namespace interno é fixo em `Palworld Manager/Backups/` e não é editável no painel.
 
+## Configuração de produção
+
+A Etapa 29 fixa `RCLONE_CONFIG` em
+`/var/lib/palworld-manager/rclone/rclone.conf`. O diretório pertence a
+`palmanager:palmanager`, usa modo `0700`, e o arquivo usa modo `0600`.
+Somente o worker e comandos administrativos executados como `palmanager`
+acessam essa configuração. Ela permanece fora do repositório, do SQLite, do
+payload de backup e do journal.
+
+```bash
+sudo install -o palmanager -g palmanager -m 0600 /dev/null /var/lib/palworld-manager/rclone/rclone.conf
+sudo -u palmanager env RCLONE_CONFIG=/var/lib/palworld-manager/rclone/rclone.conf /usr/bin/rclone config
+sudo -u palmanager env RCLONE_CONFIG=/var/lib/palworld-manager/rclone/rclone.conf /usr/bin/rclone about palworld-manager: --json >/dev/null
+```
+
+Tokens OAuth podem ser renovados, portanto o arquivo precisa continuar gravável
+pelo worker; não o mova para o arquivo estrutural de secrets somente leitura. O
+procedimento completo está no
+[runbook de produção](../operations/production-install.md).
+
 O Manager trabalha nesse namespace exclusivo para:
 
 - testar conexão e consultar quota;

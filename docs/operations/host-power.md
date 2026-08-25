@@ -1,6 +1,6 @@
 # Energia do host Ubuntu
 
-> Status: Implementado na Etapa 27; instalação das regras de sudoers permanece planejada para a Etapa 29.
+> Status: Implementado na Etapa 27; regras mínimas de sudoers entregues na Etapa 29.
 
 O Dashboard autenticado oferece **Reiniciar Ubuntu** e **Desligar Ubuntu**. As
 duas ações exigem sessão válida, CSRF, o modal compartilhado e a frase exata
@@ -36,9 +36,10 @@ Os argumentos não recebem texto da requisição, `shell=False` é obrigatório 
 stdout/stderr não são copiados para UI, logs ou auditoria. Development e test
 usam um fake em memória e nunca controlam o host real.
 
-A Etapa 27 não instala sudoers. O deploy da Etapa 29 deverá liberar somente os
-comandos exatos necessários para `palmanager`, junto das regras fechadas já
-previstas para o Palworld; `sudo ALL` continua proibido.
+O artefato `ops/sudoers/palworld-manager` libera somente esses dois comandos e
+os cinco comandos fechados já previstos para o Palworld. O runbook exige
+`visudo --check` antes e depois da instalação; `NOPASSWD: ALL`, curingas e
+sudo para SteamCMD continuam proibidos.
 
 Consulte [Segurança](../architecture/security.md),
 [Jobs e locks](../architecture/jobs-and-locks.md) e

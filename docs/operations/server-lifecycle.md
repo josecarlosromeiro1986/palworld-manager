@@ -64,6 +64,8 @@ Em production, somente estes comandos são construídos pelo adapter, sempre com
 /usr/bin/sudo --non-interactive /usr/bin/systemctl kill --kill-whom=main --signal=SIGKILL palworld.service
 ```
 
-O nome real da unidade vem de `PALWORLD_SERVICE` e passa pela allowlist estrutural. A regra mínima de sudoers será instalada e validada na etapa de deploy; não existe `sudo ALL`.
+O nome real da unidade vem de `PALWORLD_SERVICE` e passa pela allowlist
+estrutural. A Etapa 29 instala e valida o sudoers com esses cinco comandos e os
+dois comandos fechados de energia do host; não existe permissão genérica.
 
 Development e test usam um fake compartilhado via SQLite entre web e worker. Assim, um job concluído atualiza também o health exibido pelo Dashboard, sem executar systemd ou abrir conexão com o Palworld real.

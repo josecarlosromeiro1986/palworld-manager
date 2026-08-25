@@ -1,67 +1,399 @@
 # Instalação em produção
 
-> Status: Planejado para a V1.
+> Status: Implementado na Etapa 29. Este procedimento instala a aplicação pela
+> primeira vez; atualização de código, `deploy.sh` e rollback pertencem à Etapa
+> 30 e não fazem parte deste runbook.
 
-A produção será uma instalação nativa em Ubuntu Server, sem Docker:
+A produção usa Ubuntu Server, Python em ambiente virtual e dois serviços systemd
+nativos, sem Docker:
 
 ```text
-Ubuntu Server
-+ venv
-+ systemd
-+ Tailscale Serve
+Tailscale Serve (HTTPS privado)
+             ↓
+127.0.0.1:8080
+             ↓
+palworld-manager.service       → FastAPI
+palworld-manager-worker.service → jobs, heartbeat e integrações externas
+             ↓
+/var/lib/palworld-manager/manager.db
 ```
 
-Identificadores planejados:
+Os comandos abaixo pressupõem estes paths estruturais definidos na
+[especificação](../../SPECIFICATION.md):
 
 ```text
-Usuário:         palmanager
-Aplicação:       /opt/palworld-manager
-Banco SQLite:    /var/lib/palworld-manager/manager.db
-Serviço web:     palworld-manager.service
-Serviço worker:  palworld-manager-worker.service
+Código:          /opt/palworld-manager
+Dados:           /var/lib/palworld-manager
+Configuração:    /etc/palworld-manager/manager.env
 Secrets:         /etc/palworld-manager/secrets.env
+rclone:          /var/lib/palworld-manager/rclone/rclone.conf
+Palworld:        /home/steam/palserver
+Serviço Palworld: palworld.service
 ```
 
-A configuração estrutural inclui `PALWORLD_REST_BASE_URL=http://127.0.0.1:8212/v1/api`. O arquivo protegido de secrets deve fornecer `PALWORLD_REST_USERNAME` e `PALWORLD_REST_PASSWORD`; ambos são obrigatórios, não têm valor padrão e não usam fallback para `admin`. Web e worker falham no startup com erro de configuração quando esses valores estão ausentes, vazios ou inválidos.
+Se a instalação real usa outro path ou outra unidade, altere simultaneamente a
+configuração estrutural, o sandbox das units e os comandos exatos do sudoers. Não
+libere curingas nem uma unidade arbitrária.
 
-A integração remota usa `RCLONE=/usr/bin/rclone` e
-`RCLONE_REMOTE=palworld-manager`. A autenticação inicial do remote é manual no
-terminal sob `palmanager`; o arquivo de configuração do rclone deve permanecer
-restrito a esse usuário e nunca é copiado para SQLite, logs ou backups. O
-procedimento completo de instalação e validação será consolidado na Etapa 29.
+## 1. Pré-requisitos
 
-O webhook opcional do Discord usa `DISCORD_WEBHOOK_URL` no mesmo arquivo
-protegido de secrets. Quando configurado, deve ser uma URL HTTPS oficial do
-Discord, sem query, fragmento ou credenciais adicionais. Somente o worker utiliza
-esse valor; ele nunca é persistido no SQLite, exibido na UI ou reproduzido em
-logs e auditoria.
+Use Ubuntu Server com systemd e Python 3.12 ou mais recente. Instale as
+dependências do runtime, build e validação:
 
-Os serviços web e worker serão processos independentes configurados via systemd. Ambos serão executados pelo usuário `palmanager`, nunca como `root`, usarão a mesma configuração estrutural apropriada e acessarão o mesmo banco SQLite quando necessário.
+```bash
+sudo apt update
+sudo apt install --no-install-recommends git nodejs npm python3 python3-venv rclone sqlite3 sudo curl
+python3 --version
+node --version
+npm --version
+/usr/bin/rclone version
+```
 
-`palworld-manager.service` executará o FastAPI e escutará somente em `127.0.0.1`. Seu `/health` verificará exclusivamente a aplicação web. `palworld-manager-worker.service` consumirá os jobs persistidos, executará as operações demoradas ou críticas e será o único processo autorizado a entregar notificações externas.
+Instale e conecte o Tailscale pelo procedimento oficial da distribuição antes de
+configurar o Serve. Confirme que os executáveis usados pelo código possuem os
+paths esperados:
 
-O worker não tem servidor HTTP. Ele atualiza um heartbeat no SQLite a cada 10 segundos; sua saúde combina o heartbeat com o estado e o tempo de ativação do serviço no systemd. Serviço ativo sem heartbeat fica `STARTING` com menos de 30 segundos desde a ativação e `UNRESPONSIVE` a partir de 30 segundos. Heartbeat inferior a 30 segundos com serviço ativo significa `HEALTHY`, heartbeat de 30 segundos ou mais significa `UNRESPONSIVE`, e serviço inativo significa `OFFLINE`. O heartbeat funciona também como lease: uma identidade concorrente é recusada enquanto o sinal anterior tiver menos de 30 segundos.
+```bash
+test -x /usr/bin/systemctl
+test -x /usr/bin/journalctl
+test -x /usr/bin/sudo
+test -x /usr/bin/tailscale
+test -x /usr/bin/rclone
+test -x /usr/games/steamcmd
+```
 
-Logs textuais de jobs usam `/var/lib/palworld-manager/jobs/<ano>/`, guardam apenas mensagens operacionais controladas e têm retenção de 90 dias. O SQLite mantém somente a referência relativa. A etapa de deploy deverá criar e proteger essa árvore para `palmanager`; a aplicação não requer acesso fora de `/var/lib/palworld-manager` para esses logs.
+O SteamCMD e o serviço `palworld.service` devem estar instalados e funcionais
+antes do Manager. Não prossiga se `PALWORLD_DIR`, o mundo ou os INIs forem
+symlinks; os adapters de produção os recusam.
 
-Backups locais usam `/var/lib/palworld-manager/backups/` e staging em `/var/lib/palworld-manager/tmp/backups/`; os arquivos finais pertencem a `palmanager` e usam modo `0640`. O backup exige leitura no subtree estrutural `PALWORLD_DIR/Pal/Saved/SaveGames` e nas configurações permitidas. O Restore exige também criar e renomear diretórios dentro de `Pal/Saved`, substituir os INIs permitidos e atribuir aos novos arquivos o grupo do mundo anterior, com `0770` em diretórios e `0660` em arquivos. A Etapa 29 deverá colocar `palmanager` somente no grupo compartilhado necessário e conceder essas permissões mínimas, sem executar web ou worker como root e sem `sudo ALL`.
+## 2. Usuário e grupos
 
-Tailscale Serve fornecerá acesso privado com HTTPS apenas ao serviço web; journald receberá os logs de ambos.
+Crie o usuário de sistema sem shell interativo, o grupo compartilhado do
+Palworld e a associação de leitura ao journal:
 
-O visualizador de logs do Palworld já usa `journalctl` somente leitura, sem `sudo`, com argumentos fixos para `PALWORLD_SERVICE`. A etapa de deploy deverá conceder ao usuário `palmanager` apenas o acesso de leitura necessário ao journal e validar esse acesso sem executar a aplicação como root.
+```bash
+sudo groupadd --system palworld-manager
+sudo useradd --system --user-group --home-dir /var/lib/palworld-manager --create-home --shell /usr/sbin/nologin palmanager
+sudo usermod --append --groups palworld-manager,systemd-journal palmanager
+id palmanager
+```
 
-O editor do `PalWorldSettings.ini` já usa o caminho fixo de `PALWORLD_SETTINGS`, recusa symlinks e cria no mesmo diretório uma cópia pré-save protegida por modo `0600` antes da substituição atômica. A etapa de deploy deverá configurar o menor conjunto de permissões que permita ao usuário `palmanager` ler o INI e criar/substituir arquivos somente nesse diretório, preservando o acesso necessário ao processo do Palworld. O procedimento definitivo ainda não está implementado e não deve ser substituído por `sudo ALL` ou pela execução da web como root.
+`palmanager` é o usuário de web e worker. O grupo `palworld-manager` concede
+somente o acesso necessário à instalação do Palworld; `systemd-journal` permite
+a leitura não-root que o visualizador e as validações pós-operação exigem.
 
-O health check do Palworld usa adapters com executáveis e argumentos fixos, unidade validada, `MainPID` confirmado por `psutil` e `GET /info` autenticado com timeout. Start, Stop e Restart já são executados pelo worker com `/usr/bin/sudo --non-interactive`, `systemctl --no-block`, ação fechada e unidade validada. A escalada manual usa somente `systemctl kill --kill-whom=main` com SIGTERM ou SIGKILL fixos. Reboot e shutdown do Ubuntu também pertencem exclusivamente ao worker e usam somente `systemctl --no-block reboot` ou `poweroff`, depois do tratamento seguro do Palworld. A etapa de deploy ainda deve instalar e validar regras de sudoers exclusivas para esses sete comandos, nunca `sudo ALL`.
+## 3. Checkout, venv e assets
 
-Updates usam o executável estrutural `STEAMCMD` diretamente pelo worker não-root,
-com login anônimo e App ID fixo `2394010`. O deploy deverá validar que o binário é
-regular e executável por `palmanager` e conceder, por grupo dedicado, somente a
-leitura do manifesto `PALWORLD_DIR/steamapps/appmanifest_2394010.acf` e a
-leitura/escrita necessárias para o SteamCMD atualizar o conteúdo dentro de
-`PALWORLD_DIR`. Não será criada regra de sudoers para SteamCMD, e nenhum acesso de
-escrita fora desse diretório será concedido por causa do Update.
+Obtenha um checkout autenticado e confiável em `/opt/palworld-manager`. O
+repositório é privado: use SSH ou um credential helper e nunca coloque token na
+URL, no histórico ou na configuração Git. Exemplo, substituindo somente a URL:
 
-Node.js e npm serão necessários apenas para o build de assets, não como serviço de produção. Permissões, arquivos de unidade do Manager, `sudoers`, scripts e configuração do Tailscale ainda serão implementados e validados na etapa de deploy; por isso, este documento não é um tutorial executável.
+```bash
+sudo git clone REPOSITORY_URL /opt/palworld-manager
+cd /opt/palworld-manager
+git status --short --branch
+git rev-parse HEAD
+```
 
-Consulte [Segurança](../architecture/security.md) e os requisitos completos em [SPECIFICATION.md](../../SPECIFICATION.md).
+O build roda sem privilégios de root. Durante essa fase, entregue o checkout ao
+usuário de serviço; depois do build, devolva o código a `root` e retire escrita
+do runtime:
+
+```bash
+sudo chown --recursive palmanager:palmanager /opt/palworld-manager
+sudo -u palmanager python3 -m venv /opt/palworld-manager/.venv
+sudo -u palmanager /opt/palworld-manager/.venv/bin/python -m pip install --upgrade pip
+sudo -u palmanager npm ci --prefix /opt/palworld-manager
+sudo -u palmanager npm run build --prefix /opt/palworld-manager
+sudo -u palmanager /opt/palworld-manager/.venv/bin/python -m pip install /opt/palworld-manager
+sudo chown --recursive root:palmanager /opt/palworld-manager
+sudo chmod --recursive g-w,o-rwx /opt/palworld-manager
+sudo find /opt/palworld-manager -type d -exec chmod g+rx {} +
+sudo find /opt/palworld-manager -type f -exec chmod g+r {} +
+```
+
+Node/npm são usados somente nessa compilação. Nenhuma unit de produção executa
+Node. O pacote Python inclui os templates Jinja2 e os arquivos gerados em
+`app/static/dist/`.
+
+## 4. Diretórios e configuração estrutural
+
+Instale a política tmpfiles e crie as áreas administradas:
+
+```bash
+cd /opt/palworld-manager
+sudo install -o root -g root -m 0644 ops/tmpfiles/palworld-manager.conf /etc/tmpfiles.d/palworld-manager.conf
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/palworld-manager.conf
+```
+
+Ela cria somente:
+
+- `/etc/palworld-manager` como `root:palmanager`, modo `0750`;
+- dados, backups e jobs como `palmanager:palmanager`, modo `0750`;
+- staging e diretório do rclone como `palmanager:palmanager`, modo `0700`.
+
+Instale a configuração estrutural versionada, que não contém secrets:
+
+```bash
+sudo install -o root -g palmanager -m 0640 ops/environment/manager.env /etc/palworld-manager/manager.env
+```
+
+Crie o arquivo de secrets sem copiar seu conteúdo para o terminal, logs ou
+documentação:
+
+```bash
+sudo install -o root -g palmanager -m 0640 /dev/null /etc/palworld-manager/secrets.env
+sudoedit /etc/palworld-manager/secrets.env
+```
+
+O arquivo deve definir `PALWORLD_REST_USERNAME` e
+`PALWORLD_REST_PASSWORD`. `DISCORD_WEBHOOK_URL` é opcional. Use uma linha
+`NOME=valor` por variável, com quoting compatível com
+`systemd.exec(5)`. Não use `export`, não registre valores em tickets e não
+execute `cat` nesse arquivo.
+
+Valide apenas metadata e nomes esperados:
+
+```bash
+sudo stat -c '%U %G %a %n' /etc/palworld-manager/manager.env /etc/palworld-manager/secrets.env
+sudo grep -Eq '^PALWORLD_REST_USERNAME=' /etc/palworld-manager/secrets.env
+sudo grep -Eq '^PALWORLD_REST_PASSWORD=' /etc/palworld-manager/secrets.env
+```
+
+Os resultados de `stat` devem mostrar `root palmanager 640`. Os `grep`
+acima não imprimem valores.
+
+## 5. rclone
+
+Crie a configuração separada dos secrets da aplicação. Ela precisa ser gravável
+por `palmanager` porque tokens OAuth podem ser renovados:
+
+```bash
+sudo install -o palmanager -g palmanager -m 0600 /dev/null /var/lib/palworld-manager/rclone/rclone.conf
+sudo -u palmanager env RCLONE_CONFIG=/var/lib/palworld-manager/rclone/rclone.conf /usr/bin/rclone config
+```
+
+Na interface interativa, crie o remote exato `palworld-manager` para Google
+Drive. Não configure outro namespace: o código limita todas as operações a
+`Palworld Manager/Backups/`.
+
+Valide sem mostrar a configuração:
+
+```bash
+sudo stat -c '%U %G %a %n' /var/lib/palworld-manager/rclone/rclone.conf
+sudo -u palmanager env RCLONE_CONFIG=/var/lib/palworld-manager/rclone/rclone.conf /usr/bin/rclone listremotes
+sudo -u palmanager env RCLONE_CONFIG=/var/lib/palworld-manager/rclone/rclone.conf /usr/bin/rclone about palworld-manager: --json >/dev/null
+```
+
+O arquivo deve permanecer `palmanager:palmanager 600`. Não o inclua em
+backups, diagnósticos ou commits.
+
+## 6. Permissões do Palworld
+
+O worker precisa ler o mundo para Backup e escrever em `PALWORLD_DIR` para
+Restore e SteamCMD. O editor web precisa substituir atomicamente somente os INIs
+permitidos. O grupo compartilhado atende esses fluxos sem executar a aplicação
+como root.
+
+Antes de alterar modos, confirme os alvos absolutos e a ausência de symlinks:
+
+```bash
+test -d /home/steam/palserver
+test ! -L /home/steam/palserver
+test -d /home/steam/palserver/Pal/Saved/SaveGames
+test ! -L /home/steam/palserver/Pal/Saved/SaveGames
+test -f /home/steam/palserver/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini
+test ! -L /home/steam/palserver/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini
+```
+
+Aplique o grupo somente na árvore estrutural definida:
+
+```bash
+sudo chgrp --recursive palworld-manager /home/steam/palserver
+sudo chmod --recursive g+rwX,o-rwx /home/steam/palserver
+sudo find /home/steam/palserver -type d -exec chmod g+s {} +
+```
+
+Instale o drop-in que mantém o grupo e o `umask` nos arquivos novos do
+Palworld:
+
+```bash
+sudo install -d -o root -g root -m 0755 /etc/systemd/system/palworld.service.d
+sudo install -o root -g root -m 0644 ops/systemd/palworld.service.d/10-palworld-manager-access.conf /etc/systemd/system/palworld.service.d/10-palworld-manager-access.conf
+```
+
+O drop-in não muda `ExecStart`, usuário ou comando do Palworld. Ele adiciona
+somente `SupplementaryGroups=palworld-manager` e `UMask=0007`. Recarregue o
+systemd e reinicie o Palworld em uma janela segura para que o processo existente
+receba o grupo suplementar:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart palworld.service
+```
+
+Não faça esse restart com jogadores conectados ou operação ambígua. Use o
+procedimento operacional de manutenção já adotado para o servidor.
+
+Valide como o usuário não-root:
+
+```bash
+sudo -u palmanager test -r /home/steam/palserver/Pal/Saved/SaveGames
+sudo -u palmanager test -w /home/steam/palserver
+sudo -u palmanager test -w /home/steam/palserver/Pal/Saved/Config/LinuxServer
+sudo -u palmanager test -x /usr/games/steamcmd
+```
+
+## 7. Migrations e administrador inicial
+
+Aplique migrations antes de iniciar os serviços. O transient service lê os dois
+arquivos protegidos sem colocar valores secretos na linha de comando:
+
+```bash
+sudo systemd-run --quiet --wait --pipe --collect \
+  --unit=palworld-manager-migrate \
+  --property=Type=oneshot \
+  --property=User=palmanager \
+  --property=Group=palmanager \
+  --property=WorkingDirectory=/opt/palworld-manager \
+  --property=EnvironmentFile=/etc/palworld-manager/manager.env \
+  --property=EnvironmentFile=/etc/palworld-manager/secrets.env \
+  /opt/palworld-manager/.venv/bin/alembic upgrade head
+```
+
+Crie o administrador de forma interativa, sem senha em argumentos:
+
+```bash
+sudo systemd-run --quiet --wait --pty --collect \
+  --unit=palworld-manager-admin-create \
+  --property=Type=oneshot \
+  --property=User=palmanager \
+  --property=Group=palmanager \
+  --property=WorkingDirectory=/opt/palworld-manager \
+  --property=EnvironmentFile=/etc/palworld-manager/manager.env \
+  --property=EnvironmentFile=/etc/palworld-manager/secrets.env \
+  /opt/palworld-manager/.venv/bin/python -m app.cli create-admin
+```
+
+A senha é solicitada com entrada oculta. Para redefinição futura, troque apenas
+`create-admin` por `reset-password`.
+
+## 8. sudoers e units
+
+Valide o sudoers versionado antes de instalá-lo:
+
+```bash
+cd /opt/palworld-manager
+sudo visudo --check --file ops/sudoers/palworld-manager
+sudo install -o root -g root -m 0440 ops/sudoers/palworld-manager /etc/sudoers.d/palworld-manager
+sudo visudo --check --file /etc/sudoers.d/palworld-manager
+```
+
+A única regra `NOPASSWD` libera os cinco comandos fechados de lifecycle/sinal
+do `palworld.service` e os dois comandos fechados de energia do host. O
+`ALL` anterior a `=(root)` é o campo de host da sintaxe sudoers; o campo de
+comandos contém somente os aliases exatos. Não existe `NOPASSWD: ALL`, curinga
+ou regra para SteamCMD.
+
+Instale e valide as duas units independentes:
+
+```bash
+sudo install -o root -g root -m 0644 ops/systemd/palworld-manager.service /etc/systemd/system/palworld-manager.service
+sudo install -o root -g root -m 0644 ops/systemd/palworld-manager-worker.service /etc/systemd/system/palworld-manager-worker.service
+sudo systemctl daemon-reload
+sudo systemd-analyze verify /etc/systemd/system/palworld-manager.service /etc/systemd/system/palworld-manager-worker.service
+sudo systemctl enable --now palworld-manager.service
+sudo systemctl enable --now palworld-manager-worker.service
+```
+
+As duas units usam `User=palmanager`, `Group=palmanager`, `UMask=0027`,
+`ProtectSystem=strict`, diretórios graváveis explícitos e journald. A web tem
+`NoNewPrivileges=true` e escreve somente nos dados do Manager e no diretório
+dos INIs. O worker não possui essa flag porque o `sudo` setuid precisa alcançar
+exclusivamente os sete comandos allowlisted; seu namespace gravável inclui os
+dados do Manager e `PALWORLD_DIR`.
+
+## 9. Tailscale Serve
+
+Com a web já saudável em loopback, publique somente para a tailnet:
+
+```bash
+sudo /usr/bin/tailscale serve --bg 127.0.0.1:8080
+/usr/bin/tailscale status --json >/dev/null
+/usr/bin/tailscale serve status --json
+```
+
+O modo `--bg` persiste a configuração após reinício do daemon. Não habilite
+Tailscale Funnel. A aplicação mantém autenticação própria, enquanto dispositivos
+e identidade de rede permanecem sob controle do Tailscale.
+
+## 10. Validação final separada
+
+### Web
+
+```bash
+systemctl is-active --quiet palworld-manager.service
+test "$(systemctl show --property=User --value palworld-manager.service)" = palmanager
+curl --fail --silent --show-error http://127.0.0.1:8080/health
+ss -ltn '( sport = :8080 )'
+```
+
+O retorno HTTP deve ser mínimo e o listener deve aparecer somente em
+`127.0.0.1:8080`, nunca em `0.0.0.0` ou `[::]`.
+
+### Worker
+
+```bash
+systemctl is-active --quiet palworld-manager-worker.service
+test "$(systemctl show --property=User --value palworld-manager-worker.service)" = palmanager
+sudo -u palmanager sqlite3 -readonly /var/lib/palworld-manager/manager.db "SELECT COALESCE((SELECT CASE WHEN (julianday('now') - julianday(heartbeat_at)) * 86400.0 < 30.0 THEN 'HEALTHY' ELSE 'UNRESPONSIVE' END FROM worker_heartbeats WHERE key = 'PRIMARY'), 'MISSING');"
+```
+
+Execute a consulta logo após o `systemctl`. O resultado esperado é
+`HEALTHY`. `MISSING` durante os primeiros 30 segundos corresponde ao período
+`STARTING`; depois disso ou com timestamp antigo, investigue
+`UNRESPONSIVE`. O worker não publica porta ou endpoint HTTP.
+
+### Permissões, journal e sudoers
+
+```bash
+sudo -u palmanager test -r /var/lib/palworld-manager/manager.db
+sudo -u palmanager test -w /var/lib/palworld-manager/manager.db
+sudo -u palmanager test ! -w /opt/palworld-manager/pyproject.toml
+sudo -u palmanager /usr/bin/journalctl --unit palworld.service --output json --output-fields MESSAGE,PRIORITY --lines 1 --no-pager --quiet >/dev/null
+sudo -u palmanager sudo --non-interactive --list
+sudo stat -c '%U %G %a %n' /etc/palworld-manager/secrets.env /var/lib/palworld-manager/rclone/rclone.conf
+```
+
+Não teste reboot, poweroff, sinais ou comandos de lifecycle apenas para validar
+sudoers. `visudo --check` e `sudo --list` são suficientes e não alteram o
+host.
+
+### Journald e acesso privado
+
+```bash
+journalctl --unit palworld-manager.service --unit palworld-manager-worker.service --since today --no-pager
+/usr/bin/tailscale serve status --json
+```
+
+Revise somente categorias e mensagens controladas; não copie ambientes ou
+arquivos de secrets para o journal. De outro dispositivo autorizado da tailnet,
+abra a URL HTTPS exibida pelo Serve e confirme login e logout.
+
+## 11. Falhas e limites desta etapa
+
+- Não use Docker em produção.
+- Não execute web ou worker como root.
+- Não adicione `sudo ALL`, comandos com curingas ou sudo para SteamCMD/rclone.
+- Não exponha a porta 8080 na LAN ou Internet.
+- Não habilite Funnel.
+- Não copie `secrets.env` ou `rclone.conf` para backups, logs ou repositório.
+- Não retome Restore ou Update interrompido sem verificar o estado real.
+- Não use este procedimento como atualização recorrente.
+
+A atualização recorrente, validações automatizadas pós-restart e rollback manual
+serão implementados exclusivamente na Etapa 30. Consulte também
+[Segurança](../architecture/security.md), [Jobs e locks](../architecture/jobs-and-locks.md),
+[Backup e restore](backup-restore.md), [Energia do host](host-power.md),
+[Tailscale](../integrations/tailscale.md) e
+[Google Drive com rclone](../integrations/google-drive-rclone.md).

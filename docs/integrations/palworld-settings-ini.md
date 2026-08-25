@@ -32,7 +32,10 @@ Quando existe alteração real, o adapter de produção:
 3. grava um arquivo temporário no mesmo diretório, sincroniza seu conteúdo e preserva o modo do INI original;
 4. substitui o alvo atomicamente e sincroniza o diretório.
 
-Nenhuma retenção automática é aplicada a essas cópias pré-save nesta etapa. A instalação de produção deverá conceder ao usuário `palmanager` apenas as permissões necessárias no arquivo e diretório configurados, sem executar a aplicação como root e sem `sudo ALL`.
+Nenhuma retenção automática é aplicada a essas cópias pré-save nesta etapa. A
+instalação de produção concede ao usuário `palmanager`, por grupo compartilhado
+e sandbox da unit web, escrita somente no diretório configurado dos INIs. A
+aplicação continua não-root e sem permissão sudo genérica.
 
 ## Uso no Restore
 

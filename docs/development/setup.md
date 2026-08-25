@@ -44,16 +44,25 @@ python -m app.cli reset-password
 
 ## Ambientes e configuração
 
-`APP_ENVIRONMENT` aceita somente `development`, `test` ou `production`. O Compose define `development`; `make test` executa a suíte com `test`. Em produção, os serviços systemd definirão `production` na etapa de deploy.
+`APP_ENVIRONMENT` aceita somente `development`, `test` ou `production`. O
+Compose define `development`; `make test` executa a suíte com `test`. Em
+produção, as units systemd carregam `production` pelo arquivo estrutural
+instalado na Etapa 29.
 
 As configurações estruturais suportadas são:
 
 ```text
 APP_ENVIRONMENT
 PALWORLD_SERVICE
+PALWORLD_REST_BASE_URL
+PALWORLD_REST_USERNAME
+PALWORLD_REST_PASSWORD
 PALWORLD_DIR
 PALWORLD_SETTINGS
 STEAMCMD
+RCLONE
+RCLONE_REMOTE
+DISCORD_WEBHOOK_URL
 APP_HOST
 APP_PORT
 MANAGER_DATABASE
@@ -65,6 +74,15 @@ Web e worker validam a configuração antes de iniciar. Portas inválidas, camin
 
 `MANAGER_DATABASE` deve apontar para um caminho absoluto. O default é `/var/lib/palworld-manager/manager.db`; no Compose, esse caminho usa o volume persistente compartilhado entre web e worker. Testes de integração substituem o valor por arquivos SQLite temporários e isolados.
 
-Configurações operacionais persistidas no SQLite e secrets de integrações serão adicionados nas etapas correspondentes. Em produção, secrets serão injetados no ambiente a partir do arquivo protegido definido na especificação, não por um `.env` versionado.
+Configurações operacionais ficam no SQLite. Em produção, a configuração
+estrutural vem de `/etc/palworld-manager/manager.env`, e os secrets são
+injetados por `/etc/palworld-manager/secrets.env`; nenhum deles usa um `.env`
+versionado. O rclone usa
+`/var/lib/palworld-manager/rclone/rclone.conf`, protegido separadamente para
+permitir renovação de tokens.
+
+Consulte o [runbook de produção](../operations/production-install.md) para venv,
+assets, migrations, systemd, sudoers, Tailscale e validação separada da web e do
+worker.
 
 Veja também [Docker](docker.md), [testes](testing.md) e o plano incremental em [SPECIFICATION.md](../../SPECIFICATION.md).

@@ -22,7 +22,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld e do host Ubuntu, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais, diagnóstico, auditoria completa e os fluxos E2E críticos estão implementados; as demais funcionalidades da V1 continuam planejadas conforme a especificação.
+> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld e do host Ubuntu, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais, diagnóstico, auditoria completa, fluxos E2E críticos e instalação nativa de produção estão implementados; deploy recorrente com rollback e o hardening final continuam planejados conforme a especificação.
 
 ## Desenvolvimento
 
@@ -98,7 +98,24 @@ O Dashboard também permite reiniciar ou desligar o Ubuntu com CSRF, modal e
 frase digitada exata. O worker adquire o maintenance lock, trata o Palworld com
 Stop seguro e só então chama um dos dois comandos systemd fixos. Development e
 test usam fake e nunca controlam o host; as regras sudoers exatas serão
-instaladas somente pelo deploy da Etapa 29.
+instaladas pelo procedimento de produção da Etapa 29.
+
+## Produção
+
+A instalação de produção é nativa, sem Docker. Os artefatos versionados em
+`ops/` criam o usuário não-root `palmanager`, diretórios protegidos, venv,
+assets, configuração estrutural, duas units systemd independentes, sudoers
+restrito, acesso ao journald, rclone e Tailscale Serve. Migrations e criação do
+administrador fazem parte da instalação.
+
+Siga integralmente o
+[runbook de instalação](docs/operations/production-install.md). Ele valida a web
+por systemd + `/health` e o worker separadamente por systemd + heartbeat no
+SQLite. O worker não publica HTTP e a web escuta somente em
+`127.0.0.1:8080`.
+
+`deploy.sh`, atualização recorrente e rollback ainda não existem; pertencem à
+Etapa 30.
 
 ## Documentação
 

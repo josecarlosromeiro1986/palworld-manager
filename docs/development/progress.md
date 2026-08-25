@@ -34,10 +34,11 @@ Nenhuma etapa em andamento.
 - Etapa 26 — Auditoria completa.
 - Etapa 27 — Power controls Ubuntu.
 - Etapa 28 — Playwright crítico.
+- Etapa 29 — Deploy produção.
 
 ## Próxima etapa
 
-Etapa 29 — Deploy produção.
+Etapa 30 — deploy.sh + rollback.
 
 ## Observações
 

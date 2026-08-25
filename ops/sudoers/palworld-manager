@@ -1,0 +1,12 @@
+Cmnd_Alias PALMANAGER_PALWORLD = \
+    /usr/bin/systemctl --no-block start palworld.service, \
+    /usr/bin/systemctl --no-block stop palworld.service, \
+    /usr/bin/systemctl --no-block restart palworld.service, \
+    /usr/bin/systemctl kill --kill-whom=main --signal=SIGTERM palworld.service, \
+    /usr/bin/systemctl kill --kill-whom=main --signal=SIGKILL palworld.service
+
+Cmnd_Alias PALMANAGER_HOST_POWER = \
+    /usr/bin/systemctl --no-block reboot, \
+    /usr/bin/systemctl --no-block poweroff
+
+palmanager ALL=(root) NOPASSWD: PALMANAGER_PALWORLD, PALMANAGER_HOST_POWER

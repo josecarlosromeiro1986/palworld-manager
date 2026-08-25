@@ -25,7 +25,7 @@ Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **
 
 ## Operações
 
-- [Instalação em produção](operations/production-install.md): arquitetura nativa prevista para Ubuntu Server.
+- [Instalação em produção](operations/production-install.md): procedimento nativo reproduzível para Ubuntu Server.
 - [Deploy](operations/deploy.md): sequência planejada de publicação e rollback manual.
 - [Backup e restore](operations/backup-restore.md): conteúdo, integridade, retenção e restauração segura.
 - [Atualizações](operations/updates.md): atualização manual do Palworld via SteamCMD.
