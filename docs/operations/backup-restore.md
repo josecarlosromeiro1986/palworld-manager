@@ -8,7 +8,7 @@ Este documento resume a operação prevista. [SPECIFICATION.md](../../SPECIFICAT
 
 O backup automático é diário às `04:00` no timezone configurado, inicialmente `America/Sao_Paulo`. O worker cria no máximo um job automático por data local e respeita `backup_enabled`, `backup_time` e `timezone` editáveis em **Configurações do Painel**. A retenção inicial é de 3 backups locais válidos e até 10 backups remotos gerenciados. O painel aceita de 1 a 30 backups locais e de 1 a 100 backups no Drive, com validação obrigatória no backend; criação, download, Restore e Update aplicam a retenção configurada sem remover artefatos externos.
 
-Cada backup será um `.tar.gz` com `manifest.json`, hash SHA-256 e teste de integridade. Só será considerado válido após essas verificações. Antes da cópia, o Manager solicitará um salvamento seguro pelo mecanismo oficial disponível; uma falha nessa etapa invalida a operação.
+Cada backup é um `.tar.gz` com `manifest.json`, hash SHA-256 e teste de integridade. Só é considerado válido após essas verificações. Antes da cópia, o Manager solicita um salvamento seguro pelo mecanismo oficial disponível; uma falha nessa etapa invalida a operação.
 
 A integridade possui duas camadas e não usa sidecar `.sha256`:
 
@@ -67,7 +67,7 @@ A retenção consulta registros `LOCAL` e `VALID`, reconhece também o namespace
 
 ## Google Drive
 
-rclone fará uploads e downloads em uma pasta ou namespace exclusivo do Palworld Manager. Antes do upload, o sistema verificará quota e aplicará retenção somente aos próprios backups. Se o espaço gratuito continuar insuficiente, o upload será cancelado, o backup local será preservado e a falha será auditada.
+rclone faz uploads e downloads no namespace exclusivo do Palworld Manager. Antes do upload, o sistema verifica quota e aplica retenção somente aos próprios backups. Se o espaço gratuito continuar insuficiente, o upload é cancelado, o backup local é preservado e a falha é auditada.
 
 Um backup diário automático gera um job separado de upload somente depois que o
 artefato local estiver concluído, integralmente validado, com SHA-256 calculado
@@ -114,9 +114,9 @@ maintenance lock
 → conclusão ou falha auditada
 ```
 
-A cópia temporária tem o SHA-256 conferido antes de o arquivo ser aberto para validação interna. A extração não usa `extractall`: aceita somente arquivos regulares com paths relativos presentes no manifest e recusa traversal, paths absolutos, links, duplicidade, conteúdo extra e escape da área temporária. O mundo precisa conter `Level.sav`, `LevelMeta.sav` e `Players/`; saves de jogadores permanecem opacos. `manager/manager.db` passa por `PRAGMA integrity_check` e `manager/settings.json` pela allowlist e tipos esperados, embora nenhum dos dois seja aplicado.
+A cópia temporária tem o SHA-256 conferido antes de o arquivo ser aberto para validação interna. A inspeção exige `manifest.json` como primeira entrada, limita o manifest a 4 MiB, cada path a 4096 bytes, o arquivo a 100.000 entradas e o payload declarado a 128 GiB. A validação é interrompida durante a leitura dos headers, antes de avançar sobre um payload declarado excessivo. A extração não usa `extractall`: aceita somente arquivos regulares com paths relativos presentes no manifest e recusa traversal, paths absolutos, links, duplicidade, conteúdo extra e escape da área temporária. O mundo precisa conter `Level.sav`, `LevelMeta.sav` e `Players/`; saves de jogadores permanecem opacos. `manager/manager.db` é aberto como snapshot SQLite somente leitura e imutável para executar `PRAGMA integrity_check` sem criar sidecars no payload; `manager/settings.json` passa pela allowlist e tipos esperados. Nenhum dos dois é aplicado.
 
-Todas as validações e preparações possíveis terminam antes do Stop. Isso inclui a leitura do `PalWorldSettings.ini` atual, o merge conservador, a validação do resultado e o espaço livre. Se `GameUserSettings.ini` estiver no backup, seus campos com nomes sensíveis também vêm obrigatoriamente do arquivo atual. Uma falha nessa fase não solicita Stop nem altera o mundo.
+Todas as validações e preparações possíveis terminam antes do Stop. Isso inclui a leitura do `PalWorldSettings.ini` atual, o merge conservador, a validação do resultado e o espaço livre no staging e no destino para o tamanho não comprimido declarado. O tamanho efetivamente extraído precisa coincidir com o manifest e o destino é verificado novamente depois do staging. Se `GameUserSettings.ini` estiver no backup, seus campos com nomes sensíveis também vêm obrigatoriamente do arquivo atual. Uma falha nessa fase não solicita Stop nem altera o mundo.
 
 Depois da pré-validação, o backup preventivo executa novo `POST /save` oficial e o pipeline completo do backup local. Ele recebe `backup_record` válido antes do Stop e é preservado tanto no sucesso quanto na falha; a retenção continua exatamente em 3 arquivos gerenciados, protegendo durante a operação a origem e o preventivo. Arquivos externos permanecem intocados.
 

@@ -1,4 +1,5 @@
 import json
+import os
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
@@ -70,6 +71,22 @@ def test_rclone_rejects_invalid_quota_and_unsafe_remote_filename() -> None:
         storage.delete("../arquivo-do-usuario.tar.gz")
 
     assert len(runner.calls) == 1
+
+
+@pytest.mark.skipif(os.name != "posix", reason="permissões POSIX são validadas em produção")
+def test_production_rclone_requires_regular_private_config(tmp_path: Path) -> None:
+    executable = tmp_path / "rclone"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    config = tmp_path / "rclone.conf"
+    config.write_text("[palworld-manager]\ntype = drive\n", encoding="utf-8")
+    config.chmod(0o600)
+
+    RcloneGoogleDriveStorage(executable, "palworld-manager", config_path=config)
+
+    config.chmod(0o640)
+    with pytest.raises(GoogleDriveError, match="grupo/outros"):
+        RcloneGoogleDriveStorage(executable, "palworld-manager", config_path=config)
 
 
 def test_interrupted_cleanup_removes_only_owned_temporary_upload() -> None:

@@ -30,10 +30,10 @@ AUDIT_RESULTS: Final = frozenset(
     }
 )
 SENSITIVE_DETAIL_KEY_PATTERN: Final = re.compile(
-    r"(?i)(password|passwd|secret|token|webhook|authorization|cookie|credential)"
+    r"(?i)(password|passwd|secret|token|webhook|authorization|cookie|credential|api[_-]?key)"
 )
 SENSITIVE_ASSIGNMENT_PATTERN: Final = re.compile(
-    r"(?i)\b(password|passwd|secret|token|webhook|authorization|cookie|credential)\b"
+    r"(?i)\b(password|passwd|secret|token|webhook|authorization|cookie|credential|api[_-]?key)\b"
     r"(\s*[:=]\s*)([^\s,;]+)"
 )
 PROTECTED_VALUE: Final = "[SEGREDO PROTEGIDO]"

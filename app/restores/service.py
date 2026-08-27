@@ -13,6 +13,7 @@ from app.backups.drive_service import DRIVE_TEMPORARY_DIRECTORY_NAME
 from app.backups.manifest import (
     MANIFEST_FILENAME,
     BackupValidationError,
+    inspect_archive,
     sha256_file,
     validate_archive,
     validate_archive_path,
@@ -152,6 +153,12 @@ class LocalRestoreService:
                     "O SHA-256 externo do backup não corresponde ao registro.",
                 )
             try:
+                archive_summary = inspect_archive(archive_copy)
+                self._ensure_staging_space(
+                    working_directory,
+                    archive_summary.payload_size_bytes,
+                )
+                self._target.ensure_available_space(archive_summary.payload_size_bytes)
                 manifest = validate_archive(archive_copy)
             except BackupValidationError as error:
                 raise RestoreValidationError(
@@ -171,6 +178,11 @@ class LocalRestoreService:
             payload_size = sum(
                 path.stat().st_size for path in payload_root.rglob("*") if path.is_file()
             )
+            if payload_size != archive_summary.payload_size_bytes:
+                raise RestoreValidationError(
+                    "ARCHIVE_SIZE_MISMATCH",
+                    "O tamanho extraído do backup não corresponde ao manifest.",
+                )
             self._target.ensure_available_space(payload_size)
             return PreparedRestore(
                 working_directory=working_directory,
@@ -253,6 +265,21 @@ class LocalRestoreService:
                 raise RestoreValidationError(
                     "RESTORE_TEMP_INVALID", "A área temporária de Restore é inválida."
                 )
+
+    @staticmethod
+    def _ensure_staging_space(directory: Path, required_bytes: int) -> None:
+        try:
+            available = shutil.disk_usage(directory).free
+        except OSError as error:
+            raise RestoreValidationError(
+                "DISK_SPACE_UNAVAILABLE",
+                "O espaço da área temporária não pôde ser verificado.",
+            ) from error
+        if required_bytes > available:
+            raise RestoreValidationError(
+                "DISK_SPACE_INSUFFICIENT",
+                "Não há espaço livre suficiente para preparar o Restore.",
+            )
 
     @staticmethod
     def _copy_managed_archive(source: Path, target: Path, expected_size: int) -> None:
@@ -367,7 +394,10 @@ class LocalRestoreService:
     def _validate_manager_disaster_recovery_payload(payload_root: Path) -> None:
         database = payload_root / "manager/manager.db"
         try:
-            connection = sqlite3.connect(f"file:{database.as_posix()}?mode=ro", uri=True)
+            connection = sqlite3.connect(
+                f"file:{database.as_posix()}?mode=ro&immutable=1",
+                uri=True,
+            )
             try:
                 if connection.execute("PRAGMA integrity_check").fetchone() != ("ok",):
                     raise RestoreValidationError(

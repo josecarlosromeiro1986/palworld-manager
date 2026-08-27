@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import Protocol
 
 from app.config import AppEnvironment, Settings
+from app.system.commands import sanitized_subprocess_environment
 from app.system.palworld_service import SUDO_PATH, SYSTEMCTL_PATH
 
 HOST_POWER_TIMEOUT_SECONDS = 15.0
@@ -43,6 +44,7 @@ def _run_command(
         shell=False,
         text=True,
         timeout=timeout_seconds,
+        env=sanitized_subprocess_environment(),
     )
 
 

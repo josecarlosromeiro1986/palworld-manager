@@ -1,6 +1,6 @@
 # Documentação do Palworld Manager
 
-Este diretório explica como o sistema está planejado para ser organizado, desenvolvido e operado. Os requisitos completos da V1 estão em [SPECIFICATION.md](../SPECIFICATION.md), que é a fonte de verdade. Em caso de conflito, prevalece a especificação.
+Este diretório explica como a V1 `1.0.0` está organizada, é desenvolvida e deve ser operada. Os requisitos completos estão em [SPECIFICATION.md](../SPECIFICATION.md), que é a fonte de verdade. Em caso de conflito, prevalece a especificação.
 
 Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **Implementado**. Eles devem ser atualizados junto com cada etapa de implementação.
 
@@ -17,7 +17,7 @@ Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **
 
 ## Desenvolvimento
 
-- [Preparação do ambiente](development/setup.md): requisitos planejados para trabalhar no projeto.
+- [Preparação do ambiente](development/setup.md): requisitos e comandos para trabalhar no projeto.
 - [Docker](development/docker.md): responsabilidades dos containers de desenvolvimento.
 - [Testes](development/testing.md): estratégia Pytest/Playwright e gates de qualidade.
 - [Estilo de código](development/code-style.md): ferramentas, organização e fluxo de entrega.

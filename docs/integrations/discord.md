@@ -2,9 +2,9 @@
 
 > Status: Implementado na Etapa 23.
 
-A integração usará webhook, sem bot permanente. A política será enxuta: sucessos rotineiros permanecerão na auditoria, enquanto o Discord receberá principalmente falhas e eventos administrativos importantes.
+A integração usa webhook, sem bot permanente. A política é enxuta: sucessos rotineiros permanecem na auditoria, enquanto o Discord recebe principalmente falhas e eventos administrativos importantes.
 
-Exemplos previstos incluem crash sem recuperação, falha de backup ou Drive, disco crítico, Update ou Restore concluído/falho, bloqueio de login, job crítico interrompido e encerramento forçado.
+Os eventos suportados incluem crash sem recuperação, falha de backup ou Drive, disco crítico, Update ou Restore concluído/falho, bloqueio de login, job crítico interrompido e encerramento forçado.
 
 O webhook é o secret estrutural `DISCORD_WEBHOOK_URL`, mantido fora do SQLite.
 Em production, quando configurado, ele deve usar HTTPS e o endpoint oficial do

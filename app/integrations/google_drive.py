@@ -1,7 +1,9 @@
 import json
+import os
+import stat
 import subprocess
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Protocol, cast
@@ -10,6 +12,10 @@ from uuid import uuid4
 from app.backups.manifest import sha256_file
 from app.backups.service import BACKUP_FILENAME_PATTERN
 from app.config import AppEnvironment, Settings
+from app.system.commands import (
+    rclone_subprocess_environment,
+    sanitized_subprocess_environment,
+)
 
 DRIVE_NAMESPACE: Final = "Palworld Manager/Backups"
 REMOTE_TEMP_PATTERN: Final = (
@@ -84,6 +90,11 @@ class CommandRunner(Protocol):
 
 
 class SubprocessCommandRunner:
+    def __init__(self, environment: Mapping[str, str] | None = None) -> None:
+        self._environment = dict(
+            sanitized_subprocess_environment() if environment is None else environment
+        )
+
     def run(
         self,
         arguments: Sequence[str],
@@ -99,6 +110,7 @@ class SubprocessCommandRunner:
             stderr=subprocess.PIPE,
             text=True,
             shell=False,
+            env=self._environment,
         )
         deadline = time.monotonic() + timeout_seconds
         while True:
@@ -138,14 +150,23 @@ class RcloneGoogleDriveStorage:
         remote: str,
         *,
         runner: CommandRunner | None = None,
+        config_path: Path | None = None,
     ) -> None:
         if not executable.is_absolute():
             raise ValueError("o executável rclone deve usar path absoluto")
         if not remote or any(character in remote for character in ":/\\\r\n"):
             raise ValueError("remote rclone inválido")
-        self._executable = executable
+        self._executable = (
+            executable if runner is not None else _validated_rclone_executable(executable)
+        )
         self._remote = remote
-        self._runner = runner or SubprocessCommandRunner()
+        if runner is not None:
+            self._runner = runner
+        else:
+            if config_path is None:
+                raise ValueError("RCLONE_CONFIG é obrigatório para o adapter de produção")
+            validated_config = _validated_rclone_config(config_path)
+            self._runner = SubprocessCommandRunner(rclone_subprocess_environment(validated_config))
 
     def quota(self) -> DriveQuota:
         payload = self._json(
@@ -474,7 +495,11 @@ class FakeGoogleDriveStorage:
 
 def create_google_drive_storage(settings: Settings) -> GoogleDriveStorage:
     if settings.environment is AppEnvironment.PRODUCTION:
-        return RcloneGoogleDriveStorage(settings.rclone, settings.rclone_remote)
+        return RcloneGoogleDriveStorage(
+            settings.rclone,
+            settings.rclone_remote,
+            config_path=settings.rclone_config,
+        )
     return FakeGoogleDriveStorage()
 
 
@@ -497,3 +522,40 @@ def _bytes_sha256(content: bytes) -> str:
     import hashlib
 
     return hashlib.sha256(content).hexdigest()
+
+
+def _validated_rclone_executable(path: Path) -> Path:
+    validated = _validated_regular_path(path, label="RCLONE", writable=False)
+    if not os.access(validated, os.X_OK):
+        raise GoogleDriveError("RCLONE não é um executável regular permitido")
+    return validated
+
+
+def _validated_rclone_config(path: Path) -> Path:
+    validated = _validated_regular_path(path, label="RCLONE_CONFIG", writable=True)
+    metadata = validated.stat()
+    if metadata.st_uid != os.geteuid() or stat.S_IMODE(metadata.st_mode) & 0o077:
+        raise GoogleDriveError(
+            "RCLONE_CONFIG deve pertencer ao processo e não permitir acesso de grupo/outros"
+        )
+    return validated
+
+
+def _validated_regular_path(path: Path, *, label: str, writable: bool) -> Path:
+    if not path.is_absolute():
+        raise GoogleDriveError(f"{label} deve usar path absoluto")
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current /= part
+        if current.is_symlink():
+            raise GoogleDriveError(f"{label} contém link simbólico")
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as error:
+        raise GoogleDriveError(f"{label} não está disponível") from error
+    if path.is_symlink() or not resolved.is_file():
+        raise GoogleDriveError(f"{label} não é um arquivo regular permitido")
+    access = os.R_OK | (os.W_OK if writable else 0)
+    if not os.access(resolved, access):
+        raise GoogleDriveError(f"{label} não possui acesso mínimo necessário")
+    return resolved

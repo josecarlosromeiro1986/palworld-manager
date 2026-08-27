@@ -38,6 +38,7 @@ from app.palworld_settings.storage import create_palworld_settings_storage
 from app.players.administration import PlayerAdministrationService
 from app.players.router import router as players_router
 from app.players.service import ManualPlayersService
+from app.security import RequestBodyLimitMiddleware, SecurityHeadersMiddleware
 from app.system.palworld_service import create_palworld_service
 from app.updates.router import router as updates_router
 
@@ -105,7 +106,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.metrics_service,
         application.state.palworld_log_source,
     )
+    application.add_middleware(RequestBodyLimitMiddleware)
     application.add_middleware(AuthenticationMiddleware, session_factory=session_factory)
+    application.add_middleware(
+        SecurityHeadersMiddleware,
+        production=resolved_settings.environment is AppEnvironment.PRODUCTION,
+    )
     application.mount(
         "/static",
         StaticFiles(directory=Path(__file__).parent / "static"),

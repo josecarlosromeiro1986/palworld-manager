@@ -36,10 +36,11 @@ Nenhuma etapa em andamento.
 - Etapa 28 — Playwright crítico.
 - Etapa 29 — Deploy produção.
 - Etapa 30 — deploy.sh + rollback.
+- Etapa 31 — Hardening e V1 `1.0.0`.
 
 ## Próxima etapa
 
-Etapa 31 — Hardening e V1.
+Nenhuma. A V1 `1.0.0` está concluída; trabalhos posteriores pertencem ao roadmap pós-V1 e exigem nova instrução.
 
 ## Observações
 

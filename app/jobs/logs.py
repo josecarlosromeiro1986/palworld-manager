@@ -1,5 +1,6 @@
 import os
 import re
+import stat
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
@@ -8,6 +9,8 @@ JOB_LOG_RETENTION_DAYS = 90
 MAX_JOB_LOG_READ_BYTES = 256 * 1024
 MAX_JOB_LOG_LINES = 50
 SAFE_KIND_PATTERN = re.compile(r"^[A-Z0-9_]{1,100}$")
+SAFE_YEAR_PATTERN = re.compile(r"^[0-9]{4}$")
+SAFE_LOG_FILENAME_PATTERN = re.compile(r"^[a-z0-9-]{1,120}-[0-9]{6}\.log$")
 
 
 class JobLogStore(Protocol):
@@ -44,12 +47,17 @@ class FileJobLogStore:
         )
         target = self._resolve(relative)
         target.parent.mkdir(mode=0o750, parents=True, exist_ok=True)
-        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+        flags = os.O_RDWR | os.O_CREAT | os.O_APPEND
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
+        flags |= getattr(os, "O_NONBLOCK", 0)
         descriptor = os.open(target, flags, 0o640)
-        os.close(descriptor)
-        self.append(relative.as_posix(), "Job adquirido pelo worker.", occurred_at=timestamp)
+        self._write_descriptor(
+            descriptor,
+            "Job adquirido pelo worker.",
+            occurred_at=timestamp,
+            ensure_line_boundary=True,
+        )
         return relative.as_posix()
 
     def append(
@@ -65,18 +73,41 @@ class FileJobLogStore:
         flags = os.O_WRONLY | os.O_APPEND
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
+        flags |= getattr(os, "O_NONBLOCK", 0)
         descriptor = os.open(target, flags)
+        self._write_descriptor(descriptor, message, occurred_at=occurred_at)
+
+    @staticmethod
+    def _write_descriptor(
+        descriptor: int,
+        message: str,
+        *,
+        occurred_at: datetime | None,
+        ensure_line_boundary: bool = False,
+    ) -> None:
         timestamp = (occurred_at or datetime.now(UTC)).astimezone(UTC).isoformat()
         with os.fdopen(descriptor, "a", encoding="utf-8") as stream:
+            metadata = os.fstat(stream.fileno())
+            if not stat.S_ISREG(metadata.st_mode):
+                raise OSError("o log do job não é um arquivo regular")
+            if ensure_line_boundary and metadata.st_size > 0:
+                os.lseek(stream.fileno(), -1, os.SEEK_END)
+                if os.read(stream.fileno(), 1) != b"\n":
+                    stream.write("\n")
             stream.write(f"{timestamp} {message}\n")
 
     def tail(self, log_path: str | None) -> tuple[str, ...]:
         if log_path is None:
             return ()
         target = self._resolve(Path(log_path))
-        if target.is_symlink() or not target.is_file():
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        try:
+            descriptor = os.open(target, flags)
+        except OSError:
             return ()
-        with target.open("rb") as stream:
+        with os.fdopen(descriptor, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                return ()
             stream.seek(0, os.SEEK_END)
             size = stream.tell()
             stream.seek(max(size - MAX_JOB_LOG_READ_BYTES, 0))
@@ -85,26 +116,46 @@ class FileJobLogStore:
         return tuple(text.splitlines()[-MAX_JOB_LOG_LINES:])
 
     def prune(self, *, now: datetime | None = None) -> int:
-        if not self._jobs_directory.exists():
+        if self._jobs_directory.is_symlink() or not self._jobs_directory.is_dir():
             return 0
         cutoff = (now or datetime.now(UTC)) - timedelta(days=JOB_LOG_RETENTION_DAYS)
         removed = 0
-        for path in self._jobs_directory.glob("[0-9][0-9][0-9][0-9]/*.log"):
-            if path.is_symlink() or not path.is_file():
+        for year_directory in self._jobs_directory.iterdir():
+            if (
+                year_directory.is_symlink()
+                or not year_directory.is_dir()
+                or SAFE_YEAR_PATTERN.fullmatch(year_directory.name) is None
+            ):
                 continue
-            modified_at = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
-            if modified_at < cutoff:
-                path.unlink()
-                removed += 1
+            for path in year_directory.glob("*.log"):
+                try:
+                    metadata = path.stat(follow_symlinks=False)
+                except OSError:
+                    continue
+                if not stat.S_ISREG(metadata.st_mode):
+                    continue
+                modified_at = datetime.fromtimestamp(metadata.st_mtime, tz=UTC)
+                if modified_at < cutoff:
+                    path.unlink()
+                    removed += 1
         return removed
 
     def _resolve(self, relative: Path) -> Path:
-        if relative.is_absolute() or relative.suffix != ".log":
+        parts = relative.parts
+        if (
+            relative.is_absolute()
+            or len(parts) != 3
+            or parts[0] != "jobs"
+            or SAFE_YEAR_PATTERN.fullmatch(parts[1]) is None
+            or SAFE_LOG_FILENAME_PATTERN.fullmatch(parts[2]) is None
+        ):
             raise ValueError("referência de log inválida")
-        target = (self._data_directory / relative).resolve(strict=False)
-        if not target.is_relative_to(self._jobs_directory):
-            raise ValueError("referência de log fora da área administrada")
-        return target
+        current = self._data_directory
+        for part in parts[:-1]:
+            current /= part
+            if current.is_symlink():
+                raise ValueError("referência de log contém link simbólico")
+        return self._data_directory / relative
 
 
 class MemoryJobLogStore:

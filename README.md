@@ -1,6 +1,6 @@
 # Palworld Manager
 
-Aplicação web em desenvolvimento para administrar um servidor dedicado de Palworld com segurança, interface privada e baixa dependência de operações rotineiras via terminal.
+Aplicação web V1 para administrar um servidor dedicado de Palworld com segurança, interface privada e baixa dependência de operações rotineiras via terminal.
 
 ## Objetivos principais
 
@@ -22,7 +22,7 @@ Aplicação web em desenvolvimento para administrar um servidor dedicado de Palw
 
 ## Status
 
-> Status: Em desenvolvimento. A base da aplicação, autenticação, painel administrativo, controle do Palworld e do host Ubuntu, logs, integração oficial de jogadores, editor conservador do INI, sistema persistente de jobs, backups locais/remotos, Restore local/remoto, Update manual via SteamCMD, notificações Discord, configurações operacionais, diagnóstico, auditoria completa, fluxos E2E críticos, instalação nativa e deploy recorrente com rollback manual estão implementados; o hardening final continua planejado conforme a especificação.
+> Status: V1 `1.0.0` implementada. Aplicação, integrações, instalação nativa, deploy recorrente com rollback manual, testes críticos e hardening final atendem à especificação.
 
 ## Desenvolvimento
 
@@ -97,8 +97,8 @@ externos livres. Exportação CSV não faz parte da V1.
 O Dashboard também permite reiniciar ou desligar o Ubuntu com CSRF, modal e
 frase digitada exata. O worker adquire o maintenance lock, trata o Palworld com
 Stop seguro e só então chama um dos dois comandos systemd fixos. Development e
-test usam fake e nunca controlam o host; as regras sudoers exatas serão
-instaladas pelo procedimento de produção da Etapa 29.
+test usam fake e nunca controlam o host; as regras sudoers exatas são
+instaladas pelo procedimento de produção.
 
 ## Produção
 

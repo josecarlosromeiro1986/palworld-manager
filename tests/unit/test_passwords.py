@@ -1,6 +1,8 @@
 import pytest
 
 from app.auth.passwords import (
+    MAXIMUM_PASSWORD_LENGTH,
+    PasswordTooLongError,
     PasswordTooShortError,
     hash_password,
     verify_password,
@@ -32,3 +34,13 @@ def test_password_verification_uses_dummy_hash_for_unknown_user() -> None:
 def test_password_requires_at_least_six_characters() -> None:
     with pytest.raises(PasswordTooShortError, match="6 caracteres"):
         hash_password("12345")
+
+
+def test_password_above_defensive_limit_is_rejected_without_argon2_work() -> None:
+    oversized = "s" * (MAXIMUM_PASSWORD_LENGTH + 1)
+
+    with pytest.raises(PasswordTooLongError, match="1024 caracteres"):
+        hash_password(oversized)
+
+    assert verify_password(oversized, "hash-invalido") is False
+    assert verify_password_or_dummy(oversized, None) is False

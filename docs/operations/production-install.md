@@ -336,11 +336,14 @@ e identidade de rede permanecem sob controle do Tailscale.
 systemctl is-active --quiet palworld-manager.service
 test "$(systemctl show --property=User --value palworld-manager.service)" = palmanager
 curl --fail --silent --show-error http://127.0.0.1:8080/health
+curl --silent --dump-header - --output /dev/null http://127.0.0.1:8080/login | grep -Ei '^(content-security-policy|cache-control|x-content-type-options|x-frame-options|strict-transport-security):'
 ss -ltn '( sport = :8080 )'
 ```
 
-O retorno HTTP deve ser mínimo e o listener deve aparecer somente em
-`127.0.0.1:8080`, nunca em `0.0.0.0` ou `[::]`.
+O retorno HTTP deve ser mínimo, os headers de hardening devem aparecer e o
+listener deve existir somente em `127.0.0.1:8080`, nunca em `0.0.0.0` ou
+`[::]`. Em production, HSTS é esperado porque o acesso do navegador ocorre pelo
+HTTPS privado do Tailscale Serve.
 
 ### Worker
 

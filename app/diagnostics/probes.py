@@ -13,6 +13,7 @@ import psutil
 from app import __version__
 from app.config import AppEnvironment, Settings
 from app.diagnostics.models import DiagnosticCheck, DiagnosticStatus
+from app.system.commands import sanitized_subprocess_environment
 
 WEB_SERVICE_NAME: Final = "palworld-manager.service"
 SYSTEMCTL_PATH: Final = "/usr/bin/systemctl"
@@ -49,6 +50,7 @@ def _run_command(
         encoding="utf-8",
         errors="replace",
         timeout=timeout_seconds,
+        env=sanitized_subprocess_environment(),
     )
 
 

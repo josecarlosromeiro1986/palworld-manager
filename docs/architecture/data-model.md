@@ -1,8 +1,8 @@
 # Modelo de dados
 
-> Status: Em desenvolvimento. O schema inicial e a infraestrutura de migrations estão implementados; regras de domínio serão adicionadas nas etapas correspondentes.
+> Status: Implementado para a V1 `1.0.0`; o schema permanece versionado exclusivamente por migrations Alembic.
 
-O modelo usa SQLite e SQLAlchemy 2.x. A migration inicial cria as nove entidades previstas abaixo, com chaves estrangeiras, índices e constraints básicos. As descrições permanecem conceituais: o schema evoluirá somente por migrations conforme cada domínio for implementado. **Alembic é responsável por todas as migrations do banco; a aplicação não usa `create_all` para criar o schema.** Secrets não são armazenados nessas entidades.
+O modelo usa SQLite e SQLAlchemy 2.x. A migration inicial e suas revisões criam as entidades da V1 abaixo, com chaves estrangeiras, índices e constraints. O schema evolui somente por migrations explícitas. **Alembic é responsável por todas as migrations do banco; a aplicação não usa `create_all` para criar o schema.** Secrets não são armazenados nessas entidades.
 
 Em produção, o arquivo persistente é `/var/lib/palworld-manager/manager.db`; em desenvolvimento, `app` e `worker` compartilham um volume montado nesse caminho. Conexões habilitam foreign keys, WAL e timeout de espera para concorrência local.
 
@@ -33,7 +33,7 @@ Etapa 24 reutiliza a entidade existente e não exige migration.
 
 Registra a trilha do que aconteceu no sistema, quem ou qual origem executou e qual foi o resultado. Pode referenciar usuário e job responsáveis, além de ações como `UPDATE_SERVER`, `BACKUP`, `RESTORE`, `BAN`, `UNBAN` e `LOGIN_BLOCKED`. Os eventos distinguem origem administrativa, automática e de sistema, além de sucesso, falha, cancelamento e interrupção. A duração é derivada dos timestamps do job relacionado quando disponível.
 
-A página autenticada oferece filtros combináveis de período, ação, resultado, origem, usuário e alvo, ordenação decrescente e páginas fixas de 50 registros. A retenção remove eventos com mais de 90 dias durante gravações e consultas. Campos textuais e detalhes estruturados passam por redação defensiva e limites antes da persistência; a leitura também protege valores estruturais sensíveis configurados no ambiente. `PALWORLD_SETTINGS_UPDATE` registra apenas nomes das chaves, versão do schema, nome da cópia pré-save e categoria segura de erro; valores do arquivo e caminhos absolutos não entram no SQLite.
+A página autenticada oferece filtros combináveis de período, ação, resultado, origem, usuário e alvo, ordenação decrescente e páginas fixas de 50 registros. A retenção remove eventos com mais de 90 dias durante gravações, consultas, startup e varredura horária do worker. Campos textuais e detalhes estruturados passam por redação defensiva e limites antes da persistência; a leitura também protege valores estruturais sensíveis configurados no ambiente. `PALWORLD_SETTINGS_UPDATE` registra apenas nomes das chaves, versão do schema, nome da cópia pré-save e categoria segura de erro; valores do arquivo e caminhos absolutos não entram no SQLite.
 
 ### `notification_events`
 

@@ -215,6 +215,15 @@ def test_redactor_protects_authorization_and_url_credentials() -> None:
     )
 
 
+def test_redactor_protects_additional_secret_key_names() -> None:
+    redacted = LogRedactor().redact("secret=um cookie:dois credential=tres api_key=quatro")
+
+    assert redacted == (
+        "secret=[SEGREDO PROTEGIDO] cookie:[SEGREDO PROTEGIDO] "
+        "credential=[SEGREDO PROTEGIDO] api_key=[SEGREDO PROTEGIDO]"
+    )
+
+
 def test_invalid_journal_records_are_ignored() -> None:
     source = JournalctlPalworldLogSource(
         "palworld.service",

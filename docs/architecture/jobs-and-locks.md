@@ -30,10 +30,12 @@ notificação por iteração para evitar starvation entre as filas.
 ## Execução e observabilidade
 
 - O SQLite guarda metadados, estado, etapa, progresso, timestamps, resultado e referência ao arquivo de log.
-- Os logs textuais ficam em `jobs/<ano>/<tipo>-<id>.log`, ao lado do banco, e são retidos por 90 dias.
+- Os logs textuais ficam em `jobs/<ano>/<tipo>-<id>.log`, ao lado do banco, exigem path estrutural e arquivo regular sem symlink e são retidos por 90 dias.
 - O log registra apenas mensagens operacionais controladas; detalhes de exceções e secrets não são copiados.
 - O Dashboard acompanha estado, etapa, progresso e o trecho recente do log.
 - Cada transição relevante produz auditoria consistente.
+
+No startup e depois a cada hora, o worker remove logs de jobs e eventos de auditoria com mais de 90 dias. A varredura usa somente os namespaces gerenciados; arquivos externos e entradas não regulares são preservados.
 
 A aquisição usa uma única atualização condicional no SQLite. Uma corrida real entre consumidores entrega o job a apenas um deles. O heartbeat também funciona como lease: uma identidade diferente com heartbeat de menos de 30 segundos é recusada, impedindo que um segundo processo recupere jobs de um worker ainda vivo.
 

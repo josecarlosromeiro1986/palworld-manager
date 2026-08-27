@@ -1,3 +1,4 @@
+import os
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
@@ -16,6 +17,7 @@ from app.jobs.heartbeat import (
     record_worker_heartbeat,
     record_worker_start,
 )
+from app.jobs.logs import FileJobLogStore
 from app.jobs.service import (
     GLOBAL_MAINTENANCE_LOCK,
     JOB_STATUS_INTERRUPTED,
@@ -24,6 +26,7 @@ from app.jobs.service import (
     recover_interrupted_jobs,
     release_maintenance_lock,
 )
+from app.worker import _prune_retained_data
 
 
 @pytest.fixture
@@ -185,3 +188,32 @@ def test_recent_heartbeat_prevents_second_worker_identity(jobs_engine: Engine) -
     with session_scope(factory) as session:
         heartbeat = session.get_one(WorkerHeartbeat, WORKER_HEARTBEAT_KEY)
         assert heartbeat.worker_id == "worker-two"
+
+
+def test_worker_periodically_prunes_audit_and_job_log_retention(
+    jobs_engine: Engine,
+    tmp_path: Path,
+) -> None:
+    now = datetime(2026, 8, 25, 12, 0, tzinfo=UTC)
+    factory = create_session_factory(jobs_engine)
+    with session_scope(factory) as session:
+        session.add(
+            AuditEvent(
+                occurred_at=now - timedelta(days=91),
+                action="EXPIRED_EVENT",
+                result="SUCCESS",
+                origin="SYSTEM",
+            )
+        )
+
+    store = FileJobLogStore(tmp_path)
+    log_path = store.create(900, "EXPIRED_JOB", occurred_at=now - timedelta(days=91))
+    expired_timestamp = (now - timedelta(days=91)).timestamp()
+    os.utime(tmp_path / log_path, (expired_timestamp, expired_timestamp))
+
+    removed_logs, removed_audits = _prune_retained_data(factory, store, now=now)
+
+    assert (removed_logs, removed_audits) == (1, 1)
+    assert store.tail(log_path) == ()
+    with session_scope(factory) as session:
+        assert session.scalar(select(AuditEvent.id)) is None

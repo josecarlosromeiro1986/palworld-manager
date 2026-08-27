@@ -1,10 +1,9 @@
 # Troubleshooting
 
-> Status: Em desenvolvimento. A tela de Diagnóstico e os procedimentos seguros
-> de validação da instalação de produção estão implementados; casos descobertos
-> em operação real continuarão ampliando este documento.
+> Status: Implementado para a V1 `1.0.0`. Casos descobertos em operação real
+> podem ampliar estes procedimentos sem substituir os runbooks existentes.
 
-Este documento é um índice inicial e deverá crescer a partir de problemas reais e procedimentos validados. Enquanto os componentes não estiverem implementados, não há comandos de correção suportados para registrar.
+Este documento é o índice inicial de problemas e procedimentos validados. Não invente comandos de correção fora dos runbooks suportados.
 
 Antes de qualquer intervenção futura, preservar logs e contexto, evitar alterações destrutivas e nunca incluir secrets no material de diagnóstico.
 

@@ -36,4 +36,4 @@ O probe REST usa timeout de 5 segundos, HTTP Basic Auth e limita `/info` a 64 Ki
 
 Em development e test, systemd, processo e REST API são integralmente substituídos por fakes controláveis. Esses ambientes não exigem credenciais e não acessam o host nem a rede para calcular o estado.
 
-O mesmo agregador será reutilizado pelas operações de ciclo de vida, update, restore e diagnóstico nas etapas correspondentes.
+O mesmo agregador é reutilizado pelas operações de ciclo de vida, Update, Restore e diagnóstico.

@@ -1,6 +1,6 @@
 # Desenvolvimento com Docker
 
-> Status: Em desenvolvimento. Os três containers base, o serviço E2E opt-in, os fakes do Palworld, o sistema persistente de jobs, os contratos REST administrativos e a entrega simulada do Discord estão implementados; integrações adicionais continuam planejadas.
+> Status: Implementado para desenvolvimento e testes da V1 `1.0.0`, incluindo o serviço E2E opt-in e fakes integrais.
 
 O Docker Compose de desenvolvimento possui três containers base e preserva a separação entre aplicação web e worker usada em produção. `app`, `worker` e `mock-services` usam a imagem normal com comandos diferentes; `e2e` possui perfil e estágio próprios, usados somente sob demanda.
 

@@ -4,7 +4,7 @@ import sys
 from collections.abc import Callable, Sequence
 from typing import TextIO
 
-from app.auth.passwords import PasswordTooShortError
+from app.auth.passwords import PasswordPolicyError
 from app.auth.service import (
     AdministratorAlreadyExistsError,
     AdministratorNotFoundError,
@@ -84,7 +84,7 @@ def main(
         AdministratorNotFoundError,
         InvalidUsernameError,
         PasswordConfirmationError,
-        PasswordTooShortError,
+        PasswordPolicyError,
     ) as error:
         print(f"Erro: {error}", file=error_output)
         return 1

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Final, Protocol, cast
 
 from app.config import AppEnvironment, Settings
+from app.system.commands import sanitized_subprocess_environment
 
 PALWORLD_APP_ID: Final = "2394010"
 MAX_STEAM_OUTPUT_BYTES: Final = 2 * 1024 * 1024
@@ -67,6 +68,7 @@ def _run_command(command: Sequence[str], *, timeout_seconds: int) -> CommandResu
                 check=False,
                 timeout=timeout_seconds,
                 shell=False,
+                env=sanitized_subprocess_environment(),
             )
         except (OSError, subprocess.TimeoutExpired) as error:
             raise SteamCmdError("o SteamCMD não pôde concluir a operação") from error

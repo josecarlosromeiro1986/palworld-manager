@@ -9,6 +9,9 @@ from typing import Final, cast
 MANIFEST_SCHEMA_VERSION: Final = 1
 MANIFEST_FILENAME: Final = "manifest.json"
 MAX_MANIFEST_BYTES: Final = 4 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS: Final = 100_000
+MAX_ARCHIVE_PATH_BYTES: Final = 4096
+MAX_ARCHIVE_UNCOMPRESSED_BYTES: Final = 128 * 1024**3
 
 
 class BackupValidationError(RuntimeError):
@@ -20,6 +23,12 @@ class ManifestFile:
     path: str
     size_bytes: int
     sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class ArchiveSummary:
+    member_count: int
+    payload_size_bytes: int
 
 
 def sha256_file(path: Path) -> str:
@@ -77,26 +86,7 @@ def build_manifest(
 def validate_archive(archive_path: Path) -> dict[str, object]:
     try:
         with tarfile.open(archive_path, mode="r:gz") as archive:
-            members = archive.getmembers()
-            names = [member.name for member in members]
-            if len(names) != len(set(names)):
-                raise BackupValidationError("o arquivo contém paths duplicados")
-            for member in members:
-                validate_archive_path(member.name)
-                if not member.isfile():
-                    raise BackupValidationError("o arquivo contém entrada não regular")
-            if MANIFEST_FILENAME not in names:
-                raise BackupValidationError("manifest.json ausente")
-            manifest_member = archive.getmember(MANIFEST_FILENAME)
-            if manifest_member.size > MAX_MANIFEST_BYTES:
-                raise BackupValidationError("manifest.json excede o limite permitido")
-            stream = archive.extractfile(manifest_member)
-            if stream is None:
-                raise BackupValidationError("manifest.json não pode ser lido")
-            manifest = json.loads(stream.read(MAX_MANIFEST_BYTES + 1))
-            expected = _parse_manifest(manifest)
-            if set(names) != {MANIFEST_FILENAME, *(item.path for item in expected)}:
-                raise BackupValidationError("conteúdo do arquivo difere do manifest")
+            _members, manifest, expected, _summary = _validated_structure(archive)
             for item in expected:
                 member = archive.getmember(item.path)
                 if member.size != item.size_bytes:
@@ -109,15 +99,39 @@ def validate_archive(archive_path: Path) -> dict[str, object]:
                     digest.update(block)
                 if digest.hexdigest() != item.sha256:
                     raise BackupValidationError("hash de arquivo difere do manifest")
-            return cast(dict[str, object], manifest)
-    except (OSError, tarfile.TarError, json.JSONDecodeError, UnicodeDecodeError) as error:
+            return manifest
+    except (
+        OSError,
+        ValueError,
+        RecursionError,
+        tarfile.TarError,
+    ) as error:
+        raise BackupValidationError("o tar.gz é inválido") from error
+
+
+def inspect_archive(archive_path: Path) -> ArchiveSummary:
+    try:
+        with tarfile.open(archive_path, mode="r:gz") as archive:
+            _members, _manifest, _expected, summary = _validated_structure(archive)
+            return summary
+    except (
+        OSError,
+        ValueError,
+        RecursionError,
+        tarfile.TarError,
+    ) as error:
         raise BackupValidationError("o tar.gz é inválido") from error
 
 
 def validate_archive_path(value: str) -> None:
+    try:
+        encoded_path = value.encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise BackupValidationError("path de backup inválido") from error
     path = PurePosixPath(value)
     if (
         not value
+        or len(encoded_path) > MAX_ARCHIVE_PATH_BYTES
         or "\\" in value
         or path.is_absolute()
         or value != path.as_posix()
@@ -127,6 +141,68 @@ def validate_archive_path(value: str) -> None:
         raise BackupValidationError("path de backup inválido")
     if any(part in {"", ".", ".."} for part in path.parts):
         raise BackupValidationError("path de backup inválido")
+
+
+def _validated_structure(
+    archive: tarfile.TarFile,
+) -> tuple[
+    tuple[tarfile.TarInfo, ...],
+    dict[str, object],
+    tuple[ManifestFile, ...],
+    ArchiveSummary,
+]:
+    members: list[tarfile.TarInfo] = []
+    names: set[str] = set()
+    declared_payload_size = 0
+    for member in archive:
+        if len(members) >= MAX_ARCHIVE_MEMBERS:
+            raise BackupValidationError("o arquivo excede o limite de entradas")
+        validate_archive_path(member.name)
+        if not member.isfile() or member.size < 0:
+            raise BackupValidationError("o arquivo contém entrada não regular")
+        if not members and member.name != MANIFEST_FILENAME:
+            raise BackupValidationError("manifest.json deve ser a primeira entrada")
+        if member.name in names:
+            raise BackupValidationError("o arquivo contém paths duplicados")
+        names.add(member.name)
+        if member.name == MANIFEST_FILENAME:
+            if member.size > MAX_MANIFEST_BYTES:
+                raise BackupValidationError("manifest.json excede o limite permitido")
+        else:
+            declared_payload_size += member.size
+            if declared_payload_size > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+                raise BackupValidationError("o payload excede o limite permitido")
+        members.append(member)
+    if not members:
+        raise BackupValidationError("manifest.json deve ser a primeira entrada")
+
+    manifest_member = members[0]
+    stream = archive.extractfile(manifest_member)
+    if stream is None:
+        raise BackupValidationError("manifest.json não pode ser lido")
+    manifest_bytes = stream.read(MAX_MANIFEST_BYTES + 1)
+    if len(manifest_bytes) > MAX_MANIFEST_BYTES:
+        raise BackupValidationError("manifest.json excede o limite permitido")
+    manifest_value = json.loads(manifest_bytes)
+    expected = _parse_manifest(manifest_value)
+    if names != {MANIFEST_FILENAME, *(item.path for item in expected)}:
+        raise BackupValidationError("conteúdo do arquivo difere do manifest")
+    by_name = {member.name: member for member in members}
+    payload_size = 0
+    for item in expected:
+        member = by_name[item.path]
+        if member.size != item.size_bytes:
+            raise BackupValidationError("tamanho de arquivo difere do manifest")
+        payload_size += item.size_bytes
+        if payload_size > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+            raise BackupValidationError("o payload excede o limite permitido")
+    manifest = cast(dict[str, object], manifest_value)
+    return (
+        tuple(members),
+        manifest,
+        expected,
+        ArchiveSummary(member_count=len(members), payload_size_bytes=payload_size),
+    )
 
 
 def _parse_manifest(payload: object) -> tuple[ManifestFile, ...]:

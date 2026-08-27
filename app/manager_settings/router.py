@@ -22,7 +22,7 @@ from app.auth.cookies import (
 )
 from app.auth.csrf import tokens_match
 from app.auth.login_protection import attempt_administrator_login
-from app.auth.passwords import PasswordTooShortError, validate_password
+from app.auth.passwords import PasswordPolicyError, validate_password
 from app.auth.service import reset_administrator_password
 from app.auth.sessions import SessionPrincipal, session_csrf_is_valid
 from app.backups.drive_jobs import (
@@ -264,7 +264,7 @@ def update_password(
         )
     try:
         validate_password(new_password)
-    except PasswordTooShortError as error:
+    except PasswordPolicyError as error:
         with session_scope(_session_factory(request)) as session:
             _audit_password_update(
                 session,

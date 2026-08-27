@@ -16,6 +16,7 @@ CONFIG_ENV_VARS = (
     "PALWORLD_SETTINGS",
     "STEAMCMD",
     "RCLONE",
+    "RCLONE_CONFIG",
     "RCLONE_REMOTE",
     "DISCORD_WEBHOOK_URL",
     "APP_HOST",
@@ -48,6 +49,7 @@ def test_structural_defaults() -> None:
     assert settings.app_port == 8080
     assert settings.manager_database == Path("/var/lib/palworld-manager/manager.db")
     assert settings.rclone == Path("/usr/bin/rclone")
+    assert settings.rclone_config == Path("/var/lib/palworld-manager/rclone/rclone.conf")
     assert settings.rclone_remote == "palworld-manager"
     assert settings.discord_webhook_url is None
 

@@ -1,6 +1,6 @@
 # Estilo de código
 
-> Status: Em desenvolvimento. As ferramentas base estão configuradas e serão ampliadas conforme o projeto crescer.
+> Status: Implementado para a V1 `1.0.0`; Ruff, Mypy, Pytest, frontend check e pre-commit compõem o gate reprodutível.
 
 ## Ferramentas e práticas
 

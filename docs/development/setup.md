@@ -1,6 +1,6 @@
 # Preparação do ambiente
 
-> Status: Em desenvolvimento. O ambiente base, a configuração estrutural, o pipeline de frontend e o estágio E2E estão implementados.
+> Status: Implementado para desenvolvimento da V1 `1.0.0`.
 
 O desenvolvimento principal usa Docker Compose. A imagem fornece Python, FastAPI, Node.js, npm, Ruff, Mypy, Pytest e pre-commit, sem exigir instalação local dessas ferramentas.
 

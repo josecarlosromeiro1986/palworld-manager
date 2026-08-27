@@ -28,4 +28,4 @@ Em produção, o adapter executa somente `/usr/bin/journalctl`, com lista fixa d
 
 Credenciais estruturais conhecidas e atribuições comuns como `password=`, `token=` ou `authorization=` são substituídas por `[SEGREDO PROTEGIDO]` antes da entrega. Essa proteção tem precedência sobre a preservação literal do texto.
 
-Development e test usam um fake completo e determinístico, com histórico, categorias, streaming e cursores retomáveis, sem consultar o journal ou controlar o host. A permissão read-only necessária para o usuário `palmanager` ler o journal em produção será instalada e validada na etapa de deploy.
+Development e test usam um fake completo e determinístico, com histórico, categorias, streaming e cursores retomáveis, sem consultar o journal ou controlar o host. A permissão read-only necessária para o usuário `palmanager` ler o journal em produção é instalada e validada pelo runbook de produção.

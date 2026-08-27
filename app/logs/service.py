@@ -11,6 +11,7 @@ from enum import StrEnum
 from typing import IO, Protocol
 
 from app.config import SERVICE_NAME_PATTERN, AppEnvironment, Settings
+from app.system.commands import sanitized_subprocess_environment
 
 JOURNALCTL_PATH = "/usr/bin/journalctl"
 JOURNAL_QUERY_TIMEOUT_SECONDS = 10.0
@@ -19,7 +20,8 @@ ALLOWED_HISTORY_LIMITS = frozenset({100, 500, 1000})
 CURSOR_PATTERN = re.compile(r"^(?!-)[A-Za-z0-9:;_=+.,@-]{1,1024}$")
 SERVICE_NAME_REGEX = re.compile(SERVICE_NAME_PATTERN)
 SENSITIVE_ASSIGNMENT_PATTERN = re.compile(
-    r"(?i)\b(password|passwd|token|webhook)\b(\s*[:=]\s*)([^\s,;]+)"
+    r"(?i)\b(password|passwd|secret|token|cookie|webhook|credential|api[_-]?key)"
+    r"\b(\s*[:=]\s*)([^\s,;]+)"
 )
 AUTHORIZATION_PATTERN = re.compile(r"(?i)\b(authorization)\b(\s*[:=]\s*)[^\r\n,;]+")
 URL_CREDENTIALS_PATTERN = re.compile(r"(?i)(https?://)[^\s/:@]+:[^\s/@]+@")
@@ -190,6 +192,7 @@ def _run_command(
         encoding="utf-8",
         errors="replace",
         timeout=timeout_seconds,
+        env=sanitized_subprocess_environment(),
     )
 
 
@@ -203,6 +206,7 @@ def _open_stream(command: Sequence[str]) -> StreamProcess:
         encoding="utf-8",
         errors="replace",
         bufsize=1,
+        env=sanitized_subprocess_environment(),
     )
 
 

@@ -24,6 +24,12 @@ pelo worker; não o mova para o arquivo estrutural de secrets somente leitura. O
 procedimento completo está no
 [runbook de produção](../operations/production-install.md).
 
+No startup do adapter real, o Manager recusa executável ou configuração
+ausente, não regular ou atravessada por symlink. O `rclone.conf` precisa
+pertencer ao usuário efetivo e não pode permitir qualquer acesso de grupo ou
+outros. O subprocesso recebe um ambiente mínimo e o único valor específico é o
+`RCLONE_CONFIG` validado; secrets REST e Discord nunca são herdados.
+
 O Manager trabalha nesse namespace exclusivo para:
 
 - testar conexão e consultar quota;
@@ -32,7 +38,7 @@ O Manager trabalha nesse namespace exclusivo para:
 - baixar e validar um backup remoto para a área local;
 - aplicar a retenção configurada, inicialmente 10 e editável entre 1 e 100 backups próprios.
 
-Antes de um upload, o Manager verificará o armazenamento gratuito disponível. A retenção só poderá remover backups reconhecidos como próprios; se ainda não houver quota, o upload será cancelado e o backup local permanecerá intacto.
+Antes de um upload, o Manager verifica o armazenamento gratuito disponível. A retenção só remove backups reconhecidos como próprios; se ainda não houver quota, o upload é cancelado e o backup local permanece intacto.
 
 Na V1, somente o backup diário automático válido solicita upload automático.
 Backups manuais e preventivos de Restore ou Update permanecem locais por padrão.

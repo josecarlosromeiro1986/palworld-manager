@@ -1,12 +1,16 @@
+import json
+import sqlite3
 import stat
 from ipaddress import ip_address
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from pydantic import SecretStr
 
 from app.backups.service import LocalBackupService
+from app.backups.source import SAFE_MANAGER_SETTING_DEFAULTS
 from app.config import AppEnvironment, Settings
 from app.db.models import BackupRecord
 from app.palworld_settings.storage import (
@@ -70,6 +74,46 @@ def test_remote_restore_rejects_symlinked_download_in_controlled_staging(tmp_pat
         service.prepare_remote(_remote_record(), linked, job_id=123)
 
     assert captured.value.category == "REMOTE_TEMP_INVALID"
+
+
+def test_restore_rejects_insufficient_staging_space_before_extraction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.restores.service.shutil.disk_usage",
+        lambda _path: SimpleNamespace(free=4),
+    )
+
+    with pytest.raises(RestoreValidationError) as captured:
+        LocalRestoreService._ensure_staging_space(tmp_path, 5)
+
+    assert captured.value.category == "DISK_SPACE_INSUFFICIENT"
+
+
+def test_manager_snapshot_integrity_check_does_not_create_sqlite_sidecars(
+    tmp_path: Path,
+) -> None:
+    manager = tmp_path / "payload/manager"
+    manager.mkdir(parents=True)
+    database = manager / "manager.db"
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("CREATE TABLE sample (value TEXT NOT NULL)")
+        connection.execute("INSERT INTO sample VALUES ('persistido')")
+        connection.commit()
+    finally:
+        connection.close()
+    (manager / "settings.json").write_text(
+        json.dumps(SAFE_MANAGER_SETTING_DEFAULTS),
+        encoding="utf-8",
+    )
+    expected = {"manager.db", "settings.json"}
+
+    LocalRestoreService._validate_manager_disaster_recovery_payload(tmp_path / "payload")
+
+    assert {path.name for path in manager.iterdir()} == expected
 
 
 def test_palworld_settings_merge_restores_safe_fields_and_preserves_secrets_and_unknowns() -> None:

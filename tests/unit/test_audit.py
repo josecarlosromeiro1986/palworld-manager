@@ -3,6 +3,7 @@ from datetime import date
 import pytest
 
 from app.audit.history import AuditFilterError, AuditFilters, parse_audit_filters
+from app.audit.service import PROTECTED_VALUE, redact_audit_details, redact_audit_text
 
 
 def _parse(**overrides: str | None) -> AuditFilters:
@@ -69,3 +70,8 @@ def test_audit_filters_reject_invalid_values(field: str, value: str) -> None:
 def test_audit_filters_reject_reversed_period() -> None:
     with pytest.raises(AuditFilterError):
         _parse(date_from="2026-08-21", date_to="2026-08-20")
+
+
+def test_audit_redacts_api_key_assignments_and_detail_keys() -> None:
+    assert redact_audit_text("api_key=valor-protegido") == f"api_key={PROTECTED_VALUE}"
+    assert redact_audit_details({"api-key": "valor-protegido"}) == {"api-key": PROTECTED_VALUE}

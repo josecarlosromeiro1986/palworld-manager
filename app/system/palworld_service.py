@@ -6,6 +6,7 @@ from enum import StrEnum
 from typing import Protocol
 
 from app.config import SERVICE_NAME_PATTERN, AppEnvironment, Settings
+from app.system.commands import sanitized_subprocess_environment
 
 SYSTEMCTL_PATH = "/usr/bin/systemctl"
 SUDO_PATH = "/usr/bin/sudo"
@@ -71,6 +72,7 @@ def _run_command(
         shell=False,
         text=True,
         timeout=timeout_seconds,
+        env=sanitized_subprocess_environment(),
     )
 
 

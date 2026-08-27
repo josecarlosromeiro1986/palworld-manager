@@ -1,8 +1,8 @@
 # Testes
 
-> Status: Implementado para a V1 até a Etapa 30. Pytest, gate base, fluxos Playwright críticos e validações estruturais do deploy estão disponíveis.
+> Status: Implementado para a V1 `1.0.0`. Pytest, gate completo, fluxos Playwright críticos e regressões de deploy/hardening estão disponíveis.
 
-Pytest será a base da suíte automatizada.
+Pytest é a base da suíte automatizada.
 
 - **Unitários:** regras de negócio, validações, estados de health, locks, retenção, autenticação, cancelamento e parsing.
 - **Integração:** SQLite, migrations, jobs, backups e adapters contra serviços simulados.
@@ -138,3 +138,9 @@ comandos fechados, lock exclusivo, worktree isolado, execução do gate como
 `palmanager`, compatibilidade Alembic, commit anterior, recusa de jobs,
 notificações e maintenance lock ativos, transient services protegidos, ausência
 de rollback automático e validações independentes da web e do worker.
+
+As regressões finais de hardening sincronizam a versão `1.0.0`, impedem
+JavaScript inline nos templates, validam CSP/headers e o limite de 1 MiB dos
+corpos HTTP, exigem `shell=False` e ambiente explícito em todo subprocesso,
+protegem logs regulares contra symlink/FIFO, limitam senha e tar, verificam
+permissões do `rclone.conf`, espaço de Restore e a retenção horária do worker.

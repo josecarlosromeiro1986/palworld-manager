@@ -2,11 +2,15 @@ import logging
 import os
 import signal
 import socket
+import time
+from datetime import UTC, datetime
 from threading import Event
 from types import FrameType
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
+from app.audit.service import prune_expired_audit_events
 from app.backups.drive_jobs import DRIVE_UPLOAD_JOB_KIND, DriveJobExecutor
 from app.backups.drive_service import DriveTransferService
 from app.backups.jobs import LOCAL_BACKUP_JOB_KIND, LocalBackupJobExecutor
@@ -21,7 +25,7 @@ from app.integrations.discord import create_discord_webhook
 from app.integrations.google_drive import GoogleDriveError, create_google_drive_storage
 from app.integrations.palworld_rest import create_palworld_rest_client
 from app.jobs.heartbeat import WorkerHeartbeatPublisher
-from app.jobs.logs import create_job_log_store
+from app.jobs.logs import JobLogStore, create_job_log_store
 from app.jobs.service import TERMINAL_JOB_STATUSES, recover_interrupted_jobs
 from app.lifecycle.service import create_lifecycle_executor
 from app.lifecycle.worker import LifecycleJobWorker
@@ -40,10 +44,24 @@ from app.updates.service import create_disk_space_source, create_steamcmd_gatewa
 
 logger = logging.getLogger(__name__)
 shutdown_requested = Event()
+RETENTION_SWEEP_INTERVAL_SECONDS = 60 * 60
 
 
 def _request_shutdown(_signum: int, _frame: FrameType | None) -> None:
     shutdown_requested.set()
+
+
+def _prune_retained_data(
+    session_factory: sessionmaker[Session],
+    job_logs: JobLogStore,
+    *,
+    now: datetime | None = None,
+) -> tuple[int, int]:
+    current = now or datetime.now(UTC)
+    with session_scope(session_factory) as session:
+        removed_audit_events = prune_expired_audit_events(session, now=current)
+    removed_job_logs = job_logs.prune(now=current)
+    return removed_job_logs, removed_audit_events
 
 
 def run() -> None:
@@ -79,7 +97,7 @@ def run() -> None:
                         OPERATION_INTERRUPTED,
                         job_id=interrupted.id,
                     )
-        removed_logs = job_logs.prune()
+        removed_logs, removed_audit_events = _prune_retained_data(session_factory, job_logs)
         rest_client = create_palworld_rest_client(settings)
         backup_service = LocalBackupService(
             manager_database=settings.manager_database,
@@ -165,11 +183,12 @@ def run() -> None:
         )
         logger.info(
             "Worker iniciado em %s; %d job(s) recuperado(s), %d notificação(ões) "
-            "reconciliada(s), %d log(s) expirado(s) removido(s).",
+            "reconciliada(s), %d log(s) e %d evento(s) de auditoria expirado(s) removido(s).",
             settings.environment.value,
             len(interrupted_jobs),
             notification_recovery.requeued + notification_recovery.failed,
             removed_logs,
+            removed_audit_events,
         )
         if removed_temporary_backups:
             logger.info(
@@ -191,7 +210,20 @@ def run() -> None:
                 "%d upload(s) remoto(s) temporário(s) interrompido(s) removido(s).",
                 removed_remote_temporary,
             )
+        next_retention_sweep = time.monotonic() + RETENTION_SWEEP_INTERVAL_SECONDS
         while not shutdown_requested.is_set():
+            if time.monotonic() >= next_retention_sweep:
+                expired_logs, expired_audit_events = _prune_retained_data(
+                    session_factory,
+                    job_logs,
+                )
+                if expired_logs or expired_audit_events:
+                    logger.info(
+                        "Retenção removeu %d log(s) e %d evento(s) de auditoria expirado(s).",
+                        expired_logs,
+                        expired_audit_events,
+                    )
+                next_retention_sweep = time.monotonic() + RETENTION_SWEEP_INTERVAL_SECONDS
             with session_scope(session_factory) as session:
                 schedule_daily_backup(session)
             job_processed = worker.process_next()

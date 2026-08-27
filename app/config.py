@@ -75,6 +75,10 @@ class Settings(BaseSettings):
         default=Path("/usr/bin/rclone"),
         validation_alias="RCLONE",
     )
+    rclone_config: Path = Field(
+        default=Path("/var/lib/palworld-manager/rclone/rclone.conf"),
+        validation_alias="RCLONE_CONFIG",
+    )
     rclone_remote: Annotated[str, StringConstraints(pattern=RCLONE_REMOTE_PATTERN)] = Field(
         default="palworld-manager",
         validation_alias="RCLONE_REMOTE",
@@ -98,6 +102,7 @@ class Settings(BaseSettings):
         "palworld_settings",
         "steamcmd",
         "rclone",
+        "rclone_config",
         "manager_database",
     )
     @classmethod

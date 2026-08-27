@@ -170,7 +170,7 @@ def test_diagnostics_page_is_copyable_read_only_and_contains_no_secrets(
     assert 'data-diagnostic-check="worker-health"' in page.text
     assert 'data-diagnostic-check="database"' in page.text
     assert "migration 0006" in page.text
-    assert "Versão 0.1.0; commit 7af506404a21." in page.text
+    assert "Versão 1.0.0; commit 7af506404a21." in page.text
     assert "build instalado 10000001" in page.text
     assert "2 objeto(s) gerenciado(s)" in page.text
     assert "último teste foi entregue pelo worker" in page.text
