@@ -270,11 +270,25 @@ sudo systemd-run --quiet --wait --pipe --collect \
   --property=Type=oneshot \
   --property=User=palmanager \
   --property=Group=palmanager \
+  --property=UMask=0027 \
   --property=WorkingDirectory=/opt/palworld-manager \
   --property=EnvironmentFile=/etc/palworld-manager/manager.env \
   --property=EnvironmentFile=/etc/palworld-manager/secrets.env \
   /opt/palworld-manager/.venv/bin/alembic upgrade head
 ```
+
+Valide o banco sem consultar dados da aplicação:
+
+```bash
+sudo test -f /var/lib/palworld-manager/manager.db
+sudo test ! -L /var/lib/palworld-manager/manager.db
+test "$(sudo stat -c '%U:%G:%a' /var/lib/palworld-manager/manager.db)" = 'palmanager:palmanager:640'
+sudo -u palmanager sqlite3 -readonly /var/lib/palworld-manager/manager.db \
+  'PRAGMA integrity_check; SELECT version_num FROM alembic_version;'
+```
+
+O primeiro resultado do SQLite deve ser `ok`; a revisão deve coincidir com o
+`head` do checkout. Não edite `alembic_version` manualmente.
 
 Crie o administrador de forma interativa, sem senha em argumentos:
 
@@ -284,6 +298,7 @@ sudo systemd-run --quiet --wait --pty --collect \
   --property=Type=oneshot \
   --property=User=palmanager \
   --property=Group=palmanager \
+  --property=UMask=0027 \
   --property=WorkingDirectory=/opt/palworld-manager \
   --property=EnvironmentFile=/etc/palworld-manager/manager.env \
   --property=EnvironmentFile=/etc/palworld-manager/secrets.env \

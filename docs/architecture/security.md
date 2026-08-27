@@ -81,6 +81,8 @@ Os artefatos em `ops/` materializam o menor privilégio da instalação:
   ancestral restrita bloqueia `PALWORLD_DIR`, uma ACL POSIX não recursiva
   concede somente travessia (`--x`) ao grupo compartilhado, sem incluir
   `palmanager` no grupo da conta Steam ou liberar acesso para outros usuários;
+- as units persistentes e transitórias executadas como `palmanager` usam
+  `UMask=0027`, mantendo `manager.db` como `palmanager:palmanager 0640`;
 - `systemd-journal` fornece leitura não-root, enquanto o adapter restringe a
   consulta à unit validada;
 - `secrets.env` é `root:palmanager 0640` e o rclone usa configuração separada

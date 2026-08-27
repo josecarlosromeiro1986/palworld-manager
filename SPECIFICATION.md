@@ -167,6 +167,8 @@ Usar Pydantic Settings para tipagem e validação no startup.
 
 O banco SQLite persistente fica em `/var/lib/palworld-manager/manager.db` em produção, separado do código em `/opt/palworld-manager` e dos secrets em `/etc/palworld-manager`. Web e worker acessam o mesmo arquivo. Em desenvolvimento, um volume Docker persistente é montado no mesmo caminho dentro dos containers `app` e `worker`.
 
+Em produção, units persistentes e transitórias que escrevem dados como `palmanager` usam `UMask=0027`. O arquivo `manager.db` deve permanecer `palmanager:palmanager` com modo `0640`.
+
 ### Operacional — SQLite e editável no painel
 
 Defaults:

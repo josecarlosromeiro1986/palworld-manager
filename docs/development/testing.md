@@ -129,8 +129,8 @@ Os testes de deploy validam os artefatos sem executar systemd, sudo, Tailscale,
 rclone ou filesystem estrutural reais. Eles verificam units web/worker
 independentes e não-root, entrypoints distintos, loopback, journald, sandboxes,
 grupo compartilhado do Palworld, sudoers limitado aos sete comandos exatos,
-tmpfiles e modos mínimos, configuração sem secrets e package data de
-templates/assets.
+tmpfiles e modos mínimos, `UMask=0027` nos serviços transitórios iniciais,
+configuração sem secrets e package data de templates/assets.
 
 Os testes do deploy recorrente executam apenas `bash -n` e `--help`; nenhuma
 operação privilegiada real é chamada. As demais asserções verificam paths e

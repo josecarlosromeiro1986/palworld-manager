@@ -10,6 +10,7 @@ PALWORLD_DROP_IN = OPS_ROOT / "systemd/palworld.service.d/10-palworld-manager-ac
 MANAGER_ENV = OPS_ROOT / "environment/manager.env"
 SUDOERS = OPS_ROOT / "sudoers/palworld-manager"
 TMPFILES = OPS_ROOT / "tmpfiles/palworld-manager.conf"
+PRODUCTION_INSTALL = PROJECT_ROOT / "docs/operations/production-install.md"
 
 EXPECTED_PRIVILEGED_COMMANDS = {
     "/usr/bin/systemctl --no-block start palworld.service",
@@ -157,6 +158,14 @@ def test_tmpfiles_uses_minimum_manager_directory_modes() -> None:
         "palmanager",
     )
     assert all(mode in {"0700", "0750"} for mode, _owner, _group in entries.values())
+
+
+def test_initial_transient_services_preserve_manager_file_modes() -> None:
+    content = _read(PRODUCTION_INSTALL)
+
+    assert content.count("--property=UMask=0027") == 2
+    assert "'palmanager:palmanager:640'" in content
+    assert "sqlite3 -readonly /var/lib/palworld-manager/manager.db" in content
 
 
 def test_python_package_includes_runtime_templates_and_built_assets() -> None:
