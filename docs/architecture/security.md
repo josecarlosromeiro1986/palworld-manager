@@ -77,7 +77,10 @@ Os artefatos em `ops/` materializam o menor privilégio da instalação:
   `NoNewPrivileges` permite somente o sudo setuid necessário aos sete comandos
   exatos do sudoers;
 - o grupo compartilhado `palworld-manager` e o drop-in de
-  `palworld.service` preservam modos `0770/0660` sem root;
+  `palworld.service` preservam modos `0770/0660` sem root; quando uma home
+  ancestral restrita bloqueia `PALWORLD_DIR`, uma ACL POSIX não recursiva
+  concede somente travessia (`--x`) ao grupo compartilhado, sem incluir
+  `palmanager` no grupo da conta Steam ou liberar acesso para outros usuários;
 - `systemd-journal` fornece leitura não-root, enquanto o adapter restringe a
   consulta à unit validada;
 - `secrets.env` é `root:palmanager 0640` e o rclone usa configuração separada

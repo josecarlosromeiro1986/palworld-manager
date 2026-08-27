@@ -243,6 +243,8 @@ palworld-manager-worker.service
 
 Ambos são executados como `palmanager`, usam a configuração estrutural apropriada e acessam o mesmo SQLite quando necessário. Nunca executar a aplicação web ou o worker como root. `sudoers` deve liberar somente comandos/scripts estritamente necessários, sem `sudo ALL`. Preferir scripts controlados e argumentos validados.
 
+Quando `PALWORLD_DIR` estiver abaixo de um diretório ancestral restrito, a instalação deve conceder ao grupo `palworld-manager` somente a travessia necessária nesse ancestral por ACL POSIX (`--x`). Não adicionar `palmanager` ao grupo proprietário da conta Steam nem liberar travessia para todos os usuários locais. A ACL não deve ser recursiva nem conceder leitura ou escrita fora de `PALWORLD_DIR`.
+
 ## 8. Acesso
 
 FastAPI escuta apenas em `127.0.0.1:<porta>`. Publicação privada via **Tailscale Serve + HTTPS**. Sem Funnel na V1. Controle de dispositivos fica no Tailscale; não criar whitelist duplicada. SSH via Tailscale permanece disponível.

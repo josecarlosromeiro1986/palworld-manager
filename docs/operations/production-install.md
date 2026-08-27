@@ -42,7 +42,7 @@ dependências do runtime, build e validação:
 
 ```bash
 sudo apt update
-sudo apt install --no-install-recommends git nodejs npm python3 python3-venv rclone sqlite3 sudo curl
+sudo apt install --no-install-recommends acl git nodejs npm python3 python3-venv rclone sqlite3 sudo curl
 python3 --version
 node --version
 npm --version
@@ -59,6 +59,8 @@ test -x /usr/bin/journalctl
 test -x /usr/bin/sudo
 test -x /usr/bin/tailscale
 test -x /usr/bin/rclone
+test -x /usr/bin/getfacl
+test -x /usr/bin/setfacl
 test -x /usr/games/steamcmd
 ```
 
@@ -204,6 +206,19 @@ test -d /home/steam/palserver/Pal/Saved/SaveGames
 test ! -L /home/steam/palserver/Pal/Saved/SaveGames
 test -f /home/steam/palserver/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini
 test ! -L /home/steam/palserver/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini
+```
+
+O ancestral `/home/steam` pode usar `0750` para proteger a conta Steam e, nesse
+caso, bloquear a travessia de `palmanager` antes de `PALWORLD_DIR`. Preserve o
+owner, grupo e modo existentes da home e conceda ao grupo compartilhado somente
+`--x` por ACL POSIX. Não adicione `palmanager` ao grupo `steam`, não aplique
+`o+x` e não crie ACL recursiva ou default:
+
+```bash
+test -d /home/steam
+test ! -L /home/steam
+sudo setfacl --modify group:palworld-manager:--x /home/steam
+sudo getfacl --absolute-names /home/steam | grep -Fx 'group:palworld-manager:--x'
 ```
 
 Aplique o grupo somente na árvore estrutural definida:
