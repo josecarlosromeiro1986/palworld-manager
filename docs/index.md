@@ -4,6 +4,12 @@ Este diretório explica como a V1 `1.0.0` está organizada, é desenvolvida e de
 
 Os estados usados nos documentos são **Planejado**, **Em desenvolvimento** e **Implementado**. Eles devem ser atualizados junto com cada etapa de implementação.
 
+## Aplicativo e Google Drive
+
+O Palworld Manager é uma aplicação auto-hospedada para administrar um servidor dedicado de Palworld. Quando o administrador habilita a integração opcional com o Google Drive, o aplicativo usa rclone e autorização OAuth para armazenar e recuperar backups exclusivamente no namespace gerenciado `Palworld Manager/Backups/`.
+
+Consulte a [Política de Privacidade](privacy.md) para entender quais dados do Google são acessados e como tokens, metadados e backups são tratados.
+
 ## Arquitetura
 
 - [Visão geral](architecture/overview.md): componentes, integrações e topologia dos serviços web e worker.
