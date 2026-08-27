@@ -208,15 +208,14 @@ class RcloneGoogleDriveStorage:
                 raise GoogleDriveError("item remoto inválido")
             name = raw.get("Name")
             size = raw.get("Size")
-            hashes = raw.get("Hashes")
-            sha256 = hashes.get("SHA-256") if isinstance(hashes, dict) else None
+            sha256 = _rclone_sha256(raw.get("Hashes"))
             if not isinstance(name, str) or not isinstance(sha256, str):
                 continue
             try:
                 parsed_size = _non_negative_int(size)
             except (TypeError, ValueError) as error:
                 raise GoogleDriveError("tamanho remoto inválido") from error
-            files.append(DriveFile(name, parsed_size, _sha256(sha256)))
+            files.append(DriveFile(name, parsed_size, sha256))
         return tuple(sorted(files, key=lambda item: item.filename))
 
     def upload(
@@ -351,12 +350,11 @@ class RcloneGoogleDriveStorage:
             return None
         if not isinstance(payload, dict):
             raise GoogleDriveError("metadado remoto inválido")
-        hashes = payload.get("Hashes")
-        sha256 = hashes.get("SHA-256") if isinstance(hashes, dict) else None
+        sha256 = _rclone_sha256(payload.get("Hashes"))
         name = payload.get("Name")
         if not isinstance(name, str) or not isinstance(sha256, str):
             raise GoogleDriveError("hash remoto indisponível")
-        return DriveFile(name, _non_negative_int(payload.get("Size")), _sha256(sha256))
+        return DriveFile(name, _non_negative_int(payload.get("Size")), sha256)
 
     def _delete_exact(self, filename: str, *, ignore_missing: bool) -> None:
         try:
@@ -510,6 +508,24 @@ def _sha256(value: str) -> str:
     ):
         raise GoogleDriveError("SHA-256 inválido")
     return normalized
+
+
+def _rclone_sha256(hashes: object) -> str | None:
+    if not isinstance(hashes, dict):
+        return None
+    candidates: list[str] = []
+    for key in ("SHA-256", "sha256"):
+        if key not in hashes:
+            continue
+        value = hashes[key]
+        if not isinstance(value, str):
+            raise GoogleDriveError("hash remoto inválido")
+        candidates.append(_sha256(value))
+    if not candidates:
+        return None
+    if len(set(candidates)) != 1:
+        raise GoogleDriveError("hash remoto ambíguo")
+    return candidates[0]
 
 
 def _non_negative_int(value: object) -> int:

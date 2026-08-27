@@ -59,6 +59,11 @@ tamanho devem coincidir com o registro local antes de criar o registro `DRIVE`.
 Saída inválida, timeout, autenticação ausente ou indisponibilidade são reduzidos
 a categorias seguras, sem stderr, configuração ou credenciais nos registros.
 
+Versões do rclone podem serializar a chave do hash retornado por `lsjson` como
+`SHA-256` ou `sha256`. O adapter aceita exatamente essas duas grafias,
+normaliza o digest hexadecimal e rejeita metadados ausentes, inválidos ou
+conflitantes antes de publicar o backup remoto.
+
 Downloads solicitados como cópia local usam staging em `tmp/drive/`, conferem
 primeiro o SHA-256 registrado e depois reutilizam a validação integral do backup
 local. Somente esse fluxo publica uma nova cópia `LOCAL` válida.

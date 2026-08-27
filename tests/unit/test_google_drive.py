@@ -101,7 +101,7 @@ def test_interrupted_cleanup_removes_only_owned_temporary_upload() -> None:
                     {
                         "Name": owned,
                         "Size": 1,
-                        "Hashes": {"SHA-256": "1" * 64},
+                        "Hashes": {"sha256": "1" * 64},
                     },
                     {
                         "Name": other_job,
@@ -125,6 +125,68 @@ def test_interrupted_cleanup_removes_only_owned_temporary_upload() -> None:
 
     assert storage.cleanup_interrupted_uploads((123,)) == 1
     assert deleted == [f"drive:Palworld Manager/Backups/{owned}"]
+
+
+def test_rclone_accepts_lowercase_sha256_metadata_during_upload(tmp_path: Path) -> None:
+    filename = "palworld-manager-backup-20260827T120000000000Z-j000123-" + "a" * 32 + ".tar.gz"
+    source = tmp_path / filename
+    source.write_bytes(b"backup-validado")
+    digest = sha256_file(source)
+    stat_calls = 0
+
+    def handler(call: tuple[str, ...]) -> str:
+        nonlocal stat_calls
+        if call[2] != "lsjson":
+            return ""
+        stat_calls += 1
+        if stat_calls == 1:
+            raise GoogleDriveError("objeto remoto ausente")
+        remote_name = call[3].rsplit("/", maxsplit=1)[-1]
+        return json.dumps(
+            {
+                "Name": remote_name,
+                "Size": source.stat().st_size,
+                "Hashes": {"sha256": digest},
+            }
+        )
+
+    storage = RcloneGoogleDriveStorage(
+        Path("/usr/bin/rclone"), "drive", runner=RecordingRunner(handler)
+    )
+
+    uploaded = storage.upload(
+        source,
+        filename,
+        job_id=123,
+        expected_sha256=digest,
+        cancel_requested=lambda: False,
+    )
+
+    assert uploaded.filename == filename
+    assert uploaded.sha256 == digest
+    assert stat_calls == 3
+
+
+def test_rclone_rejects_conflicting_sha256_metadata() -> None:
+    runner = RecordingRunner(
+        lambda call: (
+            json.dumps(
+                [
+                    {
+                        "Name": "backup.tar.gz",
+                        "Size": 1,
+                        "Hashes": {"SHA-256": "1" * 64, "sha256": "2" * 64},
+                    }
+                ]
+            )
+            if "lsjson" in call
+            else ""
+        )
+    )
+    storage = RcloneGoogleDriveStorage(Path("/usr/bin/rclone"), "drive", runner=runner)
+
+    with pytest.raises(GoogleDriveError, match="hash remoto ambíguo"):
+        storage.list_files()
 
 
 def test_fake_drive_upload_download_delete_and_cancel_are_complete(tmp_path: Path) -> None:
