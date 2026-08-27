@@ -30,9 +30,12 @@
     <fieldset>
       <legend class='mb-3 text-sm font-semibold text-ink'>Backup automático</legend>
       <div class='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
-        <label class='flex min-h-10 items-center gap-3 rounded-md border bg-canvas px-3 text-sm text-ink'>
-          <input type='checkbox' name='backup_enabled' value='true' {% if manager_settings.backup_enabled %}checked{% endif %}>
-          Backup diário habilitado
+        <label data-backup-enabled-control class='flex min-h-10 items-start gap-3 py-2 text-sm text-ink'>
+          <input class='mt-0.5 size-4 shrink-0' type='checkbox' name='backup_enabled' value='true' {% if manager_settings.backup_enabled %}checked{% endif %}>
+          <span>
+            <span class='block font-medium'>Backup diário habilitado</span>
+            <span class='mt-1 block text-xs text-muted'>Agenda um backup por dia no horário local configurado.</span>
+          </span>
         </label>
         <label class='block text-sm font-medium text-ink'>Horário local
           <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' type='time' name='backup_time' value='{{ manager_settings.backup_time }}' required>

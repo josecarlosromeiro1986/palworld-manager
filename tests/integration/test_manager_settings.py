@@ -164,6 +164,12 @@ def test_manager_settings_routes_require_authentication_and_hide_structural_fiel
     assert "RCLONE_REMOTE" not in page.text
     assert "TAILSCALE" not in page.text
     assert "/home/steam" not in page.text
+    backup_control = page.text.split("data-backup-enabled-control", maxsplit=1)[1].split(
+        "</label>", maxsplit=1
+    )[0]
+    assert "rounded-md" not in backup_control
+    assert "border" not in backup_control
+    assert "bg-canvas" not in backup_control
 
 
 def test_operational_update_requires_csrf_and_rejects_dangerous_fields(
@@ -216,6 +222,33 @@ def test_stale_form_is_rejected_instead_of_overwriting_newer_values(
     factory = create_session_factory(manager_settings_context.engine)
     with session_scope(factory) as session:
         assert session.get_one(AppSetting, "metrics_interval_seconds").value == 7
+
+
+def test_successful_operational_update_uses_prg_and_consumes_success_message(
+    manager_settings_context: ManagerSettingsContext,
+) -> None:
+    client = manager_settings_context.client
+    _login(client)
+    page = client.get("/manager-settings")
+    data = _operational_data(_settings_version(page.text), _csrf(client))
+
+    response = client.post(
+        "/manager-settings/operational",
+        data=data,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/manager-settings"
+    assert "palworld_manager_operational_saved=saved" in response.headers["set-cookie"]
+
+    landing = client.get(response.headers["location"])
+    assert landing.status_code == 200
+    assert "Configurações operacionais salvas." in landing.text
+
+    refreshed = client.get("/manager-settings")
+    assert "Configurações operacionais salvas." not in refreshed.text
+    assert "As configurações foram alteradas em outra solicitação." not in refreshed.text
 
 
 def test_password_change_requires_current_password_and_revokes_all_sessions(

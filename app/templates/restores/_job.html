@@ -10,9 +10,9 @@
     class="rounded-md border {% if restore_job.status == 'SUCCEEDED' %}border-positive/30{% elif restore_job.status in ['FAILED', 'INTERRUPTED'] %}border-danger/30{% else %}border-warning/30{% endif %} bg-surface-raised p-3"
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <div>
+      <div class="min-w-0 flex-1">
         <p class="text-sm font-medium text-ink">{% if restore_job.source_location == "DRIVE" %}Restore remoto{% else %}Restore local{% endif %} · Job #{{ restore_job.id }}</p>
-        <p class="mt-1 text-xs text-muted">{{ restore_job.source_filename }}</p>
+        <p class="mt-1 break-all font-mono text-[10px] text-muted">{{ restore_job.source_filename }}</p>
         <p class="mt-1 text-xs text-muted">{{ step_labels.get(restore_job.step, restore_job.step) }} · {{ restore_job.progress }}%</p>
       </div>
       <span class="text-xs font-semibold {% if restore_job.status == 'SUCCEEDED' %}text-positive{% elif restore_job.status in ['FAILED', 'INTERRUPTED'] %}text-danger{% else %}text-warning{% endif %}">{{ restore_job.status }}</span>

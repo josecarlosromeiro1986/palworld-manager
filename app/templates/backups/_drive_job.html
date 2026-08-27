@@ -11,9 +11,9 @@
     class="rounded-md border bg-surface-raised p-3"
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <div>
+      <div class="min-w-0 flex-1">
         <p class="text-sm font-medium text-ink">{{ operation_labels.get(drive_job.operation, drive_job.operation) }} · Job #{{ drive_job.id }}</p>
-        {% if drive_job.filename %}<p class="mt-1 max-w-xl truncate font-mono text-[10px] text-muted">{{ drive_job.filename }}</p>{% endif %}
+        {% if drive_job.filename %}<p class="mt-1 break-all font-mono text-[10px] text-muted">{{ drive_job.filename }}</p>{% endif %}
         <p class="mt-1 text-xs text-muted">{{ step_labels.get(drive_job.step, drive_job.step) }} · {{ drive_job.progress }}%</p>
       </div>
       <span class="text-xs font-semibold {% if drive_job.status == 'SUCCEEDED' %}text-positive{% elif drive_job.status in ['FAILED', 'INTERRUPTED'] %}text-danger{% elif drive_job.status == 'CANCELLED' %}text-warning{% else %}text-accent{% endif %}">{{ drive_job.status }}</span>

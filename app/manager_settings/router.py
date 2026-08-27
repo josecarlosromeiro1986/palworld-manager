@@ -19,6 +19,7 @@ from app.audit.service import (
 from app.auth.cookies import (
     SESSION_CSRF_COOKIE_NAME,
     clear_authentication_cookies,
+    cookies_are_secure,
 )
 from app.auth.csrf import tokens_match
 from app.auth.login_protection import attempt_administrator_login
@@ -50,6 +51,8 @@ from app.notifications.service import DISCORD_TEST, NOTIFICATION_CHANNEL_DISCORD
 router = APIRouter(prefix="/manager-settings")
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 OPERATIONAL_FORM_FIELDS = OPERATIONAL_SETTING_KEYS | {"csrf_token", "settings_version"}
+OPERATIONAL_SAVED_COOKIE_NAME = "palworld_manager_operational_saved"
+OPERATIONAL_SAVED_COOKIE_MAX_AGE_SECONDS = 60
 
 
 def _session_factory(request: Request) -> sessionmaker[Session]:
@@ -136,7 +139,20 @@ def _drive_test_response(request: Request, job: Job) -> Response:
 
 @router.get("", response_class=HTMLResponse, include_in_schema=False)
 def manager_settings_page(request: Request) -> Response:
-    return _page_response(request)
+    operational_saved = request.cookies.get(OPERATIONAL_SAVED_COOKIE_NAME) == "saved"
+    response = _page_response(request, operational_saved=operational_saved)
+    if OPERATIONAL_SAVED_COOKIE_NAME in request.cookies:
+        response.set_cookie(
+            OPERATIONAL_SAVED_COOKIE_NAME,
+            "",
+            max_age=0,
+            expires=0,
+            secure=cookies_are_secure(_settings(request)),
+            httponly=True,
+            samesite="strict",
+            path="/manager-settings",
+        )
+    return response
 
 
 def _single_form_value(form: FormData, key: str) -> str:
@@ -216,7 +232,17 @@ async def update_operational_settings(request: Request) -> Response:
                 reason="CONCURRENT_UPDATE",
             )
         return _page_response(request, status_code=409, operational_error=str(error))
-    return _page_response(request, operational_saved=True)
+    response = RedirectResponse("/manager-settings", status_code=303)
+    response.set_cookie(
+        OPERATIONAL_SAVED_COOKIE_NAME,
+        "saved",
+        max_age=OPERATIONAL_SAVED_COOKIE_MAX_AGE_SECONDS,
+        secure=cookies_are_secure(_settings(request)),
+        httponly=True,
+        samesite="strict",
+        path="/manager-settings",
+    )
+    return response
 
 
 def _audit_password_update(
