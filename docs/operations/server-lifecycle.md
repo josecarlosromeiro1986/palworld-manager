@@ -15,9 +15,12 @@ confirmar
 → job PENDING
 → worker cria pedido enumerado em /run
 → systemd.path aciona o oneshot root
+→ no Restart inicialmente ONLINE, observar a saída desse estado
 → aguardar health ONLINE
 → SUCCEEDED ou timeout/falha
 ```
+
+Essa transição obrigatória impede que o health ainda saudável do processo antigo finalize o job antes de o pedido assíncrono de Restart ser processado. Restart iniciado fora de `ONLINE` aguarda diretamente o novo estado `ONLINE`.
 
 Stop assistido:
 

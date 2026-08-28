@@ -72,6 +72,13 @@ class PalworldLifecycleExecutor:
     def execute(self, action: LifecycleAction, timeout_seconds: int) -> LifecycleResult:
         if timeout_seconds <= 0:
             raise ValueError("o timeout deve ser positivo")
+
+        restart_transition_observed = True
+        if action is LifecycleAction.RESTART:
+            restart_transition_observed = (
+                self._health.check().state is not PalworldHealthState.ONLINE
+            )
+
         try:
             if action is LifecycleAction.START:
                 self._controller.start()
@@ -89,7 +96,12 @@ class PalworldLifecycleExecutor:
         deadline = self._monotonic() + timeout_seconds
         while True:
             snapshot = self._health.check()
-            if self._reached_target(action, snapshot):
+            if (
+                action is LifecycleAction.RESTART
+                and snapshot.state is not PalworldHealthState.ONLINE
+            ):
+                restart_transition_observed = True
+            if restart_transition_observed and self._reached_target(action, snapshot):
                 return LifecycleResult(
                     LifecycleOutcome.SUCCEEDED,
                     snapshot.state,
@@ -116,23 +128,35 @@ class PalworldLifecycleExecutor:
 class FakeLifecycleEnvironment(PalworldHealthChecker, PalworldServiceController, PortProbe):
     def __init__(self) -> None:
         self._active = False
+        self._restart_pending = False
 
     def get_status(self) -> PalworldServiceStatus:
         return FakePalworldService(active=self._active).get_status()
 
     def start(self) -> None:
         self._active = True
+        self._restart_pending = False
 
     def stop(self) -> None:
         self._active = False
+        self._restart_pending = False
 
     def restart(self) -> None:
         self._active = True
+        self._restart_pending = True
 
     def is_open(self) -> bool:
         return self._active
 
     def check(self) -> PalworldHealthSnapshot:
+        if self._restart_pending:
+            self._restart_pending = False
+            return PalworldHealthSnapshot(
+                state=PalworldHealthState.STARTING,
+                service_state="activating",
+                process_running=True,
+                rest_api_state=RestApiState.UNAVAILABLE,
+            )
         return PalworldHealthSnapshot(
             state=PalworldHealthState.ONLINE if self._active else PalworldHealthState.OFFLINE,
             service_state="active" if self._active else "inactive",

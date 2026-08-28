@@ -101,6 +101,33 @@ def test_start_and_restart_wait_until_online(action: LifecycleAction) -> None:
     assert result.timed_out is False
 
 
+def test_restart_rejects_stale_online_until_server_transitions() -> None:
+    controller = RecordingController()
+    clock = Clock()
+    executor = PalworldLifecycleExecutor(
+        controller,
+        SequenceHealth(
+            [
+                PalworldHealthState.ONLINE,
+                PalworldHealthState.ONLINE,
+                PalworldHealthState.STARTING,
+                PalworldHealthState.ONLINE,
+            ]
+        ),
+        SequencePort([True]),
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+    )
+
+    result = executor.execute(LifecycleAction.RESTART, 120)
+
+    assert controller.actions == [LifecycleAction.RESTART]
+    assert result.outcome is LifecycleOutcome.SUCCEEDED
+    assert result.final_state is PalworldHealthState.ONLINE
+    assert result.timed_out is False
+    assert clock.sleeps == [1.0, 1.0]
+
+
 def test_stop_requires_offline_health_and_closed_rest_port() -> None:
     controller = RecordingController()
     clock = Clock()

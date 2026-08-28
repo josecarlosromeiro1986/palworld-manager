@@ -334,6 +334,8 @@ O probe REST do health check consulta `GET /info` a partir de `PALWORLD_REST_BAS
 
 Start e Restart são jobs persistentes, exigem confirmação na UI e usam respectivamente `start_timeout_seconds` e `restart_timeout_seconds`. Apenas o worker executa o comando; FastAPI cria e acompanha o job.
 
+Quando o Restart começa com health `ONLINE`, a conclusão exige observar primeiro uma transição para fora de `ONLINE` e somente depois o retorno a `ONLINE`. O estado anterior ao processamento do pedido privilegiado não pode concluir o job.
+
 ### Stop
 Aviso assistido quando aplicável → `systemctl stop` → aguardar processo → confirmar `inactive` → confirmar portas relevantes fechadas → OFFLINE. Timeout 60 s.
 
