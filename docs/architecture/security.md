@@ -102,6 +102,12 @@ root: dependências, build, gate, configuração, migrations, web e worker usam
 `palmanager`. Paths, serviços, ref remoto e comandos são fixos; o checkout deve
 estar limpo e um `flock` impede deploys concorrentes.
 
+A venv de produção e seu diretório de executáveis precisam permanecer
+root-owned e sem escrita por grupo/outros. O symlink padrão
+`.venv/bin/python` é permitido somente quando resolve para um executável
+regular igualmente root-owned e protegido contra escrita; links quebrados e
+destinos graváveis são recusados antes da parada dos serviços.
+
 Antes de parar processos, o candidato passa pelo gate em worktree isolado e o
 script recusa job `RUNNING`, notificação `SENDING` ou maintenance lock. O
 commit anterior é persistido como `root:palmanager 0640`. Rollback exige esse

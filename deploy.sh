@@ -107,8 +107,10 @@ require_commands() {
         /usr/bin/mktemp
         /usr/bin/npm
         /usr/bin/python3
+        /usr/bin/readlink
         /usr/bin/sleep
         /usr/bin/sqlite3
+        /usr/bin/stat
         /usr/bin/systemctl
         /usr/bin/systemd-analyze
         /usr/bin/systemd-run
@@ -126,6 +128,37 @@ require_regular_file() {
     [[ -f "${path}" && ! -L "${path}" ]] || die "arquivo obrigatório inválido: ${path}"
 }
 
+validate_root_protected_mode() {
+    local path=$1
+    local owner
+    local mode
+    owner=$(/usr/bin/stat --format='%u' -- "${path}") || return 1
+    mode=$(/usr/bin/stat --format='%a' -- "${path}") || return 1
+    [[ "${owner}" == "0" && "${mode}" =~ ^[0-7]{3,4}$ ]] || return 1
+    (( (8#${mode} & 8#022) == 0 ))
+}
+
+validate_venv_python() {
+    local venv="${APP_DIR}/.venv"
+    local python_path="${venv}/bin/python"
+    local resolved
+    [[ -d "${venv}" && ! -L "${venv}" ]] \
+        || die "venv de produção inválido"
+    [[ -d "${venv}/bin" && ! -L "${venv}/bin" ]] \
+        || die "diretório de executáveis da venv inválido"
+    validate_root_protected_mode "${venv}" \
+        && validate_root_protected_mode "${venv}/bin" \
+        || die "venv de produção não está protegida contra escrita"
+    [[ -x "${python_path}" ]] || die "Python da venv não está disponível"
+    resolved=$(
+        /usr/bin/readlink --canonicalize-existing -- "${python_path}"
+    ) || die "Python da venv possui destino inválido"
+    [[ -f "${resolved}" && -x "${resolved}" ]] \
+        || die "Python da venv não resolve para executável regular"
+    validate_root_protected_mode "${resolved}" \
+        || die "Python da venv não está protegido contra escrita"
+}
+
 validate_host_layout() {
     [[ -d "${APP_DIR}" && ! -L "${APP_DIR}" ]] \
         || die "diretório da aplicação inválido"
@@ -136,8 +169,7 @@ validate_host_layout() {
     require_regular_file "${DATABASE}"
     require_regular_file "${APP_DIR}/pyproject.toml"
     require_regular_file "${APP_DIR}/package-lock.json"
-    [[ -x "${APP_DIR}/.venv/bin/python" && ! -L "${APP_DIR}/.venv/bin/python" ]] \
-        || die "venv de produção inválido"
+    validate_venv_python
 
     local changes
     changes=$(/usr/bin/git -C "${APP_DIR}" status --porcelain --untracked-files=all)

@@ -27,6 +27,13 @@ O orquestrador exige root porque atualiza o checkout root-owned, arquivos em
 web e worker continuam executados como `palmanager`; a aplicação nunca roda
 como root.
 
+O executável `.venv/bin/python` criado pelo módulo `venv` normalmente é um
+symlink. O deploy aceita essa estrutura somente quando a venv e seu diretório
+`bin/` pertencem a root, não permitem escrita de grupo/outros e o link resolve
+para um arquivo regular executável também pertencente a root e sem escrita de
+grupo/outros. Link quebrado, diretório substituído por symlink ou destino
+gravável continua bloqueando o deploy antes de qualquer serviço ser parado.
+
 O script:
 
 1. adquire um lock exclusivo em `/run/lock`;
