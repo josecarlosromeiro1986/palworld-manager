@@ -72,6 +72,20 @@ def test_candidate_runs_dependencies_assets_and_gate_as_palmanager() -> None:
     assert 'run_as_manager /usr/bin/env HOME="${STAGING_DIR}/home"' in script
 
 
+def test_deploy_migrates_host_control_and_keeps_legacy_rollback_compatible() -> None:
+    script = _script()
+
+    assert "/usr/bin/node --check" in script
+    assert "/bin/bash -n" in script
+    assert "palworld-manager-host-control@.service" in script
+    assert "50-palworld-manager-host-control.rules" in script
+    assert "(( modern_count == 0 ))" in script
+    assert '"${WORKTREE_DIR}/ops/sudoers/palworld-manager"' in script
+    assert '/bin/rm -f -- "${LEGACY_SUDOERS}"' in script
+    assert '"${HOST_CONTROL_COMMAND}"' in script
+    assert '"${HOST_CONTROL_POLKIT_RULE}"' in script
+
+
 def test_rollback_is_explicit_recorded_and_migration_compatible() -> None:
     script = _script()
 

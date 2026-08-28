@@ -7,9 +7,13 @@ from typing import Protocol
 
 from app.config import SERVICE_NAME_PATTERN, AppEnvironment, Settings
 from app.system.commands import sanitized_subprocess_environment
+from app.system.host_control import (
+    MANAGED_PALWORLD_SERVICE,
+    SYSTEMCTL_PATH,
+    PrivilegedHostAction,
+    host_control_command,
+)
 
-SYSTEMCTL_PATH = "/usr/bin/systemctl"
-SUDO_PATH = "/usr/bin/sudo"
 SYSTEMCTL_QUERY_TIMEOUT_SECONDS = 5.0
 SYSTEMCTL_CONTROL_TIMEOUT_SECONDS = 15.0
 SERVICE_NAME_REGEX = re.compile(SERVICE_NAME_PATTERN)
@@ -87,6 +91,8 @@ class SystemdPalworldService:
     ) -> None:
         if SERVICE_NAME_REGEX.fullmatch(service_name) is None:
             raise ValueError("nome de serviço systemd inválido")
+        if service_name != MANAGED_PALWORLD_SERVICE:
+            raise ValueError("serviço systemd não autorizado para controle em produção")
         if timeout_seconds <= 0:
             raise ValueError("o timeout da consulta deve ser positivo")
         if control_timeout_seconds <= 0:
@@ -136,15 +142,13 @@ class SystemdPalworldService:
         self._control("restart")
 
     def send_signal(self, signal: PalworldSignal) -> None:
-        command = (
-            SUDO_PATH,
-            "--non-interactive",
-            SYSTEMCTL_PATH,
-            "kill",
-            "--kill-whom=main",
-            f"--signal={signal.value}",
-            self._service_name,
-        )
+        if not isinstance(signal, PalworldSignal):
+            raise ValueError("sinal do serviço Palworld inválido")
+        action = {
+            PalworldSignal.TERM: PrivilegedHostAction.PALWORLD_SIGTERM,
+            PalworldSignal.KILL: PrivilegedHostAction.PALWORLD_SIGKILL,
+        }[signal]
+        command = host_control_command(action)
         try:
             result = self._runner(command, timeout_seconds=self._control_timeout_seconds)
         except (OSError, subprocess.TimeoutExpired) as error:
@@ -155,16 +159,14 @@ class SystemdPalworldService:
             raise PalworldServiceControlError("Não foi possível sinalizar o serviço Palworld.")
 
     def _control(self, action: str) -> None:
-        if action not in {"start", "stop", "restart"}:
+        privileged_action = {
+            "start": PrivilegedHostAction.PALWORLD_START,
+            "stop": PrivilegedHostAction.PALWORLD_STOP,
+            "restart": PrivilegedHostAction.PALWORLD_RESTART,
+        }.get(action)
+        if privileged_action is None:
             raise ValueError("ação de serviço inválida")
-        command = (
-            SUDO_PATH,
-            "--non-interactive",
-            SYSTEMCTL_PATH,
-            "--no-block",
-            action,
-            self._service_name,
-        )
+        command = host_control_command(privileged_action)
         try:
             result = self._runner(command, timeout_seconds=self._control_timeout_seconds)
         except (OSError, subprocess.TimeoutExpired) as error:

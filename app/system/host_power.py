@@ -5,7 +5,7 @@ from typing import Protocol
 
 from app.config import AppEnvironment, Settings
 from app.system.commands import sanitized_subprocess_environment
-from app.system.palworld_service import SUDO_PATH, SYSTEMCTL_PATH
+from app.system.host_control import PrivilegedHostAction, host_control_command
 
 HOST_POWER_TIMEOUT_SECONDS = 15.0
 
@@ -63,17 +63,11 @@ class SystemdHostPowerController:
     def request(self, action: HostPowerAction) -> None:
         if not isinstance(action, HostPowerAction):
             raise ValueError("ação de energia do host inválida")
-        systemd_action = {
-            HostPowerAction.REBOOT: "reboot",
-            HostPowerAction.SHUTDOWN: "poweroff",
+        privileged_action = {
+            HostPowerAction.REBOOT: PrivilegedHostAction.HOST_REBOOT,
+            HostPowerAction.SHUTDOWN: PrivilegedHostAction.HOST_POWEROFF,
         }[action]
-        command = (
-            SUDO_PATH,
-            "--non-interactive",
-            SYSTEMCTL_PATH,
-            "--no-block",
-            systemd_action,
-        )
+        command = host_control_command(privileged_action)
         try:
             result = self._runner(command, timeout_seconds=self._timeout_seconds)
         except (OSError, subprocess.TimeoutExpired) as error:

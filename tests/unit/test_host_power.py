@@ -4,12 +4,12 @@ from typing import cast
 
 import pytest
 
+from app.system.host_control import SYSTEMCTL_PATH
 from app.system.host_power import (
     HostPowerAction,
     HostPowerControlError,
     SystemdHostPowerController,
 )
-from app.system.palworld_service import SUDO_PATH, SYSTEMCTL_PATH
 
 
 def test_systemd_host_power_uses_only_fixed_non_blocking_commands() -> None:
@@ -30,8 +30,18 @@ def test_systemd_host_power_uses_only_fixed_non_blocking_commands() -> None:
     controller.request(HostPowerAction.SHUTDOWN)
 
     assert calls == [
-        (SUDO_PATH, "--non-interactive", SYSTEMCTL_PATH, "--no-block", "reboot"),
-        (SUDO_PATH, "--non-interactive", SYSTEMCTL_PATH, "--no-block", "poweroff"),
+        (
+            SYSTEMCTL_PATH,
+            "--no-ask-password",
+            "start",
+            "palworld-manager-host-control@host-reboot.service",
+        ),
+        (
+            SYSTEMCTL_PATH,
+            "--no-ask-password",
+            "start",
+            "palworld-manager-host-control@host-poweroff.service",
+        ),
     ]
 
 

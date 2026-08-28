@@ -243,7 +243,7 @@ palworld-manager.service
 palworld-manager-worker.service
 ```
 
-Ambos são executados como `palmanager`, usam a configuração estrutural apropriada e acessam o mesmo SQLite quando necessário. Nunca executar a aplicação web ou o worker como root. `sudoers` deve liberar somente comandos/scripts estritamente necessários, sem `sudo ALL`. Preferir scripts controlados e argumentos validados.
+Ambos são executados como `palmanager`, usam a configuração estrutural apropriada e acessam o mesmo SQLite quando necessário. Nunca executar a aplicação web ou o worker como root. Operações privilegiadas do host usam units `oneshot` root sem processo persistente, um helper de ações fechadas e uma regra Polkit limitada ao usuário `palmanager`, ao verbo `start` e às instâncias exatas autorizadas. O sandbox do worker deve manter `NoNewPrivileges=true`; não usar `sudo`, `sudo ALL`, serviço arbitrário ou argumento livre nessa fronteira.
 
 Quando `PALWORLD_DIR` estiver abaixo de um diretório ancestral restrito, a instalação deve conceder ao grupo `palworld-manager` somente a travessia necessária nesse ancestral por ACL POSIX (`--x`). Não adicionar `palmanager` ao grupo proprietário da conta Steam nem liberar travessia para todos os usuários locais. A ACL não deve ser recursiva nem conceder leitura ou escrita fora de `PALWORLD_DIR`.
 
@@ -409,7 +409,7 @@ de uma alteração válida com Argon2id e a política mínima vigente, todas as
 sessões são revogadas, os cookies de autenticação são removidos, a ação é
 auditada sem valores sensíveis e o administrador retorna à tela de login.
 
-Não permitir alterar pela UI `sudoers`, serviços arbitrários, executáveis arbitrários, infraestrutura Tailscale ou caminhos críticos livres.
+Não permitir alterar pela UI regras Polkit, helpers privilegiados, serviços arbitrários, executáveis arbitrários, infraestrutura Tailscale ou caminhos críticos livres.
 
 ## 22. Jobs em background
 
@@ -604,7 +604,7 @@ erro remoto e resposta bruta nunca entram em logs, SQLite, auditoria ou UI.
 
 ## 31. Reiniciar/desligar Ubuntu
 
-Permitir com confirmação forte. Antes, tratar Palworld de forma segura, avisar que painel ficará indisponível e auditar. Sudoers estritamente limitado.
+Permitir com confirmação forte. Antes, tratar Palworld de forma segura, avisar que painel ficará indisponível e auditar. O worker solicita somente as units `oneshot` fechadas de reboot ou poweroff; Polkit não autoriza outra unit, verbo ou usuário.
 
 ## 32. Diagnóstico
 
@@ -743,7 +743,7 @@ Reboot/shutdown e permissões mínimas. **Aceite:** sem injeção de comandos. C
 Login/logout, rota protegida, Stop/Restart mock, Restore `RESTAURAR`, salvar config. **Aceite:** E2E críticos passam. Commit: `test: add critical browser flows`.
 
 ### Etapa 29 — Deploy produção
-`palmanager`, venv, serviços systemd web/worker, heartbeat do worker, sudoers, assets, migrations, Tailscale Serve, journald, rclone. **Aceite:** sem Docker, sem root e sem servidor HTTP no worker. Commit: `ops: add production deployment`.
+`palmanager`, venv, serviços systemd web/worker, heartbeat do worker, fronteira privilegiada mínima, assets, migrations, Tailscale Serve, journald, rclone. **Aceite:** sem Docker, sem processo persistente da aplicação como root e sem servidor HTTP no worker. Commit: `ops: add production deployment`.
 
 ### Etapa 30 — deploy.sh + rollback
 Registrar commit anterior, atualizar, dependências, assets, migrations, config, checks, restart, validar web por systemd + `/health` e worker por systemd + heartbeat; rollback manual. **Aceite:** os dois serviços são validados separadamente e rollback nunca é automático. Commit: `ops: add safe deployment rollback`.

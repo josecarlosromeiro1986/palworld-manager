@@ -48,7 +48,8 @@ O script:
 5. cria um worktree temporário dentro da área administrada;
 6. instala dependências, compila assets e executa `make check` como
    `palmanager`, com `APP_ENVIRONMENT=test`;
-7. valida sudoers e units antes de tocar nos serviços;
+7. valida helper, regra Polkit e units antes de tocar nos serviços; em rollback
+   para um commit legado, valida o sudoers daquele commit;
 8. recusa interromper job `RUNNING`, notificação `SENDING` ou maintenance lock;
 9. para web e worker de forma separada;
 10. grava atomicamente o commit anterior com modo `0640`;

@@ -6,8 +6,8 @@ from typing import Protocol
 import psutil
 
 from app.config import SERVICE_NAME_PATTERN, AppEnvironment, Settings
+from app.system.host_control import SYSTEMCTL_PATH
 from app.system.palworld_service import (
-    SYSTEMCTL_PATH,
     SYSTEMCTL_QUERY_TIMEOUT_SECONDS,
     CommandRunner,
     _run_command,

@@ -125,17 +125,19 @@ pelos fakes, criação de backup seguida de Restore com `RESTAURAR` e gravação
 uma configuração reconhecida pelo modal compartilhado. Nenhum serviço, path ou
 secret real é usado.
 
-Os testes de deploy validam os artefatos sem executar systemd, sudo, Tailscale,
+Os testes de deploy validam os artefatos sem executar systemd, Polkit, Tailscale,
 rclone ou filesystem estrutural reais. Eles verificam units web/worker
 independentes e não-root, entrypoints distintos, loopback, journald, sandboxes,
-grupo compartilhado do Palworld, sudoers limitado aos sete comandos exatos,
-tmpfiles e modos mínimos, `UMask=0027` nos serviços transitórios iniciais,
-configuração sem secrets e package data de templates/assets.
+grupo compartilhado do Palworld, helper root limitado a sete comandos, regra
+Polkit com sete units exatas, tmpfiles e modos mínimos, `UMask=0027` nos
+serviços transitórios iniciais, configuração sem secrets e package data de
+templates/assets.
 
 Os testes do deploy recorrente executam apenas `bash -n` e `--help`; nenhuma
 operação privilegiada real é chamada. As demais asserções verificam paths e
-comandos fechados, lock exclusivo, worktree isolado, execução do gate como
-`palmanager`, compatibilidade Alembic, commit anterior, recusa de jobs,
+comandos fechados, migração Polkit e rollback legado, lock exclusivo, worktree
+isolado, execução do gate como `palmanager`, compatibilidade Alembic, commit
+anterior, recusa de jobs,
 notificações e maintenance lock ativos, transient services protegidos, ausência
 de rollback automático e validações independentes da web e do worker.
 

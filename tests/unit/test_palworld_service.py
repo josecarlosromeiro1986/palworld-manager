@@ -6,8 +6,8 @@ import pytest
 from pydantic import SecretStr
 
 from app.config import AppEnvironment, Settings
+from app.system.host_control import SYSTEMCTL_PATH
 from app.system.palworld_service import (
-    SYSTEMCTL_PATH,
     FakePalworldService,
     PalworldServiceControlError,
     PalworldServiceQueryError,
@@ -89,10 +89,16 @@ def test_systemd_non_active_states_are_reported_as_inactive(source_state: str) -
 
 @pytest.mark.parametrize(
     "service_name",
-    ["--all.service", "palworld.service --no-pager", "../palworld.service", "palworld"],
+    [
+        "--all.service",
+        "palworld.service --no-pager",
+        "../palworld.service",
+        "palworld",
+        "other-valid.service",
+    ],
 )
 def test_systemd_adapter_rejects_untrusted_service_names(service_name: str) -> None:
-    with pytest.raises(ValueError, match="inválido"):
+    with pytest.raises(ValueError):
         SystemdPalworldService(service_name)
 
 
@@ -152,20 +158,28 @@ def test_fake_service_is_controllable_without_systemd() -> None:
     assert service.get_status().active is True
 
 
-@pytest.mark.parametrize("action", ["start", "stop", "restart"])
-def test_systemd_adapter_runs_only_supported_lifecycle_commands(action: str) -> None:
+@pytest.mark.parametrize(
+    ("action", "helper_action"),
+    [
+        ("start", "palworld-start"),
+        ("stop", "palworld-stop"),
+        ("restart", "palworld-restart"),
+    ],
+)
+def test_systemd_adapter_runs_only_supported_lifecycle_commands(
+    action: str,
+    helper_action: str,
+) -> None:
     runner = RecordingRunner(completed_process(stdout=""))
     service = SystemdPalworldService("palworld.service", runner=runner)
 
     getattr(service, action)()
 
     assert runner.command == (
-        "/usr/bin/sudo",
-        "--non-interactive",
         "/usr/bin/systemctl",
-        "--no-block",
-        action,
-        "palworld.service",
+        "--no-ask-password",
+        "start",
+        f"palworld-manager-host-control@{helper_action}.service",
     )
     assert runner.timeout_seconds == 15.0
 
@@ -183,9 +197,16 @@ def test_systemd_control_failure_does_not_expose_stderr() -> None:
     assert private_detail not in str(error.value)
 
 
-@pytest.mark.parametrize("signal", [PalworldSignal.TERM, PalworldSignal.KILL])
+@pytest.mark.parametrize(
+    ("signal", "helper_action"),
+    [
+        (PalworldSignal.TERM, "palworld-sigterm"),
+        (PalworldSignal.KILL, "palworld-sigkill"),
+    ],
+)
 def test_systemd_adapter_signals_only_the_main_process_of_configured_unit(
     signal: PalworldSignal,
+    helper_action: str,
 ) -> None:
     runner = RecordingRunner(completed_process(stdout=""))
     service = SystemdPalworldService("palworld.service", runner=runner)
@@ -193,13 +214,10 @@ def test_systemd_adapter_signals_only_the_main_process_of_configured_unit(
     service.send_signal(signal)
 
     assert runner.command == (
-        "/usr/bin/sudo",
-        "--non-interactive",
         "/usr/bin/systemctl",
-        "kill",
-        "--kill-whom=main",
-        f"--signal={signal.value}",
-        "palworld.service",
+        "--no-ask-password",
+        "start",
+        f"palworld-manager-host-control@{helper_action}.service",
     )
 
 

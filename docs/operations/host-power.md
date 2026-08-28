@@ -1,6 +1,6 @@
 # Energia do host Ubuntu
 
-> Status: Implementado na Etapa 27; regras mínimas de sudoers entregues na Etapa 29.
+> Status: Implementado na Etapa 27; fronteira mínima systemd/Polkit entregue na Etapa 29.
 
 O Dashboard autenticado oferece **Reiniciar Ubuntu** e **Desligar Ubuntu**. As
 duas ações exigem sessão válida, CSRF, o modal compartilhado e a frase exata
@@ -28,18 +28,19 @@ Em production, o adapter aceita apenas a enum fechada `REBOOT`/`SHUTDOWN` e
 produz exatamente um dos comandos:
 
 ```text
-/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block reboot
-/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block poweroff
+/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@host-reboot.service
+/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@host-poweroff.service
 ```
 
 Os argumentos não recebem texto da requisição, `shell=False` é obrigatório e
 stdout/stderr não são copiados para UI, logs ou auditoria. Development e test
 usam um fake em memória e nunca controlam o host real.
 
-O artefato `ops/sudoers/palworld-manager` libera somente esses dois comandos e
-os cinco comandos fechados já previstos para o Palworld. O runbook exige
-`visudo --check` antes e depois da instalação; `NOPASSWD: ALL`, curingas e
-sudo para SteamCMD continuam proibidos.
+O template `oneshot` chama o helper root com uma instância exata; os dois
+branches de energia traduzem para `systemctl --no-block reboot` e `poweroff`.
+A regra Polkit também enumera os cinco helpers fechados do Palworld e retorna
+`NOT_HANDLED` para qualquer outro usuário, verbo ou unit. Não existe
+autorização para SteamCMD, rclone ou serviço arbitrário.
 
 Consulte [Segurança](../architecture/security.md),
 [Jobs e locks](../architecture/jobs-and-locks.md) e

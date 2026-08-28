@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+umask 077
+
+[[ $# -eq 1 ]] || exit 64
+
+case "$1" in
+    palworld-start)
+        exec /usr/bin/systemctl --no-block start palworld.service
+        ;;
+    palworld-stop)
+        exec /usr/bin/systemctl --no-block stop palworld.service
+        ;;
+    palworld-restart)
+        exec /usr/bin/systemctl --no-block restart palworld.service
+        ;;
+    palworld-sigterm)
+        exec /usr/bin/systemctl kill --kill-whom=main --signal=SIGTERM palworld.service
+        ;;
+    palworld-sigkill)
+        exec /usr/bin/systemctl kill --kill-whom=main --signal=SIGKILL palworld.service
+        ;;
+    host-reboot)
+        exec /usr/bin/systemctl --no-block reboot
+        ;;
+    host-poweroff)
+        exec /usr/bin/systemctl --no-block poweroff
+        ;;
+    *)
+        exit 64
+        ;;
+esac

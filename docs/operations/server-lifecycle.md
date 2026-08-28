@@ -54,18 +54,21 @@ Os valores são mantidos em `app_settings` e editados em **Configurações do Pa
 
 Uma chave de coordenação com índice único parcial impede dois jobs de ciclo de vida simultaneamente em `PENDING` ou `RUNNING`, inclusive sob requisições concorrentes. A aquisição usa uma única atualização condicional e adquire o maintenance lock global na mesma transação. O worker mantém heartbeat a cada 10 segundos; se for interrompido, jobs em `RUNNING` passam para `INTERRUPTED`, liberam o lock e nunca são retomados automaticamente. O Dashboard mostra etapa, progresso e trecho do log textual de cada execução.
 
-Em production, somente estes comandos são construídos pelo adapter, sempre com argumentos separados e sem shell:
+Em production, somente estes comandos são construídos pelo adapter, sempre com
+argumentos separados e sem shell:
 
 ```text
-/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block start palworld.service
-/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block stop palworld.service
-/usr/bin/sudo --non-interactive /usr/bin/systemctl --no-block restart palworld.service
-/usr/bin/sudo --non-interactive /usr/bin/systemctl kill --kill-whom=main --signal=SIGTERM palworld.service
-/usr/bin/sudo --non-interactive /usr/bin/systemctl kill --kill-whom=main --signal=SIGKILL palworld.service
+/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-start.service
+/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-stop.service
+/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-restart.service
+/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-sigterm.service
+/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-sigkill.service
 ```
 
-O nome real da unidade vem de `PALWORLD_SERVICE` e passa pela allowlist
-estrutural. A Etapa 29 instala e valida o sudoers com esses cinco comandos e os
-dois comandos fechados de energia do host; não existe permissão genérica.
+Cada unit `oneshot` executa como root um único branch fixo do helper para
+`palworld.service`. Em production, `PALWORLD_SERVICE` deve manter esse valor;
+uma unidade alternativa exige alterar simultaneamente adapter, helper, Polkit,
+unit e configuração estrutural. A regra Polkit não autoriza serviço, verbo,
+usuário ou argumento genérico.
 
 Development e test usam um fake compartilhado via SQLite entre web e worker. Assim, um job concluído atualiza também o health exibido pelo Dashboard, sem executar systemd ou abrir conexão com o Palworld real.

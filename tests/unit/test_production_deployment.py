@@ -1,3 +1,4 @@
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -6,13 +7,15 @@ OPS_ROOT = PROJECT_ROOT / "ops"
 
 WEB_UNIT = OPS_ROOT / "systemd/palworld-manager.service"
 WORKER_UNIT = OPS_ROOT / "systemd/palworld-manager-worker.service"
+HOST_CONTROL_UNIT = OPS_ROOT / "systemd/palworld-manager-host-control@.service"
+HOST_CONTROL_SCRIPT = OPS_ROOT / "scripts/palworld-manager-host-control"
+HOST_CONTROL_POLKIT = OPS_ROOT / "polkit/50-palworld-manager-host-control.rules"
 PALWORLD_DROP_IN = OPS_ROOT / "systemd/palworld.service.d/10-palworld-manager-access.conf"
 MANAGER_ENV = OPS_ROOT / "environment/manager.env"
-SUDOERS = OPS_ROOT / "sudoers/palworld-manager"
 TMPFILES = OPS_ROOT / "tmpfiles/palworld-manager.conf"
 PRODUCTION_INSTALL = PROJECT_ROOT / "docs/operations/production-install.md"
 
-EXPECTED_PRIVILEGED_COMMANDS = {
+EXPECTED_ROOT_COMMANDS = {
     "/usr/bin/systemctl --no-block start palworld.service",
     "/usr/bin/systemctl --no-block stop palworld.service",
     "/usr/bin/systemctl --no-block restart palworld.service",
@@ -20,6 +23,15 @@ EXPECTED_PRIVILEGED_COMMANDS = {
     "/usr/bin/systemctl kill --kill-whom=main --signal=SIGKILL palworld.service",
     "/usr/bin/systemctl --no-block reboot",
     "/usr/bin/systemctl --no-block poweroff",
+}
+EXPECTED_HOST_CONTROL_UNITS = {
+    "palworld-manager-host-control@palworld-start.service",
+    "palworld-manager-host-control@palworld-stop.service",
+    "palworld-manager-host-control@palworld-restart.service",
+    "palworld-manager-host-control@palworld-sigterm.service",
+    "palworld-manager-host-control@palworld-sigkill.service",
+    "palworld-manager-host-control@host-reboot.service",
+    "palworld-manager-host-control@host-poweroff.service",
 }
 SECRET_NAMES = {
     "DISCORD_WEBHOOK_URL",
@@ -78,7 +90,8 @@ def test_systemd_units_keep_web_and_worker_non_root_and_independent() -> None:
     assert "app.worker" not in _single(web, "ExecStart")
     assert "app.web" not in _single(worker, "ExecStart")
     assert _single(web, "NoNewPrivileges") == "true"
-    assert "NoNewPrivileges" not in worker
+    assert _single(worker, "NoNewPrivileges") == "true"
+    assert _single(worker, "RestrictSUIDSGID") == "true"
     assert web["ReadWritePaths"] == [
         "/var/lib/palworld-manager",
         "/home/steam/palserver/Pal/Saved/Config/LinuxServer",
@@ -113,19 +126,64 @@ def test_production_environment_binds_web_to_loopback_without_secrets() -> None:
     assert SECRET_NAMES.isdisjoint(entries)
 
 
-def test_sudoers_allows_only_the_fixed_commands_used_by_adapters() -> None:
-    content = _read(SUDOERS)
+def test_host_control_is_a_hardened_root_oneshot() -> None:
+    service = _parse_unit(HOST_CONTROL_UNIT)["Service"]
 
-    assert "NOPASSWD: ALL" not in content
-    assert "sudo all" not in content.casefold()
-    assert "*" not in content
-    assert "?" not in content
-    assert content.count("NOPASSWD:") == 1
-    assert content.count("palmanager ALL=(root)") == 1
-    for command in EXPECTED_PRIVILEGED_COMMANDS:
-        assert content.count(command) == 1
-    assert content.count("/usr/bin/systemctl") == len(EXPECTED_PRIVILEGED_COMMANDS)
-    assert "steamcmd" not in content.casefold()
+    assert _single(service, "Type") == "oneshot"
+    assert _single(service, "User") == "root"
+    assert _single(service, "Group") == "root"
+    assert _single(service, "ExecStart") == ("/usr/local/sbin/palworld-manager-host-control %i")
+    assert _single(service, "NoNewPrivileges") == "true"
+    assert _single(service, "RestrictSUIDSGID") == "true"
+    assert _single(service, "CapabilityBoundingSet") == ""
+    assert "Install" not in _parse_unit(HOST_CONTROL_UNIT)
+
+
+def test_host_control_artifacts_have_valid_bash_and_javascript_syntax() -> None:
+    bash_check = subprocess.run(
+        ["bash", "-n", str(HOST_CONTROL_SCRIPT)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    javascript_check = subprocess.run(
+        ["node", "--check"],
+        check=False,
+        capture_output=True,
+        input=_read(HOST_CONTROL_POLKIT),
+        text=True,
+    )
+
+    assert bash_check.returncode == 0, bash_check.stderr
+    assert javascript_check.returncode == 0, javascript_check.stderr
+
+
+def test_host_control_helper_executes_only_the_seven_fixed_root_commands() -> None:
+    content = _read(HOST_CONTROL_SCRIPT)
+    commands = {
+        line.removeprefix("exec ")
+        for raw_line in content.splitlines()
+        if (line := raw_line.strip()).startswith("exec ")
+    }
+
+    assert commands == EXPECTED_ROOT_COMMANDS
+    assert "eval " not in content
+    assert "sudo" not in content.casefold()
+    assert content.count("exit 64") == 2
+
+
+def test_polkit_allows_only_palmanager_start_for_exact_helper_units() -> None:
+    content = _read(HOST_CONTROL_POLKIT)
+
+    assert 'subject.user === "palmanager"' in content
+    assert 'action.id === "org.freedesktop.systemd1.manage-units"' in content
+    assert 'action.lookup("verb") === "start"' in content
+    assert "polkit.Result.YES" in content
+    assert "polkit.Result.NOT_HANDLED" in content
+    for unit in EXPECTED_HOST_CONTROL_UNITS:
+        assert content.count(f'"{unit}"') == 1
+    assert content.count("palworld-manager-host-control@") == len(EXPECTED_HOST_CONTROL_UNITS)
+    assert not (OPS_ROOT / "sudoers/palworld-manager").exists()
 
 
 def test_tmpfiles_uses_minimum_manager_directory_modes() -> None:

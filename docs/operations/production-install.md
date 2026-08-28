@@ -32,8 +32,8 @@ Serviço Palworld: palworld.service
 ```
 
 Se a instalação real usa outro path ou outra unidade, altere simultaneamente a
-configuração estrutural, o sandbox das units e os comandos exatos do sudoers. Não
-libere curingas nem uma unidade arbitrária.
+configuração estrutural, o sandbox, o adapter, o helper root, o template systemd
+e a allowlist Polkit. Não libere curingas nem uma unidade arbitrária.
 
 ## 1. Pré-requisitos
 
@@ -42,7 +42,7 @@ dependências do runtime, build e validação:
 
 ```bash
 sudo apt update
-sudo apt install --no-install-recommends acl git nodejs npm python3 python3-venv rclone sqlite3 sudo curl
+sudo apt install --no-install-recommends acl git nodejs npm python3 python3-venv rclone sqlite3 sudo curl polkitd
 /usr/bin/python3.12 --version
 node --version
 npm --version
@@ -313,41 +313,35 @@ sudo systemd-run --quiet --wait --pty --collect \
 A senha é solicitada com entrada oculta. Para redefinição futura, troque apenas
 `create-admin` por `reset-password`.
 
-## 8. sudoers e units
+## 8. Polkit, helper e units
 
-Valide o sudoers versionado antes de instalá-lo:
+Valide os artefatos versionados antes de instalá-los. Isso verifica sintaxe e
+estrutura sem executar lifecycle, sinal ou energia do host:
 
 ```bash
 cd /opt/palworld-manager
-sudo visudo --check --file ops/sudoers/palworld-manager
-sudo install -o root -g root -m 0440 ops/sudoers/palworld-manager /etc/sudoers.d/palworld-manager
-sudo visudo --check --file /etc/sudoers.d/palworld-manager
-```
-
-A única regra `NOPASSWD` libera os cinco comandos fechados de lifecycle/sinal
-do `palworld.service` e os dois comandos fechados de energia do host. O
-`ALL` anterior a `=(root)` é o campo de host da sintaxe sudoers; o campo de
-comandos contém somente os aliases exatos. Não existe `NOPASSWD: ALL`, curinga
-ou regra para SteamCMD.
-
-Instale e valide as duas units independentes:
-
-```bash
+bash -n ops/scripts/palworld-manager-host-control
+node --check < ops/polkit/50-palworld-manager-host-control.rules
+sudo systemd-analyze verify ops/systemd/palworld-manager.service ops/systemd/palworld-manager-worker.service ops/systemd/palworld-manager-host-control@.service
+sudo install -o root -g root -m 0750 ops/scripts/palworld-manager-host-control /usr/local/sbin/palworld-manager-host-control
+sudo install -o root -g root -m 0644 ops/polkit/50-palworld-manager-host-control.rules /etc/polkit-1/rules.d/50-palworld-manager-host-control.rules
 sudo install -o root -g root -m 0644 ops/systemd/palworld-manager.service /etc/systemd/system/palworld-manager.service
 sudo install -o root -g root -m 0644 ops/systemd/palworld-manager-worker.service /etc/systemd/system/palworld-manager-worker.service
+sudo install -o root -g root -m 0644 ops/systemd/palworld-manager-host-control@.service /etc/systemd/system/palworld-manager-host-control@.service
+sudo rm -f -- /etc/sudoers.d/palworld-manager
 sudo systemctl daemon-reload
-sudo systemd-analyze verify /etc/systemd/system/palworld-manager.service /etc/systemd/system/palworld-manager-worker.service
+sudo systemd-analyze verify /etc/systemd/system/palworld-manager.service /etc/systemd/system/palworld-manager-worker.service /etc/systemd/system/palworld-manager-host-control@.service
 sudo install -o root -g root -m 0750 deploy.sh /usr/local/sbin/palworld-manager-deploy
 sudo systemctl enable --now palworld-manager.service
 sudo systemctl enable --now palworld-manager-worker.service
 ```
 
-As duas units usam `User=palmanager`, `Group=palmanager`, `UMask=0027`,
-`ProtectSystem=strict`, diretórios graváveis explícitos e journald. A web tem
-`NoNewPrivileges=true` e escreve somente nos dados do Manager e no diretório
-dos INIs. O worker não possui essa flag porque o `sudo` setuid precisa alcançar
-exclusivamente os sete comandos allowlisted; seu namespace gravável inclui os
-dados do Manager e `PALWORLD_DIR`.
+Web e worker usam `User=palmanager`, `Group=palmanager`, `UMask=0027`,
+`NoNewPrivileges=true`, `RestrictSUIDSGID=true`, `ProtectSystem=strict`,
+diretórios graváveis explícitos e journald. O template privilegiado não é
+habilitado: ele cria somente processos `oneshot` root sob demanda. Polkit
+autoriza `palmanager` a iniciar exatamente as sete instâncias enumeradas, e o
+helper traduz cada instância para um único comando fixo.
 
 ## 9. Tailscale Serve
 
@@ -393,20 +387,22 @@ Execute a consulta logo após o `systemctl`. O resultado esperado é
 `STARTING`; depois disso ou com timestamp antigo, investigue
 `UNRESPONSIVE`. O worker não publica porta ou endpoint HTTP.
 
-### Permissões, journal e sudoers
+### Permissões, journal e fronteira privilegiada
 
 ```bash
 sudo -u palmanager test -r /var/lib/palworld-manager/manager.db
 sudo -u palmanager test -w /var/lib/palworld-manager/manager.db
 sudo -u palmanager test ! -w /opt/palworld-manager/pyproject.toml
 sudo -u palmanager /usr/bin/journalctl --unit palworld.service --output json --output-fields MESSAGE,PRIORITY --lines 1 --no-pager --quiet >/dev/null
-sudo -u palmanager sudo --non-interactive --list
-sudo stat -c '%U %G %a %n' /etc/palworld-manager/secrets.env /var/lib/palworld-manager/rclone/rclone.conf
+node --check < /etc/polkit-1/rules.d/50-palworld-manager-host-control.rules
+sudo test ! -e /etc/sudoers.d/palworld-manager
+sudo stat -c '%U %G %a %n' /etc/palworld-manager/secrets.env /var/lib/palworld-manager/rclone/rclone.conf /usr/local/sbin/palworld-manager-host-control /etc/systemd/system/palworld-manager-host-control@.service /etc/polkit-1/rules.d/50-palworld-manager-host-control.rules
+systemctl show palworld-manager-worker.service --property=NoNewPrivileges --property=RestrictSUIDSGID
 ```
 
 Não teste reboot, poweroff, sinais ou comandos de lifecycle apenas para validar
-sudoers. `visudo --check` e `sudo --list` são suficientes e não alteram o
-host.
+a autorização. `bash -n`, `node --check`, `systemd-analyze verify`, metadados e
+as propriedades efetivas do worker são verificações sem efeito no host.
 
 ### Journald e acesso privado
 
@@ -423,7 +419,8 @@ abra a URL HTTPS exibida pelo Serve e confirme login e logout.
 
 - Não use Docker em produção.
 - Não execute web ou worker como root.
-- Não adicione `sudo ALL`, comandos com curingas ou sudo para SteamCMD/rclone.
+- Não autorize units ou verbos genéricos no Polkit nem use sudo para a aplicação,
+  SteamCMD ou rclone.
 - Não exponha a porta 8080 na LAN ou Internet.
 - Não habilite Funnel.
 - Não copie `secrets.env` ou `rclone.conf` para backups, logs ou repositório.
