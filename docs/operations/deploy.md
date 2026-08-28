@@ -33,6 +33,10 @@ symlink. O deploy aceita essa estrutura somente quando a venv e seu diretório
 para um arquivo regular executável também pertencente a root e sem escrita de
 grupo/outros. Link quebrado, diretório substituído por symlink ou destino
 gravável continua bloqueando o deploy antes de qualquer serviço ser parado.
+O destino resolvido também precisa executar Python 3.12 ou superior. Esse mesmo
+executável protegido cria a venv isolada do gate; o `python3` padrão da
+distribuição não é usado e, portanto, não pode rebaixar silenciosamente o
+staging para uma versão incompatível.
 
 O script:
 

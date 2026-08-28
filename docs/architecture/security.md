@@ -106,7 +106,9 @@ A venv de produção e seu diretório de executáveis precisam permanecer
 root-owned e sem escrita por grupo/outros. O symlink padrão
 `.venv/bin/python` é permitido somente quando resolve para um executável
 regular igualmente root-owned e protegido contra escrita; links quebrados e
-destinos graváveis são recusados antes da parada dos serviços.
+destinos graváveis são recusados antes da parada dos serviços. O executável
+resolvido precisa ser Python 3.12 ou superior e é reutilizado em modo isolado
+para criar a venv do gate, sem depender do `python3` padrão da distribuição.
 
 Antes de parar processos, o candidato passa pelo gate em worktree isolado e o
 script recusa job `RUNNING`, notificação `SENDING` ou maintenance lock. O

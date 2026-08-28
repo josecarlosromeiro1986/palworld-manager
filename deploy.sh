@@ -23,6 +23,7 @@ TARGET_COMMIT=""
 CURRENT_COMMIT=""
 STAGING_DIR=""
 WORKTREE_DIR=""
+VENV_PYTHON_RESOLVED=""
 
 log() {
     printf '[palworld-manager-deploy] %s\n' "$*"
@@ -106,7 +107,6 @@ require_commands() {
         /usr/bin/make
         /usr/bin/mktemp
         /usr/bin/npm
-        /usr/bin/python3
         /usr/bin/readlink
         /usr/bin/sleep
         /usr/bin/sqlite3
@@ -157,6 +157,10 @@ validate_venv_python() {
         || die "Python da venv não resolve para executável regular"
     validate_root_protected_mode "${resolved}" \
         || die "Python da venv não está protegido contra escrita"
+    "${resolved}" -I -S -c \
+        'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)' \
+        || die "Python da venv precisa ser 3.12 ou superior"
+    VENV_PYTHON_RESOLVED="${resolved}"
 }
 
 validate_host_layout() {
@@ -270,7 +274,9 @@ validate_candidate_artifacts() {
 check_candidate() {
     local check_venv="${STAGING_DIR}/check-venv"
     log "Instalando e validando o candidato isolado como ${SERVICE_USER}"
-    run_as_manager /usr/bin/python3 -m venv "${check_venv}"
+    [[ -n "${VENV_PYTHON_RESOLVED}" ]] \
+        || die "Python validado da venv não está disponível"
+    run_as_manager "${VENV_PYTHON_RESOLVED}" -I -S -m venv "${check_venv}"
     run_as_manager /usr/bin/env HOME="${STAGING_DIR}/home" \
         "${check_venv}/bin/python" -m pip install \
         --disable-pip-version-check --no-input "${WORKTREE_DIR}[dev]"

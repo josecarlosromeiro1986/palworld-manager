@@ -43,11 +43,16 @@ dependências do runtime, build e validação:
 ```bash
 sudo apt update
 sudo apt install --no-install-recommends acl git nodejs npm python3 python3-venv rclone sqlite3 sudo curl
-python3 --version
+/usr/bin/python3.12 --version
 node --version
 npm --version
 /usr/bin/rclone version
 ```
+
+No Ubuntu 22.04, o `/usr/bin/python3` da distribuição pode continuar em 3.10.
+Instale Python 3.12 ou superior por uma fonte confiável, preserve o interpretador
+do sistema operacional e use explicitamente o executável novo para criar a venv.
+Os exemplos abaixo assumem `/usr/bin/python3.12`.
 
 Instale e conecte o Tailscale pelo procedimento oficial da distribuição antes de
 configurar o Serve. Confirme que os executáveis usados pelo código possuem os
@@ -103,7 +108,7 @@ do runtime:
 
 ```bash
 sudo chown --recursive palmanager:palmanager /opt/palworld-manager
-sudo -u palmanager python3 -m venv /opt/palworld-manager/.venv
+sudo -u palmanager /usr/bin/python3.12 -m venv /opt/palworld-manager/.venv
 sudo -u palmanager /opt/palworld-manager/.venv/bin/python -m pip install --upgrade pip
 sudo -u palmanager npm ci --prefix /opt/palworld-manager
 sudo -u palmanager npm run build --prefix /opt/palworld-manager

@@ -52,6 +52,8 @@ def test_deploy_accepts_only_protected_venv_python_target() -> None:
     assert 'validate_root_protected_mode "${venv}"' in validation
     assert 'validate_root_protected_mode "${venv}/bin"' in validation
     assert 'validate_root_protected_mode "${resolved}"' in validation
+    assert "sys.version_info >= (3, 12)" in validation
+    assert 'VENV_PYTHON_RESOLVED="${resolved}"' in validation
     assert '! -L "${APP_DIR}/.venv/bin/python"' not in script
     assert "/usr/bin/readlink" in script
     assert "/usr/bin/stat" in script
@@ -60,7 +62,9 @@ def test_deploy_accepts_only_protected_venv_python_target() -> None:
 def test_candidate_runs_dependencies_assets_and_gate_as_palmanager() -> None:
     script = _script()
 
-    assert 'run_as_manager /usr/bin/python3 -m venv "${check_venv}"' in script
+    assert 'run_as_manager "${VENV_PYTHON_RESOLVED}" -I -S -m venv "${check_venv}"' in script
+    assert 'run_as_manager /usr/bin/python3 -m venv "${check_venv}"' not in script
+    assert 'VENV_PYTHON_RESOLVED="${resolved}"' in script
     assert "/usr/bin/npm ci --prefix" in script
     assert '/usr/bin/make -C "${WORKTREE_DIR}" check' in script
     assert "APP_ENVIRONMENT=test" in script

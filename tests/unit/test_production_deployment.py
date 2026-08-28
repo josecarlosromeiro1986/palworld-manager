@@ -168,6 +168,14 @@ def test_initial_transient_services_preserve_manager_file_modes() -> None:
     assert "sqlite3 -readonly /var/lib/palworld-manager/manager.db" in content
 
 
+def test_production_install_creates_venv_with_explicit_python_312() -> None:
+    content = _read(PRODUCTION_INSTALL)
+
+    assert "/usr/bin/python3.12 --version" in content
+    assert "sudo -u palmanager /usr/bin/python3.12 -m venv /opt/palworld-manager/.venv" in content
+    assert "sudo -u palmanager python3 -m venv" not in content
+
+
 def test_python_package_includes_runtime_templates_and_built_assets() -> None:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as stream:
         project = tomllib.load(stream)
