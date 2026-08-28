@@ -516,13 +516,23 @@ def _required_list(payload: object, field: str) -> list[object]:
     return value
 
 
+def _required_player_ip(payload: object) -> str:
+    if not isinstance(payload, dict):
+        raise TypeError("a resposta deve ser um objeto")
+    if "ip" in payload:
+        return _required_string(payload, "ip")
+    if "iP" in payload:
+        return _required_string(payload, "iP")
+    raise TypeError("o campo ip deve ser texto")
+
+
 def _parse_player(payload: object) -> PalworldPlayer:
     return PalworldPlayer(
         name=_required_string(payload, "name"),
         account_name=_optional_string(payload, "accountName"),
         player_id=_required_string(payload, "playerId"),
         user_id=_required_string(payload, "userId"),
-        ip=_required_string(payload, "ip"),
+        ip=_required_player_ip(payload),
         ping=_required_number(payload, "ping"),
         location_x=_required_number(payload, "location_x"),
         location_y=_required_number(payload, "location_y"),

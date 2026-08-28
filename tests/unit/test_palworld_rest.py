@@ -274,6 +274,37 @@ def test_official_client_parses_typed_players_from_official_fields() -> None:
     assert transport.timeout_seconds == 5.0
 
 
+def test_official_client_accepts_runtime_player_ip_casing() -> None:
+    payload = json.loads(valid_players_response().body)
+    player = payload["players"][0]
+    player["iP"] = player.pop("ip")
+    client = OfficialPalworldRestClient(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=RecordingTransport(HttpResponse(200, json.dumps(payload).encode())),
+    )
+
+    players = client.players()
+
+    assert players[0].ip == "127.0.0.1"
+
+
+def test_official_client_prefers_documented_player_ip_field() -> None:
+    payload = json.loads(valid_players_response().body)
+    payload["players"][0]["iP"] = "192.0.2.10"
+    client = OfficialPalworldRestClient(
+        "http://127.0.0.1:8212/v1/api",
+        "usuario-ficticio",
+        "senha-ficticia",
+        transport=RecordingTransport(HttpResponse(200, json.dumps(payload).encode())),
+    )
+
+    players = client.players()
+
+    assert players[0].ip == "127.0.0.1"
+
+
 @pytest.mark.parametrize(
     ("error", "expected_kind"),
     [

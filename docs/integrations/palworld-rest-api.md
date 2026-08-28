@@ -20,6 +20,8 @@ O adapter de produção usa HTTP Basic Auth e timeout de 5 segundos. A URL-base 
 
 A lista de jogadores valida os campos oficiais `name`, `accountName`, `playerId`, `userId`, `ip`, `ping`, `location_x`, `location_y`, `level` e `building_count`. Os campos acrescentados em versões mais recentes, `accountName` e `building_count`, são opcionais para preservar compatibilidade com versões oficiais anteriores; tipos incompatíveis invalidam toda a resposta.
 
+Embora o contrato oficial documente `ip`, algumas versões do servidor dedicado serializam esse campo como `iP`. O adapter aceita os dois casings, prefere o campo oficial quando ambos estiverem presentes e preserva a mesma validação de tipo antes de criar o modelo interno.
+
 Falhas são classificadas sem incorporar URL autenticada, headers, corpo remoto ou detalhes da exceção:
 
 - servidor offline por conexão recusada;
