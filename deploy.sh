@@ -18,7 +18,9 @@ readonly LOCK_FILE="/run/lock/palworld-manager-deploy.lock"
 readonly STABLE_COMMAND="/usr/local/sbin/palworld-manager-deploy"
 readonly HOST_CONTROL_COMMAND="/usr/local/sbin/palworld-manager-host-control"
 readonly HOST_CONTROL_UNIT="/etc/systemd/system/palworld-manager-host-control@.service"
-readonly HOST_CONTROL_POLKIT_RULE="/etc/polkit-1/rules.d/50-palworld-manager-host-control.rules"
+readonly POLKIT_CONFIG_DIR="/etc/polkit-1"
+readonly POLKIT_RULES_DIR="${POLKIT_CONFIG_DIR}/rules.d"
+readonly HOST_CONTROL_POLKIT_RULE="${POLKIT_RULES_DIR}/50-palworld-manager-host-control.rules"
 readonly LEGACY_SUDOERS="/etc/sudoers.d/palworld-manager"
 
 MODE="deploy"
@@ -421,6 +423,18 @@ activate_candidate() {
     normalize_application_permissions
 }
 
+install_polkit_rules_directory() {
+    local directory
+    for directory in "${POLKIT_CONFIG_DIR}" "${POLKIT_RULES_DIR}"; do
+        if [[ -e "${directory}" || -L "${directory}" ]]; then
+            [[ -d "${directory}" && ! -L "${directory}" ]] \
+                || die "diretório de configuração Polkit inválido: ${directory}"
+        fi
+    done
+    /usr/bin/install -d -o root -g root -m 0755 "${POLKIT_CONFIG_DIR}"
+    /usr/bin/install -d -o root -g root -m 0755 "${POLKIT_RULES_DIR}"
+}
+
 install_operational_files() {
     /usr/bin/install -o root -g "${SERVICE_GROUP}" -m 0640 \
         "${APP_DIR}/ops/environment/manager.env" "${MANAGER_ENV}"
@@ -430,6 +444,7 @@ install_operational_files() {
         && ! -L "${APP_DIR}/ops/systemd/palworld-manager-host-control@.service" \
         && -f "${APP_DIR}/ops/polkit/50-palworld-manager-host-control.rules" \
         && ! -L "${APP_DIR}/ops/polkit/50-palworld-manager-host-control.rules" ]]; then
+        install_polkit_rules_directory
         /usr/bin/install -o root -g root -m 0750 \
             "${APP_DIR}/ops/scripts/palworld-manager-host-control" \
             "${HOST_CONTROL_COMMAND}"

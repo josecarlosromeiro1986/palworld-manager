@@ -323,6 +323,10 @@ cd /opt/palworld-manager
 bash -n ops/scripts/palworld-manager-host-control
 node --check < ops/polkit/50-palworld-manager-host-control.rules
 sudo systemd-analyze verify ops/systemd/palworld-manager.service ops/systemd/palworld-manager-worker.service ops/systemd/palworld-manager-host-control@.service
+sudo test ! -L /etc/polkit-1
+sudo install -d -o root -g root -m 0755 /etc/polkit-1
+sudo test ! -L /etc/polkit-1/rules.d
+sudo install -d -o root -g root -m 0755 /etc/polkit-1/rules.d
 sudo install -o root -g root -m 0750 ops/scripts/palworld-manager-host-control /usr/local/sbin/palworld-manager-host-control
 sudo install -o root -g root -m 0644 ops/polkit/50-palworld-manager-host-control.rules /etc/polkit-1/rules.d/50-palworld-manager-host-control.rules
 sudo install -o root -g root -m 0644 ops/systemd/palworld-manager.service /etc/systemd/system/palworld-manager.service

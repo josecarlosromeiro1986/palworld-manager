@@ -74,6 +74,9 @@ def test_candidate_runs_dependencies_assets_and_gate_as_palmanager() -> None:
 
 def test_deploy_migrates_host_control_and_keeps_legacy_rollback_compatible() -> None:
     script = _script()
+    installation = script.split("install_operational_files() {", maxsplit=1)[1].split(
+        "run_transient() {", maxsplit=1
+    )[0]
 
     assert "/usr/bin/node --check" in script
     assert "/bin/bash -n" in script
@@ -84,6 +87,13 @@ def test_deploy_migrates_host_control_and_keeps_legacy_rollback_compatible() -> 
     assert '/bin/rm -f -- "${LEGACY_SUDOERS}"' in script
     assert '"${HOST_CONTROL_COMMAND}"' in script
     assert '"${HOST_CONTROL_POLKIT_RULE}"' in script
+    assert 'readonly POLKIT_CONFIG_DIR="/etc/polkit-1"' in script
+    assert 'readonly POLKIT_RULES_DIR="${POLKIT_CONFIG_DIR}/rules.d"' in script
+    assert '[[ -d "${directory}" && ! -L "${directory}" ]]' in script
+    assert installation.index("install_polkit_rules_directory") < installation.index(
+        '"${HOST_CONTROL_POLKIT_RULE}"'
+    )
+    assert '/usr/bin/install -d -o root -g root -m 0755 "${POLKIT_RULES_DIR}"' in script
 
 
 def test_rollback_is_explicit_recorded_and_migration_compatible() -> None:
