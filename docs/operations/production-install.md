@@ -322,7 +322,7 @@ estrutura sem executar lifecycle, sinal ou energia do host:
 cd /opt/palworld-manager
 bash -n ops/scripts/palworld-manager-host-control
 node --check < ops/polkit/50-palworld-manager-host-control.rules
-sudo systemd-analyze verify ops/systemd/palworld-manager.service ops/systemd/palworld-manager-worker.service ops/systemd/palworld-manager-host-control@.service
+sudo systemd-analyze verify ops/systemd/palworld-manager.service ops/systemd/palworld-manager-worker.service
 sudo test ! -L /etc/polkit-1
 sudo install -d -o root -g root -m 0755 /etc/polkit-1
 sudo test ! -L /etc/polkit-1/rules.d
@@ -346,6 +346,11 @@ diretórios graváveis explícitos e journald. O template privilegiado não é
 habilitado: ele cria somente processos `oneshot` root sob demanda. Polkit
 autoriza `palmanager` a iniciar exatamente as sete instâncias enumeradas, e o
 helper traduz cada instância para um único comando fixo.
+
+A primeira verificação omite deliberadamente o template privilegiado porque o
+`systemd-analyze` exige que o alvo absoluto de `ExecStart` já exista. Depois que
+o helper protegido é instalado, a segunda verificação inclui as três units e
+ocorre antes de iniciar web ou worker.
 
 ## 9. Tailscale Serve
 

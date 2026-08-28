@@ -292,8 +292,7 @@ validate_candidate_artifacts() {
         /usr/bin/node --check <"${modern_artifacts[2]}"
         /usr/bin/systemd-analyze verify \
             "${WORKTREE_DIR}/ops/systemd/palworld-manager.service" \
-            "${WORKTREE_DIR}/ops/systemd/palworld-manager-worker.service" \
-            "${modern_artifacts[1]}"
+            "${WORKTREE_DIR}/ops/systemd/palworld-manager-worker.service"
     elif (( modern_count == 0 )); then
         require_regular_file "${WORKTREE_DIR}/ops/sudoers/palworld-manager"
         /usr/sbin/visudo --check --file \
@@ -480,6 +479,8 @@ install_operational_files() {
         /etc/systemd/system/palworld-manager.service \
         /etc/systemd/system/palworld-manager-worker.service
     if [[ -f "${HOST_CONTROL_UNIT}" ]]; then
+        # systemd-analyze requires the absolute ExecStart target to exist. The
+        # helper is installed above before validating this privileged unit.
         /usr/bin/systemd-analyze verify "${HOST_CONTROL_UNIT}"
     fi
     if [[ -f "${APP_DIR}/deploy.sh" && ! -L "${APP_DIR}/deploy.sh" ]]; then

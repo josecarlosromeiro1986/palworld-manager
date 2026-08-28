@@ -74,6 +74,9 @@ def test_candidate_runs_dependencies_assets_and_gate_as_palmanager() -> None:
 
 def test_deploy_migrates_host_control_and_keeps_legacy_rollback_compatible() -> None:
     script = _script()
+    candidate_validation = script.split("validate_candidate_artifacts() {", maxsplit=1)[1].split(
+        "check_candidate() {", maxsplit=1
+    )[0]
     installation = script.split("install_operational_files() {", maxsplit=1)[1].split(
         "run_transient() {", maxsplit=1
     )[0]
@@ -94,6 +97,10 @@ def test_deploy_migrates_host_control_and_keeps_legacy_rollback_compatible() -> 
         '"${HOST_CONTROL_POLKIT_RULE}"'
     )
     assert '/usr/bin/install -d -o root -g root -m 0755 "${POLKIT_RULES_DIR}"' in script
+    assert '"${modern_artifacts[1]}"' not in candidate_validation
+    assert installation.index('"${HOST_CONTROL_COMMAND}"') < installation.index(
+        '/usr/bin/systemd-analyze verify "${HOST_CONTROL_UNIT}"'
+    )
 
 
 def test_rollback_is_explicit_recorded_and_migration_compatible() -> None:
