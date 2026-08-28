@@ -6,7 +6,11 @@ import pytest
 from pydantic import SecretStr
 
 from app.config import AppEnvironment, Settings
-from app.system.host_control import SYSTEMCTL_PATH
+from app.system.host_control import (
+    SYSTEMCTL_PATH,
+    HostControlRequestError,
+    PrivilegedHostAction,
+)
 from app.system.palworld_service import (
     FakePalworldService,
     PalworldServiceControlError,
@@ -40,6 +44,17 @@ class RecordingRunner:
             raise self.error
         assert self.result is not None
         return self.result
+
+
+class RecordingHostControlRequester:
+    def __init__(self, error: HostControlRequestError | None = None) -> None:
+        self.error = error
+        self.actions: list[PrivilegedHostAction] = []
+
+    def __call__(self, action: PrivilegedHostAction) -> None:
+        self.actions.append(action)
+        if self.error is not None:
+            raise self.error
 
 
 def completed_process(
@@ -170,25 +185,24 @@ def test_systemd_adapter_runs_only_supported_lifecycle_commands(
     action: str,
     helper_action: str,
 ) -> None:
-    runner = RecordingRunner(completed_process(stdout=""))
-    service = SystemdPalworldService("palworld.service", runner=runner)
+    requester = RecordingHostControlRequester()
+    service = SystemdPalworldService(
+        "palworld.service",
+        host_control_requester=requester,
+    )
 
     getattr(service, action)()
 
-    assert runner.command == (
-        "/usr/bin/systemctl",
-        "--no-ask-password",
-        "start",
-        f"palworld-manager-host-control@{helper_action}.service",
-    )
-    assert runner.timeout_seconds == 15.0
+    assert requester.actions == [PrivilegedHostAction(helper_action)]
 
 
 def test_systemd_control_failure_does_not_expose_stderr() -> None:
     private_detail = "detalhe-privado-do-host"
     service = SystemdPalworldService(
         "palworld.service",
-        runner=RecordingRunner(completed_process(stdout="", returncode=1, stderr=private_detail)),
+        host_control_requester=RecordingHostControlRequester(
+            HostControlRequestError(private_detail)
+        ),
     )
 
     with pytest.raises(PalworldServiceControlError) as error:
@@ -208,17 +222,15 @@ def test_systemd_adapter_signals_only_the_main_process_of_configured_unit(
     signal: PalworldSignal,
     helper_action: str,
 ) -> None:
-    runner = RecordingRunner(completed_process(stdout=""))
-    service = SystemdPalworldService("palworld.service", runner=runner)
+    requester = RecordingHostControlRequester()
+    service = SystemdPalworldService(
+        "palworld.service",
+        host_control_requester=requester,
+    )
 
     service.send_signal(signal)
 
-    assert runner.command == (
-        "/usr/bin/systemctl",
-        "--no-ask-password",
-        "start",
-        f"palworld-manager-host-control@{helper_action}.service",
-    )
+    assert requester.actions == [PrivilegedHostAction(helper_action)]
 
 
 @pytest.mark.parametrize("environment", [AppEnvironment.DEVELOPMENT, AppEnvironment.TEST])

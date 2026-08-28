@@ -1,6 +1,6 @@
 # Energia do host Ubuntu
 
-> Status: Implementado na Etapa 27; fronteira mínima systemd/Polkit entregue na Etapa 29.
+> Status: Implementado na Etapa 27; fronteira mínima systemd entregue na Etapa 29 e revisada para gatilhos `systemd.path`.
 
 O Dashboard autenticado oferece **Reiniciar Ubuntu** e **Desligar Ubuntu**. As
 duas ações exigem sessão válida, CSRF, o modal compartilhado e a frase exata
@@ -25,22 +25,21 @@ executado. O job não é cancelável. Uma execução interrompida fica
 ## Privilégio mínimo
 
 Em production, o adapter aceita apenas a enum fechada `REBOOT`/`SHUTDOWN` e
-produz exatamente um dos comandos:
+cria exatamente um dos pedidos vazios e exclusivos:
 
 ```text
-/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@host-reboot.service
-/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@host-poweroff.service
+/run/palworld-manager/host-control/host-reboot.request
+/run/palworld-manager/host-control/host-poweroff.request
 ```
 
-Os argumentos não recebem texto da requisição, `shell=False` é obrigatório e
-stdout/stderr não são copiados para UI, logs ou auditoria. Development e test
-usam um fake em memória e nunca controlam o host real.
+O nome não recebe texto da requisição e nenhum subprocesso é iniciado pelo
+adapter. Development e test usam um fake em memória e nunca controlam o host
+real.
 
-O template `oneshot` chama o helper root com uma instância exata; os dois
-branches de energia traduzem para `systemctl --no-block reboot` e `poweroff`.
-A regra Polkit também enumera os cinco helpers fechados do Palworld e retorna
-`NOT_HANDLED` para qualquer outro usuário, verbo ou unit. Não existe
-autorização para SteamCMD, rclone ou serviço arbitrário.
+O template `systemd.path` observa somente cada nome exato e aciona o `oneshot`
+correspondente; os dois branches de energia traduzem para `systemctl --no-block reboot`
+e `poweroff`. Não existe grant Polkit ou autorização para SteamCMD,
+rclone ou serviço arbitrário.
 
 Consulte [Segurança](../architecture/security.md),
 [Jobs e locks](../architecture/jobs-and-locks.md) e

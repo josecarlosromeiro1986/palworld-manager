@@ -5,29 +5,38 @@ umask 077
 
 [[ $# -eq 1 ]] || exit 64
 
+request_file="/run/palworld-manager/host-control/$1.request"
+
 case "$1" in
     palworld-start)
-        exec /usr/bin/systemctl --no-block start palworld.service
+        command=(/usr/bin/systemctl --no-block start palworld.service)
         ;;
     palworld-stop)
-        exec /usr/bin/systemctl --no-block stop palworld.service
+        command=(/usr/bin/systemctl --no-block stop palworld.service)
         ;;
     palworld-restart)
-        exec /usr/bin/systemctl --no-block restart palworld.service
+        command=(/usr/bin/systemctl --no-block restart palworld.service)
         ;;
     palworld-sigterm)
-        exec /usr/bin/systemctl kill --kill-whom=main --signal=SIGTERM palworld.service
+        command=(/usr/bin/systemctl kill --kill-whom=main --signal=SIGTERM palworld.service)
         ;;
     palworld-sigkill)
-        exec /usr/bin/systemctl kill --kill-whom=main --signal=SIGKILL palworld.service
+        command=(/usr/bin/systemctl kill --kill-whom=main --signal=SIGKILL palworld.service)
         ;;
     host-reboot)
-        exec /usr/bin/systemctl --no-block reboot
+        command=(/usr/bin/systemctl --no-block reboot)
         ;;
     host-poweroff)
-        exec /usr/bin/systemctl --no-block poweroff
+        command=(/usr/bin/systemctl --no-block poweroff)
         ;;
     *)
         exit 64
         ;;
 esac
+
+[[ -f "$request_file" && ! -L "$request_file" ]] || exit 66
+[[ "$(/usr/bin/stat --format='%U:%G:%a:%s' -- "$request_file")" == \
+    "palmanager:palmanager:600:0" ]] || exit 66
+/bin/rm -- "$request_file"
+
+exec "${command[@]}"

@@ -13,7 +13,8 @@ Start e Restart:
 ```text
 confirmar
 → job PENDING
-→ worker executa systemctl --no-block
+→ worker cria pedido enumerado em /run
+→ systemd.path aciona o oneshot root
 → aguardar health ONLINE
 → SUCCEEDED ou timeout/falha
 ```
@@ -26,7 +27,8 @@ consultar jogadores via GET /players
 → contagem persistente e cancelável
 → aviso final, quando houver jogadores
 → job PENDING
-→ worker executa systemctl --no-block
+→ worker cria pedido enumerado em /run
+→ systemd.path aciona o oneshot root
 → aguardar health OFFLINE
 → confirmar porta REST fechada
 → SUCCEEDED ou timeout/falha
@@ -54,21 +56,21 @@ Os valores são mantidos em `app_settings` e editados em **Configurações do Pa
 
 Uma chave de coordenação com índice único parcial impede dois jobs de ciclo de vida simultaneamente em `PENDING` ou `RUNNING`, inclusive sob requisições concorrentes. A aquisição usa uma única atualização condicional e adquire o maintenance lock global na mesma transação. O worker mantém heartbeat a cada 10 segundos; se for interrompido, jobs em `RUNNING` passam para `INTERRUPTED`, liberam o lock e nunca são retomados automaticamente. O Dashboard mostra etapa, progresso e trecho do log textual de cada execução.
 
-Em production, somente estes comandos são construídos pelo adapter, sempre com
-argumentos separados e sem shell:
+Em production, o adapter pode criar somente estes pedidos vazios e exclusivos:
 
 ```text
-/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-start.service
-/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-stop.service
-/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-restart.service
-/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-sigterm.service
-/usr/bin/systemctl --no-ask-password start palworld-manager-host-control@palworld-sigkill.service
+/run/palworld-manager/host-control/palworld-start.request
+/run/palworld-manager/host-control/palworld-stop.request
+/run/palworld-manager/host-control/palworld-restart.request
+/run/palworld-manager/host-control/palworld-sigterm.request
+/run/palworld-manager/host-control/palworld-sigkill.request
 ```
 
-Cada unit `oneshot` executa como root um único branch fixo do helper para
+Cada instância `systemd.path` aceita somente um desses nomes e aciona uma unit
+`oneshot` que executa como root um único branch fixo do helper para
 `palworld.service`. Em production, `PALWORLD_SERVICE` deve manter esse valor;
-uma unidade alternativa exige alterar simultaneamente adapter, helper, Polkit,
-unit e configuração estrutural. A regra Polkit não autoriza serviço, verbo,
-usuário ou argumento genérico.
+uma unidade alternativa exige alterar simultaneamente adapter, helper, templates
+systemd e configuração estrutural. Não há grant Polkit, sudo, serviço ou
+argumento genérico.
 
 Development e test usam um fake compartilhado via SQLite entre web e worker. Assim, um job concluído atualiza também o health exibido pelo Dashboard, sem executar systemd ou abrir conexão com o Palworld real.

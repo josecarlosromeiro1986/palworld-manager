@@ -1,10 +1,8 @@
-import subprocess
-from collections.abc import Sequence
 from typing import cast
 
 import pytest
 
-from app.system.host_control import SYSTEMCTL_PATH
+from app.system.host_control import HostControlRequestError, PrivilegedHostAction
 from app.system.host_power import (
     HostPowerAction,
     HostPowerControlError,
@@ -12,76 +10,45 @@ from app.system.host_power import (
 )
 
 
-def test_systemd_host_power_uses_only_fixed_non_blocking_commands() -> None:
-    calls: list[tuple[str, ...]] = []
+class RecordingRequester:
+    def __init__(self) -> None:
+        self.actions: list[PrivilegedHostAction] = []
 
-    def runner(
-        command: Sequence[str],
-        *,
-        timeout_seconds: float,
-    ) -> subprocess.CompletedProcess[str]:
-        assert timeout_seconds == 15.0
-        normalized = tuple(command)
-        calls.append(normalized)
-        return subprocess.CompletedProcess(normalized, 0, stdout="", stderr="")
+    def __call__(self, action: PrivilegedHostAction) -> None:
+        self.actions.append(action)
 
-    controller = SystemdHostPowerController(runner=runner)
+
+def test_systemd_host_power_requests_only_fixed_actions() -> None:
+    requester = RecordingRequester()
+
+    controller = SystemdHostPowerController(host_control_requester=requester)
     controller.request(HostPowerAction.REBOOT)
     controller.request(HostPowerAction.SHUTDOWN)
 
-    assert calls == [
-        (
-            SYSTEMCTL_PATH,
-            "--no-ask-password",
-            "start",
-            "palworld-manager-host-control@host-reboot.service",
-        ),
-        (
-            SYSTEMCTL_PATH,
-            "--no-ask-password",
-            "start",
-            "palworld-manager-host-control@host-poweroff.service",
-        ),
+    assert requester.actions == [
+        PrivilegedHostAction.HOST_REBOOT,
+        PrivilegedHostAction.HOST_POWEROFF,
     ]
 
 
 def test_systemd_host_power_rejects_arbitrary_action_without_running_command() -> None:
-    calls: list[tuple[str, ...]] = []
-
-    def runner(
-        command: Sequence[str],
-        *,
-        timeout_seconds: float,
-    ) -> subprocess.CompletedProcess[str]:
-        del timeout_seconds
-        calls.append(tuple(command))
-        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
-
-    controller = SystemdHostPowerController(runner=runner)
+    requester = RecordingRequester()
+    controller = SystemdHostPowerController(host_control_requester=requester)
 
     with pytest.raises(ValueError):
         controller.request(cast(HostPowerAction, "reboot; touch /tmp/nao-executar"))
 
-    assert calls == []
+    assert requester.actions == []
 
 
 def test_systemd_host_power_never_copies_command_output_to_error() -> None:
     external_detail = "external-sensitive-detail"
 
-    def runner(
-        command: Sequence[str],
-        *,
-        timeout_seconds: float,
-    ) -> subprocess.CompletedProcess[str]:
-        del timeout_seconds
-        return subprocess.CompletedProcess(
-            command,
-            1,
-            stdout=external_detail,
-            stderr=external_detail,
-        )
+    def requester(action: PrivilegedHostAction) -> None:
+        del action
+        raise HostControlRequestError(external_detail)
 
-    controller = SystemdHostPowerController(runner=runner)
+    controller = SystemdHostPowerController(host_control_requester=requester)
 
     with pytest.raises(HostPowerControlError) as captured:
         controller.request(HostPowerAction.REBOOT)

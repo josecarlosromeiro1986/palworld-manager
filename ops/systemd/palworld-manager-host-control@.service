@@ -1,5 +1,6 @@
 [Unit]
 Description=Palworld Manager privileged host control (%i)
+ConditionPathExists=/run/palworld-manager/host-control/%i.request
 
 [Service]
 Type=oneshot
@@ -23,6 +24,7 @@ ProtectKernelLogs=true
 ProtectKernelModules=true
 ProtectKernelTunables=true
 ProtectSystem=strict
+ReadWritePaths=/run/palworld-manager/host-control
 RestrictAddressFamilies=AF_UNIX
 RestrictNamespaces=true
 RestrictRealtime=true

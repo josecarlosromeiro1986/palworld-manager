@@ -243,7 +243,7 @@ palworld-manager.service
 palworld-manager-worker.service
 ```
 
-Ambos são executados como `palmanager`, usam a configuração estrutural apropriada e acessam o mesmo SQLite quando necessário. Nunca executar a aplicação web ou o worker como root. Operações privilegiadas do host usam units `oneshot` root sem processo persistente, um helper de ações fechadas e uma regra Polkit limitada ao usuário `palmanager`, ao verbo `start` e às instâncias exatas autorizadas. O sandbox do worker deve manter `NoNewPrivileges=true`; não usar `sudo`, `sudo ALL`, serviço arbitrário ou argumento livre nessa fronteira.
+Ambos são executados como `palmanager`, usam a configuração estrutural apropriada e acessam o mesmo SQLite quando necessário. Nunca executar a aplicação web ou o worker como root. Operações privilegiadas do host usam sete arquivos de requisição de nome fixo sob `/run/palworld-manager/host-control`, sete instâncias `systemd.path`, units `oneshot` root sem processo persistente e um helper de ações fechadas. O diretório é `root:palmanager 0770`, cada pedido é vazio, exclusivo e `palmanager:palmanager 0600`, e somente o worker recebe escrita nele pelo sandbox. O sandbox do worker deve manter `NoNewPrivileges=true`; não usar Polkit, `sudo`, `sudo ALL`, serviço arbitrário ou argumento livre nessa fronteira.
 
 Quando `PALWORLD_DIR` estiver abaixo de um diretório ancestral restrito, a instalação deve conceder ao grupo `palworld-manager` somente a travessia necessária nesse ancestral por ACL POSIX (`--x`). Não adicionar `palmanager` ao grupo proprietário da conta Steam nem liberar travessia para todos os usuários locais. A ACL não deve ser recursiva nem conceder leitura ou escrita fora de `PALWORLD_DIR`.
 
@@ -409,7 +409,7 @@ de uma alteração válida com Argon2id e a política mínima vigente, todas as
 sessões são revogadas, os cookies de autenticação são removidos, a ação é
 auditada sem valores sensíveis e o administrador retorna à tela de login.
 
-Não permitir alterar pela UI regras Polkit, helpers privilegiados, serviços arbitrários, executáveis arbitrários, infraestrutura Tailscale ou caminhos críticos livres.
+Não permitir alterar pela UI gatilhos `systemd.path`, helpers privilegiados, serviços arbitrários, executáveis arbitrários, infraestrutura Tailscale ou caminhos críticos livres.
 
 ## 22. Jobs em background
 
@@ -604,7 +604,7 @@ erro remoto e resposta bruta nunca entram em logs, SQLite, auditoria ou UI.
 
 ## 31. Reiniciar/desligar Ubuntu
 
-Permitir com confirmação forte. Antes, tratar Palworld de forma segura, avisar que painel ficará indisponível e auditar. O worker solicita somente as units `oneshot` fechadas de reboot ou poweroff; Polkit não autoriza outra unit, verbo ou usuário.
+Permitir com confirmação forte. Antes, tratar Palworld de forma segura, avisar que painel ficará indisponível e auditar. O worker cria somente o arquivo vazio e exclusivo correspondente a reboot ou poweroff; as instâncias `systemd.path` e o helper root não aceitam outra ação, unit ou argumento.
 
 ## 32. Diagnóstico
 

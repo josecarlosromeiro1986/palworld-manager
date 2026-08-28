@@ -4,8 +4,9 @@
 
 A aplicação segue o princípio do menor privilégio. Em produção, web e worker são
 executados pelo usuário Linux dedicado `palmanager`, nunca como `root`. A
-fronteira privilegiada usa units `oneshot` root sem daemon persistente, helper
-de ações fechadas e Polkit limitado ao usuário, verbo e sete instâncias exatas.
+fronteira privilegiada usa sete gatilhos `systemd.path`, units `oneshot` root
+sem daemon persistente e um helper de ações fechadas. Não há grant Polkit nem
+sudo para a aplicação.
 
 ## Acesso e autenticação
 
@@ -41,9 +42,9 @@ A configuração estrutural é validada com Pydantic Settings no startup de web 
 - Todas as chamadas de processo usam argumentos separados, `shell=False` e um ambiente allowlisted. Credenciais REST, webhook e demais variáveis da aplicação nunca são herdadas por systemctl, journalctl, SteamCMD ou rclone; este último recebe somente o `RCLONE_CONFIG` estrutural além do ambiente mínimo.
 - Aceitar somente comandos, serviços e caminhos previamente permitidos.
 - A consulta implementada do Palworld usa o executável fixo `/usr/bin/systemctl`, aceita somente `palworld.service` em production e aplica timeout. Development e test usam um fake e nunca chamam o systemd do host.
-- Start, Stop e Restart são executados somente pelo worker, que solicita via D-Bus uma das instâncias exatas `palworld-manager-host-control@palworld-{start,stop,restart}.service`. O adapter usa enum fechada, `--no-ask-password`, argumentos separados e `shell=False`.
-- SIGTERM e SIGKILL solicitam as instâncias fechadas `palworld-sigterm` e `palworld-sigkill`; o helper root traduz cada uma para `systemctl kill --kill-whom=main` com sinal e unidade fixos. SIGTERM exige `FORCAR` após falha real do Stop; SIGKILL exige falha do SIGTERM e a confirmação `SIGKILL`. Não existe escalada automática.
-- Reboot e shutdown do Ubuntu são solicitados somente pelo worker, após Stop seguro do Palworld, por meio das instâncias fechadas `host-reboot` e `host-poweroff`. A enum não aceita ação ou argumento da requisição, `shell=False` permanece obrigatório e development/test usam fake.
+- Start, Stop e Restart são executados somente pelo worker, que cria de forma exclusiva um arquivo vazio `palworld-{start,stop,restart}.request` no diretório protegido de runtime. O adapter usa enum fechada, abre o diretório sem seguir symlink, valida owner/grupo/modo e nunca chama o systemd diretamente.
+- SIGTERM e SIGKILL criam os pedidos fechados `palworld-sigterm.request` e `palworld-sigkill.request`; o helper root traduz cada um para `systemctl kill --kill-whom=main` com sinal e unidade fixos. SIGTERM exige `FORCAR` após falha real do Stop; SIGKILL exige falha do SIGTERM e a confirmação `SIGKILL`. Não existe escalada automática.
+- Reboot e shutdown do Ubuntu são solicitados somente pelo worker, após Stop seguro do Palworld, pelos pedidos fechados `host-reboot.request` e `host-poweroff.request`. A enum não aceita ação ou argumento da requisição e development/test usam fake.
 - A verificação do processo consulta somente o `MainPID` da mesma unidade validada. O cliente REST usa URL estrutural validada, timeout, limites de resposta e Basic Auth; credenciais não são incluídas na URL, interface, auditoria ou mensagens de erro. Autenticação rejeitada, timeout, servidor offline, API indisponível, resposta inválida e falha inesperada recebem classificações seguras.
 - A leitura de logs usa `/usr/bin/journalctl` sem `sudo`, somente para a unidade validada, com limites fechados, campos mínimos, argumentos separados e `shell=False`. Cursores de reconexão são validados, stderr não é exibido e valores sensíveis conhecidos são mascarados antes do SSE.
 - O editor do INI usa somente o caminho estrutural `PALWORLD_SETTINGS`, rejeita arquivos não regulares e qualquer componente symlink, limita a leitura a 1 MiB e detecta alterações concorrentes por SHA-256. A cópia pré-save é criada com modo `0600`; a gravação usa arquivo temporário no mesmo diretório e substituição atômica. Senhas presentes no INI são preservadas, mas nunca exibidas ou incluídas na auditoria.
@@ -74,9 +75,10 @@ Os artefatos em `ops/` materializam o menor privilégio da instalação:
 - web e worker usam `NoNewPrivileges=true` e `RestrictSUIDSGID=true`; a web
   só grava dados do Manager e o diretório dos INIs, enquanto o worker grava
   dados do Manager e `PALWORLD_DIR`;
-- o worker não eleva o próprio processo: Polkit permite apenas iniciar sete
-  instâncias `oneshot` exatas, e o helper root não aceita serviço ou argumento
-  livre;
+- o worker não eleva o próprio processo: seu sandbox permite escrita apenas no
+  diretório `root:palmanager 0770` de pedidos, onde cria arquivos vazios,
+  exclusivos e `0600`; sete instâncias `systemd.path` exatas acionam os
+  `oneshot`, e o helper root não aceita serviço ou argumento livre;
 - o grupo compartilhado `palworld-manager` e o drop-in de
   `palworld.service` preservam modos `0770/0660` sem root; quando uma home
   ancestral restrita bloqueia `PALWORLD_DIR`, uma ACL POSIX não recursiva
@@ -90,11 +92,11 @@ Os artefatos em `ops/` materializam o menor privilégio da instalação:
   `palmanager:palmanager 0600`;
 - a web permanece em loopback e somente Tailscale Serve publica HTTPS privado.
 
-A regra Polkit aceita somente `org.freedesktop.systemd1.manage-units`, usuário
-`palmanager`, verbo `start` e as sete units enumeradas. Qualquer outra
-combinação retorna `NOT_HANDLED`. O helper contém sete branches fixos; não
-existe sudo, curinga, SteamCMD ou rclone privilegiado. Consulte o [runbook de
-produção](../operations/production-install.md).
+O diretório de pedidos e os sete paths são a única passagem do worker para o
+helper. O helper remove o pedido validado antes de executar um dos sete branches
+fixos; não existe Polkit, sudo, curinga, SteamCMD ou rclone privilegiado.
+Consulte o [ADR-0001](../decisions/0001-systemd-path-host-control.md) e o
+[runbook de produção](../operations/production-install.md).
 
 ## Deploy recorrente
 

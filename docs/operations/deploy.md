@@ -48,10 +48,11 @@ O script:
 5. cria um worktree temporário dentro da área administrada;
 6. instala dependências, compila assets e executa `make check` como
    `palmanager`, com `APP_ENVIRONMENT=test`;
-7. valida a sintaxe do helper e da regra Polkit e verifica previamente as units
-   web/worker; a unit privilegiada é verificada depois que seu helper de path
-   absoluto é instalado e antes de qualquer serviço ser reiniciado; em rollback
-   para um commit legado, valida o sudoers daquele commit;
+7. valida a sintaxe do helper, exige o template `systemd.path` e verifica
+   previamente as units web/worker; os templates privilegiados são verificados
+   depois que o helper de path absoluto é instalado, e as sete instâncias path
+   são habilitadas antes de reiniciar o worker; em rollback, ainda reconhece a
+   regra Polkit ou o sudoers de commits legados;
 8. recusa interromper job `RUNNING`, notificação `SENDING` ou maintenance lock;
 9. para web e worker de forma separada;
 10. grava atomicamente o commit anterior com modo `0640`;

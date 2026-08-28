@@ -18,10 +18,20 @@ readonly LOCK_FILE="/run/lock/palworld-manager-deploy.lock"
 readonly STABLE_COMMAND="/usr/local/sbin/palworld-manager-deploy"
 readonly HOST_CONTROL_COMMAND="/usr/local/sbin/palworld-manager-host-control"
 readonly HOST_CONTROL_UNIT="/etc/systemd/system/palworld-manager-host-control@.service"
+readonly HOST_CONTROL_PATH_UNIT="/etc/systemd/system/palworld-manager-host-control@.path"
 readonly POLKIT_CONFIG_DIR="/etc/polkit-1"
 readonly POLKIT_RULES_DIR="${POLKIT_CONFIG_DIR}/rules.d"
 readonly HOST_CONTROL_POLKIT_RULE="${POLKIT_RULES_DIR}/50-palworld-manager-host-control.rules"
 readonly LEGACY_SUDOERS="/etc/sudoers.d/palworld-manager"
+readonly -a HOST_CONTROL_ACTIONS=(
+    palworld-start
+    palworld-stop
+    palworld-restart
+    palworld-sigterm
+    palworld-sigkill
+    host-reboot
+    host-poweroff
+)
 
 MODE="deploy"
 ROLLBACK_COMMIT=""
@@ -115,7 +125,6 @@ require_commands() {
         /usr/bin/mktemp
         /usr/bin/npm
         /usr/bin/node
-        /usr/bin/pkaction
         /usr/bin/readlink
         /usr/bin/sleep
         /usr/bin/sqlite3
@@ -272,36 +281,39 @@ validate_candidate_artifacts() {
     require_regular_file "${WORKTREE_DIR}/ops/systemd/palworld-manager.service"
     require_regular_file "${WORKTREE_DIR}/ops/systemd/palworld-manager-worker.service"
     require_regular_file "${WORKTREE_DIR}/ops/tmpfiles/palworld-manager.conf"
-    local -a modern_artifacts=(
-        "${WORKTREE_DIR}/ops/scripts/palworld-manager-host-control"
-        "${WORKTREE_DIR}/ops/systemd/palworld-manager-host-control@.service"
-        "${WORKTREE_DIR}/ops/polkit/50-palworld-manager-host-control.rules"
-    )
-    local modern_count=0
-    local artifact
-    for artifact in "${modern_artifacts[@]}"; do
-        if [[ -e "${artifact}" || -L "${artifact}" ]]; then
-            ((modern_count += 1))
-        fi
-    done
-    if (( modern_count == ${#modern_artifacts[@]} )); then
-        for artifact in "${modern_artifacts[@]}"; do
-            require_regular_file "${artifact}"
-        done
-        /bin/bash -n "${modern_artifacts[0]}"
-        /usr/bin/node --check <"${modern_artifacts[2]}"
+    local helper="${WORKTREE_DIR}/ops/scripts/palworld-manager-host-control"
+    local service_unit="${WORKTREE_DIR}/ops/systemd/palworld-manager-host-control@.service"
+    local path_unit="${WORKTREE_DIR}/ops/systemd/palworld-manager-host-control@.path"
+    local polkit_rule="${WORKTREE_DIR}/ops/polkit/50-palworld-manager-host-control.rules"
+    if [[ -e "${path_unit}" || -L "${path_unit}" ]]; then
+        require_regular_file "${helper}"
+        require_regular_file "${service_unit}"
+        require_regular_file "${path_unit}"
+        [[ ! -e "${polkit_rule}" && ! -L "${polkit_rule}" ]] \
+            || die "candidato mistura transportes systemd.path e Polkit"
+        /bin/bash -n "${helper}"
         /usr/bin/systemd-analyze verify \
             "${WORKTREE_DIR}/ops/systemd/palworld-manager.service" \
             "${WORKTREE_DIR}/ops/systemd/palworld-manager-worker.service"
-    elif (( modern_count == 0 )); then
+    elif [[ -e "${polkit_rule}" || -L "${polkit_rule}" ]]; then
+        require_regular_file "${helper}"
+        require_regular_file "${service_unit}"
+        require_regular_file "${polkit_rule}"
+        /bin/bash -n "${helper}"
+        /usr/bin/node --check <"${polkit_rule}"
+        /usr/bin/systemd-analyze verify \
+            "${WORKTREE_DIR}/ops/systemd/palworld-manager.service" \
+            "${WORKTREE_DIR}/ops/systemd/palworld-manager-worker.service"
+    elif [[ -e "${helper}" || -L "${helper}" \
+        || -e "${service_unit}" || -L "${service_unit}" ]]; then
+        die "artefatos de controle privilegiado estão incompletos"
+    else
         require_regular_file "${WORKTREE_DIR}/ops/sudoers/palworld-manager"
         /usr/sbin/visudo --check --file \
             "${WORKTREE_DIR}/ops/sudoers/palworld-manager"
         /usr/bin/systemd-analyze verify \
             "${WORKTREE_DIR}/ops/systemd/palworld-manager.service" \
             "${WORKTREE_DIR}/ops/systemd/palworld-manager-worker.service"
-    else
-        die "artefatos de controle privilegiado estão incompletos"
     fi
 }
 
@@ -434,10 +446,52 @@ install_polkit_rules_directory() {
     /usr/bin/install -d -o root -g root -m 0755 "${POLKIT_RULES_DIR}"
 }
 
+disable_host_control_paths() {
+    if [[ -e "${HOST_CONTROL_PATH_UNIT}" || -L "${HOST_CONTROL_PATH_UNIT}" ]]; then
+        [[ -f "${HOST_CONTROL_PATH_UNIT}" && ! -L "${HOST_CONTROL_PATH_UNIT}" ]] \
+            || die "template systemd.path instalado é inválido"
+    else
+        return 0
+    fi
+    local action
+    for action in "${HOST_CONTROL_ACTIONS[@]}"; do
+        local unit="palworld-manager-host-control@${action}.path"
+        if /usr/bin/systemctl is-enabled --quiet "${unit}" \
+            || /usr/bin/systemctl is-active --quiet "${unit}"; then
+            /usr/bin/systemctl disable --now "${unit}"
+        fi
+    done
+}
+
+enable_host_control_paths() {
+    local action
+    for action in "${HOST_CONTROL_ACTIONS[@]}"; do
+        /usr/bin/systemctl enable --now \
+            "palworld-manager-host-control@${action}.path"
+    done
+}
+
 install_operational_files() {
     /usr/bin/install -o root -g "${SERVICE_GROUP}" -m 0640 \
         "${APP_DIR}/ops/environment/manager.env" "${MANAGER_ENV}"
+    disable_host_control_paths
     if [[ -f "${APP_DIR}/ops/scripts/palworld-manager-host-control" \
+        && ! -L "${APP_DIR}/ops/scripts/palworld-manager-host-control" \
+        && -f "${APP_DIR}/ops/systemd/palworld-manager-host-control@.service" \
+        && ! -L "${APP_DIR}/ops/systemd/palworld-manager-host-control@.service" \
+        && -f "${APP_DIR}/ops/systemd/palworld-manager-host-control@.path" \
+        && ! -L "${APP_DIR}/ops/systemd/palworld-manager-host-control@.path" ]]; then
+        /usr/bin/install -o root -g root -m 0750 \
+            "${APP_DIR}/ops/scripts/palworld-manager-host-control" \
+            "${HOST_CONTROL_COMMAND}"
+        /usr/bin/install -o root -g root -m 0644 \
+            "${APP_DIR}/ops/systemd/palworld-manager-host-control@.service" \
+            "${HOST_CONTROL_UNIT}"
+        /usr/bin/install -o root -g root -m 0644 \
+            "${APP_DIR}/ops/systemd/palworld-manager-host-control@.path" \
+            "${HOST_CONTROL_PATH_UNIT}"
+        /bin/rm -f -- "${HOST_CONTROL_POLKIT_RULE}" "${LEGACY_SUDOERS}"
+    elif [[ -f "${APP_DIR}/ops/scripts/palworld-manager-host-control" \
         && ! -L "${APP_DIR}/ops/scripts/palworld-manager-host-control" \
         && -f "${APP_DIR}/ops/systemd/palworld-manager-host-control@.service" \
         && ! -L "${APP_DIR}/ops/systemd/palworld-manager-host-control@.service" \
@@ -453,6 +507,7 @@ install_operational_files() {
         /usr/bin/install -o root -g root -m 0644 \
             "${APP_DIR}/ops/polkit/50-palworld-manager-host-control.rules" \
             "${HOST_CONTROL_POLKIT_RULE}"
+        /bin/rm -f -- "${HOST_CONTROL_PATH_UNIT}"
         /bin/rm -f -- "${LEGACY_SUDOERS}"
     else
         require_regular_file "${APP_DIR}/ops/sudoers/palworld-manager"
@@ -462,6 +517,7 @@ install_operational_files() {
         /bin/rm -f -- \
             "${HOST_CONTROL_COMMAND}" \
             "${HOST_CONTROL_UNIT}" \
+            "${HOST_CONTROL_PATH_UNIT}" \
             "${HOST_CONTROL_POLKIT_RULE}"
     fi
     /usr/bin/install -o root -g root -m 0644 \
@@ -482,6 +538,10 @@ install_operational_files() {
         # systemd-analyze requires the absolute ExecStart target to exist. The
         # helper is installed above before validating this privileged unit.
         /usr/bin/systemd-analyze verify "${HOST_CONTROL_UNIT}"
+    fi
+    if [[ -f "${HOST_CONTROL_PATH_UNIT}" ]]; then
+        /usr/bin/systemd-analyze verify "${HOST_CONTROL_PATH_UNIT}"
+        enable_host_control_paths
     fi
     if [[ -f "${APP_DIR}/deploy.sh" && ! -L "${APP_DIR}/deploy.sh" ]]; then
         /usr/bin/install -o root -g root -m 0750 \

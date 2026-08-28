@@ -10,12 +10,13 @@ from app.system.commands import sanitized_subprocess_environment
 from app.system.host_control import (
     MANAGED_PALWORLD_SERVICE,
     SYSTEMCTL_PATH,
+    HostControlRequester,
+    HostControlRequestError,
     PrivilegedHostAction,
-    host_control_command,
+    request_host_control,
 )
 
 SYSTEMCTL_QUERY_TIMEOUT_SECONDS = 5.0
-SYSTEMCTL_CONTROL_TIMEOUT_SECONDS = 15.0
 SERVICE_NAME_REGEX = re.compile(SERVICE_NAME_PATTERN)
 SYSTEMD_STATE_PATTERN = re.compile(r"^[a-z][a-z-]{0,63}$")
 
@@ -86,8 +87,8 @@ class SystemdPalworldService:
         service_name: str,
         *,
         runner: CommandRunner = _run_command,
+        host_control_requester: HostControlRequester = request_host_control,
         timeout_seconds: float = SYSTEMCTL_QUERY_TIMEOUT_SECONDS,
-        control_timeout_seconds: float = SYSTEMCTL_CONTROL_TIMEOUT_SECONDS,
     ) -> None:
         if SERVICE_NAME_REGEX.fullmatch(service_name) is None:
             raise ValueError("nome de serviço systemd inválido")
@@ -95,12 +96,10 @@ class SystemdPalworldService:
             raise ValueError("serviço systemd não autorizado para controle em produção")
         if timeout_seconds <= 0:
             raise ValueError("o timeout da consulta deve ser positivo")
-        if control_timeout_seconds <= 0:
-            raise ValueError("o timeout de controle deve ser positivo")
         self._service_name = service_name
         self._runner = runner
+        self._host_control_requester = host_control_requester
         self._timeout_seconds = timeout_seconds
-        self._control_timeout_seconds = control_timeout_seconds
 
     def get_status(self) -> PalworldServiceStatus:
         command = (
@@ -148,15 +147,12 @@ class SystemdPalworldService:
             PalworldSignal.TERM: PrivilegedHostAction.PALWORLD_SIGTERM,
             PalworldSignal.KILL: PrivilegedHostAction.PALWORLD_SIGKILL,
         }[signal]
-        command = host_control_command(action)
         try:
-            result = self._runner(command, timeout_seconds=self._control_timeout_seconds)
-        except (OSError, subprocess.TimeoutExpired) as error:
+            self._host_control_requester(action)
+        except HostControlRequestError as error:
             raise PalworldServiceControlError(
                 "Não foi possível sinalizar o serviço Palworld."
             ) from error
-        if result.returncode != 0:
-            raise PalworldServiceControlError("Não foi possível sinalizar o serviço Palworld.")
 
     def _control(self, action: str) -> None:
         privileged_action = {
@@ -166,15 +162,12 @@ class SystemdPalworldService:
         }.get(action)
         if privileged_action is None:
             raise ValueError("ação de serviço inválida")
-        command = host_control_command(privileged_action)
         try:
-            result = self._runner(command, timeout_seconds=self._control_timeout_seconds)
-        except (OSError, subprocess.TimeoutExpired) as error:
+            self._host_control_requester(privileged_action)
+        except HostControlRequestError as error:
             raise PalworldServiceControlError(
                 "Não foi possível controlar o serviço Palworld."
             ) from error
-        if result.returncode != 0:
-            raise PalworldServiceControlError("Não foi possível controlar o serviço Palworld.")
 
 
 class FakePalworldService:

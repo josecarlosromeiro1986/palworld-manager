@@ -41,6 +41,7 @@ ProtectKernelTunables=true
 ProtectSystem=strict
 ReadWritePaths=/var/lib/palworld-manager
 ReadWritePaths=/home/steam/palserver
+ReadWritePaths=/run/palworld-manager/host-control
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictNamespaces=true
 RestrictRealtime=true

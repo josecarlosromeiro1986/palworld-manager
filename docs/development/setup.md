@@ -82,7 +82,7 @@ versionado. O rclone usa
 permitir renovação de tokens.
 
 Consulte o [runbook de produção](../operations/production-install.md) para venv,
-assets, migrations, systemd, Polkit, Tailscale e validação separada da web e do
-worker.
+assets, migrations, gatilhos `systemd.path`, Tailscale e validação separada da
+web e do worker.
 
 Veja também [Docker](docker.md), [testes](testing.md) e o plano incremental em [SPECIFICATION.md](../../SPECIFICATION.md).

@@ -80,26 +80,38 @@ def test_deploy_migrates_host_control_and_keeps_legacy_rollback_compatible() -> 
     installation = script.split("install_operational_files() {", maxsplit=1)[1].split(
         "run_transient() {", maxsplit=1
     )[0]
+    legacy_polkit_installation = installation.split("elif [[", maxsplit=1)[1].split(
+        "else", maxsplit=1
+    )[0]
 
     assert "/usr/bin/node --check" in script
     assert "/bin/bash -n" in script
     assert "palworld-manager-host-control@.service" in script
+    assert "palworld-manager-host-control@.path" in script
     assert "50-palworld-manager-host-control.rules" in script
-    assert "(( modern_count == 0 ))" in script
+    assert "candidato mistura transportes systemd.path e Polkit" in script
     assert '"${WORKTREE_DIR}/ops/sudoers/palworld-manager"' in script
-    assert '/bin/rm -f -- "${LEGACY_SUDOERS}"' in script
+    assert '"${HOST_CONTROL_POLKIT_RULE}" "${LEGACY_SUDOERS}"' in script
     assert '"${HOST_CONTROL_COMMAND}"' in script
+    assert '"${HOST_CONTROL_PATH_UNIT}"' in script
     assert '"${HOST_CONTROL_POLKIT_RULE}"' in script
     assert 'readonly POLKIT_CONFIG_DIR="/etc/polkit-1"' in script
     assert 'readonly POLKIT_RULES_DIR="${POLKIT_CONFIG_DIR}/rules.d"' in script
     assert '[[ -d "${directory}" && ! -L "${directory}" ]]' in script
-    assert installation.index("install_polkit_rules_directory") < installation.index(
-        '"${HOST_CONTROL_POLKIT_RULE}"'
-    )
+    assert legacy_polkit_installation.index(
+        "install_polkit_rules_directory"
+    ) < legacy_polkit_installation.index('"${HOST_CONTROL_POLKIT_RULE}"')
     assert '/usr/bin/install -d -o root -g root -m 0755 "${POLKIT_RULES_DIR}"' in script
-    assert '"${modern_artifacts[1]}"' not in candidate_validation
+    assert 'require_regular_file "${path_unit}"' in candidate_validation
+    assert 'require_regular_file "${polkit_rule}"' in candidate_validation
+    assert "disable_host_control_paths" in installation
+    assert "enable_host_control_paths" in installation
+    assert "template systemd.path instalado é inválido" in script
     assert installation.index('"${HOST_CONTROL_COMMAND}"') < installation.index(
         '/usr/bin/systemd-analyze verify "${HOST_CONTROL_UNIT}"'
+    )
+    assert installation.index('"${HOST_CONTROL_PATH_UNIT}"') < installation.index(
+        '/usr/bin/systemd-analyze verify "${HOST_CONTROL_PATH_UNIT}"'
     )
 
 

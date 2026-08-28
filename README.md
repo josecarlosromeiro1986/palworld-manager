@@ -78,7 +78,7 @@ operacionais de backup, horário, timezone, retenções, métricas, desligamento
 assistido, disco e timeouts. Ela também troca a senha com confirmação da senha
 atual, revoga todas as sessões e oferece testes de Discord e Drive que apenas
 criam eventos e jobs para o worker. Secrets, paths, executáveis, serviços,
-regras Polkit e infraestrutura Tailscale permanecem fora da interface e do SQLite.
+gatilhos systemd, helpers privilegiados e infraestrutura Tailscale permanecem fora da interface e do SQLite.
 
 A página **Diagnóstico** agrega checks somente leitura do Manager, Palworld,
 worker, host, integrações, SQLite/migrations, versão/commit e erros recentes.
@@ -97,15 +97,15 @@ externos livres. Exportação CSV não faz parte da V1.
 O Dashboard também permite reiniciar ou desligar o Ubuntu com CSRF, modal e
 frase digitada exata. O worker adquire o maintenance lock, trata o Palworld com
 Stop seguro e só então solicita uma das duas units privilegiadas fechadas.
-Development e test usam fake e nunca controlam o host; helper, template systemd
-e regra Polkit exata são instalados pelo procedimento de produção.
+Development e test usam fake e nunca controlam o host; helper e templates
+`systemd.path`/`oneshot` exatos são instalados pelo procedimento de produção.
 
 ## Produção
 
 A instalação de produção é nativa, sem Docker. Os artefatos versionados em
 `ops/` criam o usuário não-root `palmanager`, diretórios protegidos, venv,
 assets, configuração estrutural, units systemd independentes e uma fronteira
-privilegiada mínima com Polkit, além de acesso ao journald, rclone e Tailscale
+privilegiada mínima por arquivos de requisição em `/run`, além de acesso ao journald, rclone e Tailscale
 Serve. Migrations e criação do administrador fazem parte da instalação.
 
 Siga integralmente o

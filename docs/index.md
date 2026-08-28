@@ -18,6 +18,7 @@ Consulte a [Política de Privacidade](privacy.md) para entender quais dados do G
 - [Controle do servidor](operations/server-lifecycle.md): Start, Restart, desligamento assistido, cancelamento e escalada manual.
 - [Logs do servidor](operations/server-logs.md): histórico do journald, filtros e streaming SSE retomável.
 - [Segurança](architecture/security.md): modelo de acesso, privilégios, sessões, secrets e execução segura.
+- [Decisões arquiteturais](decisions/README.md): contexto histórico das mudanças de arquitetura.
 - [Modelo de dados](architecture/data-model.md): responsabilidades das entidades persistidas previstas.
 - [Jobs e locks](architecture/jobs-and-locks.md): coordenação via SQLite, concorrência, cancelamento e recuperação do worker.
 

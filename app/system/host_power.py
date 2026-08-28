@@ -1,13 +1,13 @@
-import subprocess
-from collections.abc import Sequence
 from enum import StrEnum
 from typing import Protocol
 
 from app.config import AppEnvironment, Settings
-from app.system.commands import sanitized_subprocess_environment
-from app.system.host_control import PrivilegedHostAction, host_control_command
-
-HOST_POWER_TIMEOUT_SECONDS = 15.0
+from app.system.host_control import (
+    HostControlRequester,
+    HostControlRequestError,
+    PrivilegedHostAction,
+    request_host_control,
+)
 
 
 class HostPowerAction(StrEnum):
@@ -23,42 +23,13 @@ class HostPowerController(Protocol):
     def request(self, action: HostPowerAction) -> None: ...
 
 
-class HostPowerCommandRunner(Protocol):
-    def __call__(
-        self,
-        command: Sequence[str],
-        *,
-        timeout_seconds: float,
-    ) -> subprocess.CompletedProcess[str]: ...
-
-
-def _run_command(
-    command: Sequence[str],
-    *,
-    timeout_seconds: float,
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        list(command),
-        capture_output=True,
-        check=False,
-        shell=False,
-        text=True,
-        timeout=timeout_seconds,
-        env=sanitized_subprocess_environment(),
-    )
-
-
 class SystemdHostPowerController:
     def __init__(
         self,
         *,
-        runner: HostPowerCommandRunner = _run_command,
-        timeout_seconds: float = HOST_POWER_TIMEOUT_SECONDS,
+        host_control_requester: HostControlRequester = request_host_control,
     ) -> None:
-        if timeout_seconds <= 0:
-            raise ValueError("o timeout do controle de energia deve ser positivo")
-        self._runner = runner
-        self._timeout_seconds = timeout_seconds
+        self._host_control_requester = host_control_requester
 
     def request(self, action: HostPowerAction) -> None:
         if not isinstance(action, HostPowerAction):
@@ -67,15 +38,12 @@ class SystemdHostPowerController:
             HostPowerAction.REBOOT: PrivilegedHostAction.HOST_REBOOT,
             HostPowerAction.SHUTDOWN: PrivilegedHostAction.HOST_POWEROFF,
         }[action]
-        command = host_control_command(privileged_action)
         try:
-            result = self._runner(command, timeout_seconds=self._timeout_seconds)
-        except (OSError, subprocess.TimeoutExpired) as error:
+            self._host_control_requester(privileged_action)
+        except HostControlRequestError as error:
             raise HostPowerControlError(
                 "Não foi possível solicitar a ação de energia do host."
             ) from error
-        if result.returncode != 0:
-            raise HostPowerControlError("Não foi possível solicitar a ação de energia do host.")
 
 
 class FakeHostPowerController:

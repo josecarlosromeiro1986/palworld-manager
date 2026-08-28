@@ -1,0 +1,9 @@
+[Unit]
+Description=Palworld Manager privileged host control request (%i)
+
+[Path]
+PathExists=/run/palworld-manager/host-control/%i.request
+Unit=palworld-manager-host-control@%i.service
+
+[Install]
+WantedBy=multi-user.target
