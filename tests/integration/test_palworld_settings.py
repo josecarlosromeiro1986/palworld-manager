@@ -34,6 +34,7 @@ class SettingsContext:
 @pytest.fixture
 def settings_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[SettingsContext]:
     database_path = tmp_path / "manager.db"
+    settings_path = tmp_path / "PalWorldSettings.ini"
     monkeypatch.setenv("MANAGER_DATABASE", str(database_path))
     command.upgrade(Config("alembic.ini"), "head")
 
@@ -43,7 +44,11 @@ def settings_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
         create_administrator(session, "admin", "senha-ficticia")
 
     application = create_app(
-        Settings(environment=AppEnvironment.TEST, manager_database=database_path)
+        Settings(
+            environment=AppEnvironment.TEST,
+            manager_database=database_path,
+            palworld_settings=settings_path,
+        )
     )
     storage = cast(FakePalworldSettingsStorage, application.state.palworld_settings_storage)
     service = cast(PalworldSettingsService, application.state.palworld_settings_service)
@@ -222,5 +227,5 @@ def test_test_environment_uses_fake_without_touching_configured_path(
     configured_path = cast(Settings, application.state.settings).palworld_settings
 
     assert isinstance(application.state.palworld_settings_storage, FakePalworldSettingsStorage)
-    assert configured_path != tmp_path / "PalWorldSettings.ini"
+    assert configured_path == tmp_path / "PalWorldSettings.ini"
     assert not configured_path.exists()
