@@ -92,7 +92,10 @@ class LifecycleJobWorker:
             self._append_log(job_log_path, "Execução iniciada.")
             if job_kind == LOCAL_BACKUP_JOB_KIND:
                 assert self._backup_executor is not None
-                self._append_log(job_log_path, "Salvamento seguro e backup local iniciados.")
+                self._append_log(
+                    job_log_path,
+                    "Validação de consistência e backup local iniciados.",
+                )
                 self._backup_executor.execute(job_id)
             elif job_kind in RESTORE_JOB_KINDS:
                 assert self._restore_executor is not None

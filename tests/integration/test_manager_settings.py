@@ -72,17 +72,19 @@ def manager_settings_context(
         create_administrator(session, "admin", "senha-ficticia")
 
     rest = FakePalworldRestClient()
+    lifecycle = FakeLifecycleEnvironment()
+    lifecycle.start()
     local = LocalBackupService(
         manager_database=database_path,
         session_factory=factory,
         payload_source=FakeBackupPayloadSource(rest),
+        palworld_health=lifecycle,
     )
     transfer = DriveTransferService(
         manager_database=database_path,
         local_backups=local,
         storage=FakeGoogleDriveStorage(),
     )
-    lifecycle = FakeLifecycleEnvironment()
     worker = LifecycleJobWorker(
         factory,
         PalworldLifecycleExecutor(lifecycle, lifecycle, lifecycle),

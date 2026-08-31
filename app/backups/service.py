@@ -23,6 +23,7 @@ from app.backups.manifest import (
     validate_archive,
 )
 from app.backups.source import BackupPayloadSource, stage_manager_payload
+from app.health.palworld import PalworldHealthChecker, PalworldHealthState
 
 BACKUP_FILENAME_PATTERN: Final = re.compile(
     r"^palworld-manager-backup-\d{8}T\d{12}Z-j\d{6,}-[0-9a-f]{32}\.tar\.gz$"
@@ -33,6 +34,10 @@ TEMPORARY_DIRECTORY_NAME: Final = "tmp/backups"
 
 class BackupCancelledError(RuntimeError):
     """O backup foi cancelado em um ponto seguro."""
+
+
+class BackupConsistencyError(RuntimeError):
+    """O estado do Palworld não permite obter uma cópia consistente."""
 
 
 ProgressCallback = Callable[[str, int, bool], None]
@@ -55,6 +60,7 @@ class LocalBackupService:
         manager_database: Path,
         session_factory: sessionmaker[Session],
         payload_source: BackupPayloadSource,
+        palworld_health: PalworldHealthChecker,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         identifier_factory: Callable[[], UUID] = uuid4,
     ) -> None:
@@ -64,6 +70,7 @@ class LocalBackupService:
         self._temporary_directory = self._data_directory / TEMPORARY_DIRECTORY_NAME
         self._session_factory = session_factory
         self._payload_source = payload_source
+        self._palworld_health = palworld_health
         self._clock = clock
         self._identifier_factory = identifier_factory
 
@@ -100,8 +107,17 @@ class LocalBackupService:
         final_archive = self._backup_directory / filename
         published = False
         try:
-            progress("SAFE_SAVE", 10, True)
-            self._payload_source.request_safe_save()
+            progress("CHECKING_SERVER", 5, True)
+            health = self._palworld_health.check()
+            if health.state is PalworldHealthState.ONLINE:
+                progress("SAFE_SAVE", 10, True)
+                self._payload_source.request_safe_save()
+            elif health.state is PalworldHealthState.OFFLINE:
+                progress("OFFLINE_SNAPSHOT", 10, True)
+            else:
+                raise BackupConsistencyError(
+                    "o estado atual do Palworld não permite um backup consistente"
+                )
             progress("COPYING_WORLD", 25, True)
             self._payload_source.stage_palworld_payload(payload_root)
             progress("COPYING_DATABASE", 45, True)

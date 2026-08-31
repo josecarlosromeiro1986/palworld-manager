@@ -25,7 +25,12 @@ from app.integrations.google_drive import FakeGoogleDriveStorage
 from app.integrations.palworld_rest import FakePalworldRestClient
 from app.jobs.logs import MemoryJobLogStore
 from app.jobs.service import GLOBAL_MAINTENANCE_LOCK, claim_next_job, recover_interrupted_jobs
-from app.lifecycle.service import LifecycleAction, LifecycleOutcome, LifecycleResult
+from app.lifecycle.service import (
+    FakeLifecycleEnvironment,
+    LifecycleAction,
+    LifecycleOutcome,
+    LifecycleResult,
+)
 from app.lifecycle.worker import LifecycleJobWorker
 from app.logs.service import LogEntry
 from app.main import create_app
@@ -103,10 +108,13 @@ def remote_restore_context(
         create_administrator(session, "admin", "fake-login-password")
         session.add(AppSetting(key="development_note", value="keep-manager-state"))
     rest = FakePalworldRestClient()
+    backup_health = FakeLifecycleEnvironment()
+    backup_health.start()
     local = LocalBackupService(
         manager_database=database_path,
         session_factory=factory,
         payload_source=FakeBackupPayloadSource(rest),
+        palworld_health=backup_health,
     )
     drive = FakeGoogleDriveStorage()
     transfer = DriveTransferService(

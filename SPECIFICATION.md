@@ -459,7 +459,14 @@ Cancelável em contagem regressiva, backup antes de etapa crítica e upload. Nã
 
 Automático diário às 04:00, timezone inicial `America/Sao_Paulo`, configurável.
 
-Não derrubar jogadores para backup diário. Solicitar salvamento seguro pelo mecanismo oficial disponível antes de copiar. Se falhar, não marcar backup como válido.
+Não derrubar jogadores para backup diário. Quando o health confirmar o servidor
+`ONLINE`, solicitar salvamento seguro pelo mecanismo oficial disponível antes
+de copiar; se o salvamento falhar, não marcar backup como válido. Quando o
+health confirmar `OFFLINE`, criar o backup diretamente dos arquivos já
+fechados, sem chamar a REST API. Estados `INICIANDO`, `DEGRADADO` ou `FALHA`
+são ambíguos para consistência e devem encerrar a operação sem registrar um
+artefato válido. A mesma regra vale para backups manuais, automáticos e
+preventivos.
 
 Conteúdo: mundo completo (`Level.sav`, `LevelMeta.sav`, `Players/` e demais dados persistentes), `PalWorldSettings.ini`, configs relevantes, cópia consistente de `manager.db`, configurações não sensíveis e `manifest.json`.
 

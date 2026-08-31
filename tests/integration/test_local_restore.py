@@ -30,6 +30,7 @@ from app.integrations.palworld_rest import FakePalworldRestClient, PalworldRestE
 from app.jobs.logs import MemoryJobLogStore
 from app.jobs.service import GLOBAL_MAINTENANCE_LOCK, recover_interrupted_jobs
 from app.lifecycle.service import (
+    FakeLifecycleEnvironment,
     LifecycleAction,
     LifecycleOutcome,
     LifecycleResult,
@@ -99,6 +100,7 @@ class RestoreContext:
     engine: Engine
     database_path: Path
     rest: FakePalworldRestClient
+    backup_health: FakeLifecycleEnvironment
     backup_service: LocalBackupService
     restore_service: LocalRestoreService
     target: FakeRestoreTarget
@@ -118,10 +120,13 @@ def restore_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator
     with session_scope(factory) as session:
         create_administrator(session, "admin", "fake-login-password")
     rest = FakePalworldRestClient()
+    backup_health = FakeLifecycleEnvironment()
+    backup_health.start()
     backup_service = LocalBackupService(
         manager_database=database_path,
         session_factory=factory,
         payload_source=FakeBackupPayloadSource(rest),
+        palworld_health=backup_health,
     )
     storage = FakePalworldSettingsStorage(
         "[/Script/Pal.PalGameWorldSettings]\nOptionSettings=("
@@ -165,6 +170,7 @@ def restore_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator
         engine,
         database_path,
         rest,
+        backup_health,
         backup_service,
         restore_service,
         target,
@@ -339,6 +345,25 @@ def test_preventive_safe_save_failure_stops_restore_before_palworld_stop(
         assert session.scalar(select(func.count()).select_from(BackupRecord)) == 1
     assert restore_context.lifecycle.actions == []
     assert restore_context.target.apply_calls == 0
+
+
+def test_offline_restore_creates_preventive_backup_without_safe_save(
+    restore_context: RestoreContext,
+) -> None:
+    save_requests_before = restore_context.rest.save_requests
+    restore_context.rest.set_error(PalworldRestErrorKind.TIMEOUT)
+    restore_context.backup_health.stop()
+    job_id = _enqueue_restore(restore_context)
+
+    assert restore_context.worker.process_next()
+
+    factory = create_session_factory(restore_context.engine)
+    with session_scope(factory) as session:
+        job = session.get_one(Job, job_id)
+        assert job.status == "SUCCEEDED"
+        assert session.scalar(select(func.count()).select_from(BackupRecord)) == 2
+    assert restore_context.rest.save_requests == save_requests_before
+    assert restore_context.target.apply_calls == 1
 
 
 def test_stop_failure_preserves_preventive_backup_without_changing_world(

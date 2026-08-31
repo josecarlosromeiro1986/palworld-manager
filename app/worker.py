@@ -17,9 +17,10 @@ from app.backups.jobs import LOCAL_BACKUP_JOB_KIND, LocalBackupJobExecutor
 from app.backups.scheduler import schedule_daily_backup
 from app.backups.service import LocalBackupService
 from app.backups.source import create_backup_payload_source
-from app.config import Settings
+from app.config import AppEnvironment, Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
 from app.db.models import Job
+from app.health.palworld import create_palworld_health_check
 from app.host_power.jobs import create_host_power_job_executor
 from app.integrations.discord import create_discord_webhook
 from app.integrations.google_drive import GoogleDriveError, create_google_drive_storage
@@ -27,6 +28,7 @@ from app.integrations.palworld_rest import create_palworld_rest_client
 from app.jobs.heartbeat import WorkerHeartbeatPublisher
 from app.jobs.logs import JobLogStore, create_job_log_store
 from app.jobs.service import TERMINAL_JOB_STATUSES, recover_interrupted_jobs
+from app.lifecycle.fake import PersistentFakePalworldEnvironment
 from app.lifecycle.service import create_lifecycle_executor
 from app.lifecycle.worker import LifecycleJobWorker
 from app.logs.service import create_palworld_log_source
@@ -39,6 +41,7 @@ from app.notifications.service import (
 from app.restores.jobs import LocalRestoreJobExecutor
 from app.restores.service import LocalRestoreService, create_restore_target
 from app.shutdown.service import create_shutdown_executors
+from app.system.palworld_service import create_palworld_service
 from app.updates.jobs import UpdateJobExecutor
 from app.updates.service import create_disk_space_source, create_steamcmd_gateway
 
@@ -99,10 +102,16 @@ def run() -> None:
                     )
         removed_logs, removed_audit_events = _prune_retained_data(session_factory, job_logs)
         rest_client = create_palworld_rest_client(settings)
+        palworld_health = (
+            create_palworld_health_check(settings, create_palworld_service(settings))
+            if settings.environment is AppEnvironment.PRODUCTION
+            else PersistentFakePalworldEnvironment(session_factory)
+        )
         backup_service = LocalBackupService(
             manager_database=settings.manager_database,
             session_factory=session_factory,
             payload_source=create_backup_payload_source(settings, rest_client),
+            palworld_health=palworld_health,
         )
         removed_temporary_backups = backup_service.cleanup_temporary_artifacts()
         removed_interrupted_backups = backup_service.cleanup_interrupted_artifacts(

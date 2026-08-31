@@ -8,7 +8,7 @@ Este documento resume a operação prevista. [SPECIFICATION.md](../../SPECIFICAT
 
 O backup automático é diário às `04:00` no timezone configurado, inicialmente `America/Sao_Paulo`. O worker cria no máximo um job automático por data local e respeita `backup_enabled`, `backup_time` e `timezone` editáveis em **Configurações do Painel**. A retenção inicial é de 3 backups locais válidos e até 10 backups remotos gerenciados. O painel aceita de 1 a 30 backups locais e de 1 a 100 backups no Drive, com validação obrigatória no backend; criação, download, Restore e Update aplicam a retenção configurada sem remover artefatos externos.
 
-Cada backup é um `.tar.gz` com `manifest.json`, hash SHA-256 e teste de integridade. Só é considerado válido após essas verificações. Antes da cópia, o Manager solicita um salvamento seguro pelo mecanismo oficial disponível; uma falha nessa etapa invalida a operação.
+Cada backup é um `.tar.gz` com `manifest.json`, hash SHA-256 e teste de integridade. Só é considerado válido após essas verificações. Antes da cópia, o Manager consulta o health do Palworld. Se estiver `ONLINE`, solicita um salvamento seguro pelo mecanismo oficial disponível e uma falha nessa etapa invalida a operação. Se estiver comprovadamente `OFFLINE`, copia diretamente os arquivos já fechados sem chamar a REST API. Estados `INICIANDO`, `DEGRADADO` ou `FALHA` são ambíguos e encerram a operação sem artefato válido. Essa regra é compartilhada por backups manuais, automáticos e preventivos.
 
 A integridade possui duas camadas e não usa sidecar `.sha256`:
 
@@ -43,7 +43,8 @@ O backup excluirá:
 FastAPI apenas cria e acompanha o job `LOCAL_BACKUP`. O worker o adquire atomicamente, mantém o maintenance lock global e executa:
 
 ```text
-POST /save oficial
+health do Palworld
+→ POST /save oficial quando ONLINE, ou snapshot direto quando OFFLINE
 → staging controlado
 → cópia opaca do mundo completo
 → configurações permitidas sem valores sensíveis
@@ -118,7 +119,13 @@ A cópia temporária tem o SHA-256 conferido antes de o arquivo ser aberto para 
 
 Todas as validações e preparações possíveis terminam antes do Stop. Isso inclui a leitura do `PalWorldSettings.ini` atual, o merge conservador, a validação do resultado e o espaço livre no staging e no destino para o tamanho não comprimido declarado. O tamanho efetivamente extraído precisa coincidir com o manifest e o destino é verificado novamente depois do staging. Se `GameUserSettings.ini` estiver no backup, seus campos com nomes sensíveis também vêm obrigatoriamente do arquivo atual. Uma falha nessa fase não solicita Stop nem altera o mundo.
 
-Depois da pré-validação, o backup preventivo executa novo `POST /save` oficial e o pipeline completo do backup local. Ele recebe `backup_record` válido antes do Stop e é preservado tanto no sucesso quanto na falha; a retenção continua exatamente em 3 arquivos gerenciados, protegendo durante a operação a origem e o preventivo. Arquivos externos permanecem intocados.
+Depois da pré-validação, o backup preventivo reutiliza a mesma regra de
+consistência do pipeline local: executa novo `POST /save` oficial quando o
+Palworld está `ONLINE` ou copia diretamente quando o health confirma
+`OFFLINE`. Ele recebe `backup_record` válido antes do Stop e é preservado
+tanto no sucesso quanto na falha; a retenção continua exatamente em 3 arquivos
+gerenciados, protegendo durante a operação a origem e o preventivo. Arquivos
+externos permanecem intocados.
 
 O Stop só é aceito quando o serviço está offline e a porta REST está fechada. A publicação usa nomes temporários controlados no mesmo filesystem, mantém o grupo do mundo anterior e aplica `0770` em diretórios e `0660` em arquivos. O worker continua não-root e precisa apenas pertencer ao grupo compartilhado com o Palworld; nenhum comando usa shell. O Start só conclui após health `ONLINE`, incluindo `/info` da REST API oficial, e ausência de erros críticos posteriores ao início.
 

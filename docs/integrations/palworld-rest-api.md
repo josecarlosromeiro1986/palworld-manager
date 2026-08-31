@@ -10,7 +10,9 @@ O Palworld Manager usa exclusivamente os endpoints oficiais necessários ao comp
 - `POST /kick`, com `userid` e `message` opcional, para desconectar um jogador;
 - `POST /ban`, com `userid` e `message`, para banir um jogador;
 - `POST /unban`, somente com `userid`, para remover um Ban.
-- `POST /save`, sem payload, para solicitar o salvamento seguro antes de um backup.
+- `POST /save`, sem payload, para solicitar o salvamento seguro antes de um
+  backup quando o health confirma que o servidor está `ONLINE`; backups com o
+  servidor comprovadamente `OFFLINE` usam diretamente os arquivos fechados.
 
 O Manager não lê nem modifica saves para descobrir jogadores offline ou banidos. Como a API oficial de Unban não aceita mensagem, o motivo obrigatório dessa ação permanece somente no histórico administrativo e na auditoria; nenhum campo adicional é inventado no payload remoto.
 

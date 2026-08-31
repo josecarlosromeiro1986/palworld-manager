@@ -3,7 +3,7 @@
 {% endif %}
 {% if job %}
   {% set terminal = job.status in ["SUCCEEDED", "FAILED", "CANCELLED", "INTERRUPTED"] %}
-  {% set step_labels = {"WAITING": "aguardando worker", "SAFE_SAVE": "solicitando salvamento seguro", "COPYING_WORLD": "copiando mundo", "COPYING_DATABASE": "copiando banco", "BUILDING_MANIFEST": "criando manifest", "COMPRESSING": "compactando", "VALIDATING": "validando integridade", "PUBLISHING": "publicando", "COMPLETED": "concluído", "FAILED": "falhou", "CANCELLED": "cancelado", "INTERRUPTED": "interrompido"} %}
+  {% set step_labels = {"WAITING": "aguardando worker", "CHECKING_SERVER": "validando estado do servidor", "SAFE_SAVE": "solicitando salvamento seguro", "OFFLINE_SNAPSHOT": "servidor offline; preparando cópia direta", "COPYING_WORLD": "copiando mundo", "COPYING_DATABASE": "copiando banco", "BUILDING_MANIFEST": "criando manifest", "COMPRESSING": "compactando", "VALIDATING": "validando integridade", "PUBLISHING": "publicando", "COMPLETED": "concluído", "FAILED": "falhou", "CANCELLED": "cancelado", "INTERRUPTED": "interrompido"} %}
   <article
     data-backup-job
     {% if not terminal %}hx-get="/backups/jobs/{{ job.id }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}

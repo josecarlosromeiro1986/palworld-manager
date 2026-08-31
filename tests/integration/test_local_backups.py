@@ -49,6 +49,7 @@ class BackupContext:
     engine: Engine
     database_path: Path
     rest: FakePalworldRestClient
+    palworld: FakeLifecycleEnvironment
     service: LocalBackupService
     worker: LifecycleJobWorker
     logs: MemoryJobLogStore
@@ -67,13 +68,15 @@ def backup_context(
     with session_scope(factory) as session:
         create_administrator(session, "admin", "senha-ficticia")
     rest = FakePalworldRestClient()
+    fake_lifecycle = FakeLifecycleEnvironment()
+    fake_lifecycle.start()
     service = LocalBackupService(
         manager_database=database_path,
         session_factory=factory,
         payload_source=FakeBackupPayloadSource(rest),
+        palworld_health=fake_lifecycle,
     )
     logs = MemoryJobLogStore()
-    fake_lifecycle = FakeLifecycleEnvironment()
     worker = LifecycleJobWorker(
         factory,
         PalworldLifecycleExecutor(fake_lifecycle, fake_lifecycle, fake_lifecycle),
@@ -81,7 +84,7 @@ def backup_context(
         backup_executor=LocalBackupJobExecutor(factory, service),
         job_logs=logs,
     )
-    yield BackupContext(engine, database_path, rest, service, worker, logs)
+    yield BackupContext(engine, database_path, rest, fake_lifecycle, service, worker, logs)
     engine.dispose()
 
 
@@ -175,6 +178,47 @@ def test_safe_save_failure_creates_no_valid_record_or_artifact(
     assert list((backup_context.database_path.parent / "tmp/backups").glob("job-*")) == []
 
 
+@pytest.mark.parametrize("trigger", ["MANUAL", "AUTOMATIC"])
+def test_offline_backup_skips_safe_save_and_creates_valid_artifact(
+    backup_context: BackupContext,
+    trigger: str,
+) -> None:
+    backup_context.palworld.stop()
+    factory = create_session_factory(backup_context.engine)
+    with session_scope(factory) as session:
+        job_id = enqueue_local_backup(session, user_id=None, trigger=trigger).id
+
+    assert backup_context.worker.process_next()
+
+    with session_scope(factory) as session:
+        job = session.get_one(Job, job_id)
+        record = session.scalar(select(BackupRecord).where(BackupRecord.job_id == job_id))
+        assert job.status == "SUCCEEDED"
+        assert record is not None
+        archive_path = backup_context.database_path.parent / record.storage_path
+        assert record.sha256 == sha256_file(archive_path)
+        assert validate_archive(archive_path)["backup_id"]
+    assert backup_context.rest.save_requests == 0
+
+
+def test_ambiguous_server_state_creates_no_backup(
+    backup_context: BackupContext,
+) -> None:
+    backup_context.palworld.restart()
+    job_id = _enqueue(backup_context)
+
+    assert backup_context.worker.process_next()
+
+    factory = create_session_factory(backup_context.engine)
+    with session_scope(factory) as session:
+        job = session.get_one(Job, job_id)
+        assert job.status == "FAILED"
+        assert job.result == {"trigger": "AUTOMATIC", "error": "BACKUP_FAILED"}
+        assert session.scalar(select(BackupRecord)) is None
+    assert backup_context.rest.save_requests == 0
+    assert list((backup_context.database_path.parent / "backups").glob("*.tar.gz")) == []
+
+
 def test_failure_after_publication_removes_only_new_managed_artifact(
     backup_context: BackupContext,
     monkeypatch: pytest.MonkeyPatch,
@@ -252,16 +296,18 @@ def test_retention_uses_default_or_configured_value_and_preserves_external_file(
                 )
             )
     rest = FakePalworldRestClient()
+    fake = FakeLifecycleEnvironment()
+    fake.start()
     times = iter(datetime(2026, 8, 14, hour, tzinfo=UTC) for hour in range(4))
     identifiers = iter(UUID(int=value) for value in range(1, 5))
     service = LocalBackupService(
         manager_database=database_path,
         session_factory=factory,
         payload_source=FakeBackupPayloadSource(rest),
+        palworld_health=fake,
         clock=lambda: next(times),
         identifier_factory=lambda: next(identifiers),
     )
-    fake = FakeLifecycleEnvironment()
     worker = LifecycleJobWorker(
         factory,
         PalworldLifecycleExecutor(fake, fake, fake),

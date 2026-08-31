@@ -46,7 +46,19 @@ Os testes de desligamento cobrem as opções Agora/1/5/10, default operacional, 
 
 Os testes do sistema persistente de jobs cobrem migration, claim concorrente por dois workers, exclusão de execução duplicada, lease de identidade, heartbeat persistido, os quatro estados de health, comando systemd read-only com unidade fixa, maintenance lock global, liberação de lock terminal e recovery para `INTERRUPTED` sem requeue. Logs de job são validados quanto ao path relativo controlado, trecho exibível, ausência de detalhes internos e retenção de 90 dias.
 
-Os testes de backup local cobrem o `POST /save` oficial e seu fake, mundo completo com `Players/` opaco, snapshot consistente do SQLite em WAL, configurações allowlisted, redaction e exclusões proibidas. Manifest determinístico, hashes individuais, SHA-256 externo, tar.gz válido e corrupção recebem validação própria. Casos adversos incluem traversal, paths absolutos, symlinks, falha antes e depois da publicação, cleanup restrito, retenção exata de 3, preservação de arquivos externos, lock, duplicidade, cancelamento, recovery sem retomada, agendamento às 04:00 no timezone configurado, autenticação, CSRF, auditoria e logs seguros. A regressão web verifica o polling do job, o evento terminal e a atualização isolada da lista de artefatos sem recarregar a página.
+Os testes de backup local cobrem o `POST /save` oficial e seu fake quando o
+Palworld está `ONLINE`, além da cópia direta sem REST para backups manuais,
+automáticos e preventivos quando o health confirma `OFFLINE`. Estados
+ambíguos são recusados sem artefato válido. A suíte também cobre mundo completo
+com `Players/` opaco, snapshot consistente do SQLite em WAL, configurações
+allowlisted, redaction e exclusões proibidas. Manifest determinístico, hashes
+individuais, SHA-256 externo, tar.gz válido e corrupção recebem validação
+própria. Casos adversos incluem traversal, paths absolutos, symlinks, falha
+antes e depois da publicação, cleanup restrito, retenção exata de 3,
+preservação de arquivos externos, lock, duplicidade, cancelamento, recovery sem
+retomada, agendamento às 04:00 no timezone configurado, autenticação, CSRF,
+auditoria e logs seguros. A regressão web verifica o polling do job, o evento
+terminal e a atualização isolada da lista de artefatos sem recarregar a página.
 
 Os testes de Restore local verificam a precedência do SHA-256 externo, validação completa do manifest e do payload de disaster recovery, mundo e `Players/` opacos, merge determinístico dos INIs e preservação literal de valores sensíveis e parâmetros desconhecidos. Cobrem falha de safe save preventivo, INI atual ausente/inválido, espaço insuficiente e Stop falho antes de qualquer alteração; aplicação real em árvore temporária com modos mínimos; Start, health e logs críticos; falha parcial sem rollback e com backup preventivo preservado; retenção exata e arquivo externo; maintenance lock, double-submit, não cancelamento e recovery sem retomada. A integração web exige autenticação, CSRF, `RESTAURAR`, modal compartilhado e apenas enfileira o job. Os fakes de test/development não acessam Palworld, systemd ou filesystem estrutural reais.
 

@@ -27,7 +27,7 @@ from app.integrations.palworld_rest import (
 )
 from app.jobs.logs import MemoryJobLogStore
 from app.jobs.service import GLOBAL_MAINTENANCE_LOCK, claim_next_job, recover_interrupted_jobs
-from app.lifecycle.fake import FAKE_PALWORLD_ACTIVE_KEY
+from app.lifecycle.fake import FAKE_PALWORLD_ACTIVE_KEY, PersistentFakePalworldEnvironment
 from app.lifecycle.service import create_lifecycle_executor
 from app.lifecycle.worker import LifecycleJobWorker
 from app.logs.service import FakePalworldLogSource
@@ -66,10 +66,13 @@ def update_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
         session.merge(AppSetting(key="assisted_shutdown_default_minutes", value=0))
     settings = Settings(environment=AppEnvironment.TEST, manager_database=database_path)
     rest = FakePalworldRestClient()
+    backup_health = PersistentFakePalworldEnvironment(factory)
+    backup_health.start()
     backup_service = LocalBackupService(
         manager_database=database_path,
         session_factory=factory,
         payload_source=FakeBackupPayloadSource(rest),
+        palworld_health=backup_health,
     )
     lifecycle = create_lifecycle_executor(settings, factory)
     assisted, forced = create_shutdown_executors(settings, factory)

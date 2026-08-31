@@ -60,10 +60,13 @@ def drive_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[D
     with session_scope(factory) as session:
         create_administrator(session, "admin", "senha-ficticia")
     rest = FakePalworldRestClient()
+    lifecycle = FakeLifecycleEnvironment()
+    lifecycle.start()
     local = LocalBackupService(
         manager_database=database_path,
         session_factory=factory,
         payload_source=FakeBackupPayloadSource(rest),
+        palworld_health=lifecycle,
     )
     drive = FakeGoogleDriveStorage()
     transfer = DriveTransferService(
@@ -72,7 +75,6 @@ def drive_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[D
         storage=drive,
     )
     logs = MemoryJobLogStore()
-    lifecycle = FakeLifecycleEnvironment()
     worker = LifecycleJobWorker(
         factory,
         PalworldLifecycleExecutor(lifecycle, lifecycle, lifecycle),
