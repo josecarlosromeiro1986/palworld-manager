@@ -18,55 +18,73 @@
     </form>
   </div>
   {% if remote_backups %}
-    <div class="overflow-x-auto">
-      <table class="w-full min-w-[920px] text-left text-sm">
-        <thead class="text-xs text-muted"><tr><th class="px-4 py-3">Arquivo</th><th class="px-4 py-3">Data</th><th class="px-4 py-3">Tamanho</th><th class="px-4 py-3">Integridade</th><th class="px-4 py-3">Job</th><th class="px-4 py-3">Ações</th></tr></thead>
-        <tbody class="divide-y">
-          {% for backup in remote_backups %}
-            <tr>
-              <td class="px-4 py-3 font-mono text-xs text-ink">{{ backup.filename }}</td>
-              <td class="px-4 py-3 text-muted">{{ backup.created_at }}</td>
-              <td class="px-4 py-3 tabular-nums text-muted">{{ backup.size }}</td>
-              <td class="px-4 py-3"><span class="text-positive">{{ backup.status }}</span><p class="mt-1 max-w-44 truncate font-mono text-[10px] text-muted" title="SHA-256">{{ backup.sha256 }}</p></td>
-              <td class="px-4 py-3 text-muted">{% if backup.job_id %}#{{ backup.job_id }} · {% endif %}{{ backup.job_status }}</td>
-              <td class="px-4 py-3">
-                <div class="flex min-w-48 flex-wrap gap-2">
-                  {% if backup.available_locally %}
-                    <span class="self-center text-xs text-positive">Disponível localmente</span>
-                  {% else %}
-                    <form hx-post="/backups/drive/download/{{ backup.id }}" hx-target="#drive-job" hx-swap="innerHTML" data-confirm data-confirm-key="drive-download-{{ backup.id }}" data-confirm-title="Baixar backup?" data-confirm-message="O worker baixará e validará integralmente o arquivo antes de publicá-lo na área local." data-confirm-button="Baixar backup">
-                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                      <button type="submit" class="min-h-9 rounded-md border px-3 text-xs font-medium text-ink hover:border-accent">Baixar</button>
-                    </form>
-                  {% endif %}
-                  <form
-                    class="flex min-w-52 flex-col gap-2"
-                    hx-post="/backups/drive/{{ backup.id }}/restore"
-                    hx-target="#restore-job"
-                    hx-swap="innerHTML"
-                    data-confirm
-                    data-confirm-source="remote-restore-confirmation-{{ backup.id }}"
-                    data-confirm-title="Restaurar este backup remoto?"
-                    data-confirm-message="O worker baixará o artefato para uma área temporária, validará tudo, criará um backup preventivo e só então parará o Palworld. O Manager não será restaurado e não há rollback automático."
-                    data-confirm-button="Iniciar Restore remoto"
-                    data-confirm-tone="danger"
-                  >
+    <ul class="divide-y">
+      {% for backup in remote_backups %}
+        <li data-drive-backup-card class="p-4">
+          <article class="min-w-0">
+            <p class="text-[10px] font-semibold uppercase text-muted">Arquivo</p>
+            <p class="mt-1 break-all font-mono text-xs font-medium text-ink">{{ backup.filename }}</p>
+
+            <dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs sm:grid-cols-4">
+              <div class="min-w-0">
+                <dt class="text-muted">Data</dt>
+                <dd class="mt-1 text-ink sm:whitespace-nowrap">{{ backup.created_at }}</dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-muted">Tamanho</dt>
+                <dd class="mt-1 tabular-nums text-ink">{{ backup.size }}</dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-muted">Integridade</dt>
+                <dd class="mt-1 text-positive">{{ backup.status }}</dd>
+                <dd class="mt-1 truncate font-mono text-[10px] text-muted" title="SHA-256: {{ backup.sha256 }}">{{ backup.sha256 }}</dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-muted">Job</dt>
+                <dd class="mt-1 text-ink">{% if backup.job_id %}#{{ backup.job_id }} · {% endif %}{{ backup.job_status }}</dd>
+              </div>
+            </dl>
+
+            <div data-drive-backup-actions class="mt-4 flex flex-col gap-3 border-t pt-4 xl:flex-row xl:items-end xl:justify-between">
+              <div class="flex min-h-9 items-center">
+                {% if backup.available_locally %}
+                  <span class="text-xs font-medium text-positive">Disponível localmente</span>
+                {% else %}
+                  <form hx-post="/backups/drive/download/{{ backup.id }}" hx-target="#drive-job" hx-swap="innerHTML" data-confirm data-confirm-key="drive-download-{{ backup.id }}" data-confirm-title="Baixar backup?" data-confirm-message="O worker baixará e validará integralmente o arquivo antes de publicá-lo na área local." data-confirm-button="Baixar backup">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <label for="remote-restore-confirmation-{{ backup.id }}" class="text-xs text-muted">Digite <strong>RESTAURAR</strong></label>
-                    <input id="remote-restore-confirmation-{{ backup.id }}" name="confirmation" required autocomplete="off" class="field min-h-9 px-2 py-1 text-xs" placeholder="RESTAURAR">
-                    <button type="submit" class="min-h-9 rounded-md border border-danger/40 px-3 text-xs font-semibold text-danger hover:border-danger">Restore remoto</button>
+                    <button type="submit" class="min-h-9 rounded-md border px-3 text-xs font-medium text-ink hover:border-accent">Baixar backup</button>
                   </form>
-                  <form hx-post="/backups/drive/delete/{{ backup.id }}" hx-target="#drive-job" hx-swap="innerHTML" data-confirm data-confirm-key="drive-delete-{{ backup.id }}" data-confirm-title="Excluir backup remoto?" data-confirm-message="Esta ação remove permanentemente somente este backup reconhecido no namespace gerenciado. A cópia local, se existir, será preservada." data-confirm-button="Excluir do Drive" data-confirm-tone="danger">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="min-h-9 rounded-md border border-danger/40 px-3 text-xs font-semibold text-danger hover:border-danger">Excluir</button>
-                  </form>
-                </div>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+                {% endif %}
+              </div>
+
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <form
+                  class="grid gap-2 sm:grid-cols-[minmax(12rem,16rem)_auto] sm:items-end"
+                  hx-post="/backups/drive/{{ backup.id }}/restore"
+                  hx-target="#restore-job"
+                  hx-swap="innerHTML"
+                  data-confirm
+                  data-confirm-source="remote-restore-confirmation-{{ backup.id }}"
+                  data-confirm-title="Restaurar este backup remoto?"
+                  data-confirm-message="O worker baixará o artefato para uma área temporária, validará tudo, criará um backup preventivo e só então parará o Palworld. O Manager não será restaurado e não há rollback automático."
+                  data-confirm-button="Iniciar Restore remoto"
+                  data-confirm-tone="danger"
+                >
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <label for="remote-restore-confirmation-{{ backup.id }}" class="text-xs text-muted sm:col-span-2">Digite <strong>RESTAURAR</strong></label>
+                  <input id="remote-restore-confirmation-{{ backup.id }}" name="confirmation" required autocomplete="off" class="field min-h-9 px-2 py-1 text-xs" placeholder="RESTAURAR">
+                  <button type="submit" class="min-h-9 rounded-md border border-danger/40 px-3 text-xs font-semibold text-danger hover:border-danger">Restore remoto</button>
+                </form>
+                <form hx-post="/backups/drive/delete/{{ backup.id }}" hx-target="#drive-job" hx-swap="innerHTML" data-confirm data-confirm-key="drive-delete-{{ backup.id }}" data-confirm-title="Excluir backup remoto?" data-confirm-message="Esta ação remove permanentemente somente este backup reconhecido no namespace gerenciado. A cópia local, se existir, será preservada." data-confirm-button="Excluir do Drive" data-confirm-tone="danger">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="min-h-9 w-full rounded-md border border-danger/40 px-3 text-xs font-semibold text-danger hover:border-danger sm:w-auto">Excluir</button>
+                </form>
+              </div>
+            </div>
+          </article>
+        </li>
+      {% endfor %}
+    </ul>
   {% else %}
     <p class="px-4 py-8 text-center text-sm text-muted">Nenhum backup remoto gerenciado registrado.</p>
   {% endif %}
