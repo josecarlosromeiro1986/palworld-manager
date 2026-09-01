@@ -245,6 +245,15 @@ palworld-manager-worker.service
 
 Ambos são executados como `palmanager`, usam a configuração estrutural apropriada e acessam o mesmo SQLite quando necessário. Nunca executar a aplicação web ou o worker como root. Operações privilegiadas do host usam sete arquivos de requisição de nome fixo sob `/run/palworld-manager/host-control`, sete instâncias `systemd.path`, units `oneshot` root sem processo persistente e um helper de ações fechadas. O diretório é `root:palmanager 0770`, cada pedido é vazio, exclusivo e `palmanager:palmanager 0600`, e somente o worker recebe escrita nele pelo sandbox. O sandbox do worker deve manter `NoNewPrivileges=true`; não usar Polkit, `sudo`, `sudo ALL`, serviço arbitrário ou argumento livre nessa fronteira.
 
+O SteamCMD oficial inicializa por um executável Linux de 32 bits e seu runtime
+exige mapeamentos de memória executáveis e graváveis. Por isso, somente
+`palworld-manager-worker.service` permite
+`SystemCallArchitectures=native x86` e usa
+`MemoryDenyWriteExecute=false`. A aplicação web e o helper privilegiado
+permanecem restritos à arquitetura nativa com
+`MemoryDenyWriteExecute=true`; todas as demais proteções do worker continuam
+obrigatórias.
+
 Quando `PALWORLD_DIR` estiver abaixo de um diretório ancestral restrito, a instalação deve conceder ao grupo `palworld-manager` somente a travessia necessária nesse ancestral por ACL POSIX (`--x`). Não adicionar `palmanager` ao grupo proprietário da conta Steam nem liberar travessia para todos os usuários locais. A ACL não deve ser recursiva nem conceder leitura ou escrita fora de `PALWORLD_DIR`.
 
 ## 8. Acesso

@@ -94,6 +94,19 @@ def test_systemd_units_keep_web_and_worker_non_root_and_independent() -> None:
     ]
 
 
+def test_worker_sandbox_is_compatible_with_steamcmd_only_where_required() -> None:
+    web = _parse_unit(WEB_UNIT)["Service"]
+    worker = _parse_unit(WORKER_UNIT)["Service"]
+    host_control = _parse_unit(HOST_CONTROL_UNIT)["Service"]
+
+    assert _single(worker, "MemoryDenyWriteExecute") == "false"
+    assert _single(worker, "SystemCallArchitectures").split() == ["native", "x86"]
+
+    for service in (web, host_control):
+        assert _single(service, "MemoryDenyWriteExecute") == "true"
+        assert _single(service, "SystemCallArchitectures") == "native"
+
+
 def test_palworld_drop_in_preserves_shared_group_for_new_files() -> None:
     service = _parse_unit(PALWORLD_DROP_IN)["Service"]
 

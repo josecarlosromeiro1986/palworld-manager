@@ -158,3 +158,6 @@ JavaScript inline nos templates, validam CSP/headers e o limite de 1 MiB dos
 corpos HTTP, exigem `shell=False` e ambiente explícito em todo subprocesso,
 protegem logs regulares contra symlink/FIFO, limitam senha e tar, verificam
 permissões do `rclone.conf`, espaço de Restore e a retenção horária do worker.
+A validação das units também mantém a exceção do SteamCMD restrita ao worker:
+ABI `x86` e `MemoryDenyWriteExecute=false` não podem se propagar para a web
+ou para o helper privilegiado.

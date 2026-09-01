@@ -350,6 +350,12 @@ pedidos vazios em `/run/palworld-manager/host-control`, acionam o `oneshot` root
 correspondente e o helper traduz cada instância para um único comando fixo.
 Não há grant Polkit ou sudo para a aplicação.
 
+Somente o worker usa `SystemCallArchitectures=native x86` e
+`MemoryDenyWriteExecute=false`, necessários ao bootstrap de 32 bits e ao
+runtime oficial do SteamCMD. Web e helper privilegiado mantêm arquitetura nativa
+e `MemoryDenyWriteExecute=true`; as demais proteções do worker não são
+relaxadas.
+
 A primeira verificação omite deliberadamente os templates privilegiados porque o
 `systemd-analyze` exige que o alvo absoluto de `ExecStart` já exista. Depois que
 o helper protegido é instalado, a segunda verificação inclui as quatro units e
@@ -410,10 +416,13 @@ sudo test ! -e /etc/polkit-1/rules.d/50-palworld-manager-host-control.rules
 sudo test ! -e /etc/sudoers.d/palworld-manager
 sudo stat -c '%U %G %a %n' /etc/palworld-manager/secrets.env /var/lib/palworld-manager/rclone/rclone.conf /run/palworld-manager/host-control /usr/local/sbin/palworld-manager-host-control /etc/systemd/system/palworld-manager-host-control@.service /etc/systemd/system/palworld-manager-host-control@.path
 for action in palworld-start palworld-stop palworld-restart palworld-sigterm palworld-sigkill host-reboot host-poweroff; do systemctl is-enabled --quiet "palworld-manager-host-control@${action}.path" && systemctl is-active --quiet "palworld-manager-host-control@${action}.path" || exit 1; done
-systemctl show palworld-manager-worker.service --property=NoNewPrivileges --property=RestrictSUIDSGID
+systemctl show palworld-manager-worker.service --property=NoNewPrivileges --property=RestrictSUIDSGID --property=MemoryDenyWriteExecute --property=SystemCallArchitectures
 ```
 
-Não teste reboot, poweroff, sinais ou comandos de lifecycle apenas para validar
+No worker, são esperados `NoNewPrivileges=yes`,
+`RestrictSUIDSGID=yes`, `MemoryDenyWriteExecute=no` e
+`SystemCallArchitectures=native x86`. Não teste reboot, poweroff, sinais ou
+comandos de lifecycle apenas para validar
 a autorização. `bash -n`, `systemd-analyze verify`, metadados e
 as propriedades efetivas do worker são verificações sem efeito no host.
 

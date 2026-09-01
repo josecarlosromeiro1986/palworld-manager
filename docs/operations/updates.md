@@ -34,6 +34,13 @@ job não pode mais ser cancelado. O SteamCMD recebe uma lista fixa de argumentos
 login anônimo, App ID fixo e `PALWORLD_DIR` validado; nunca é chamado com
 `shell=True`, input livre ou privilégios de `root`.
 
+Em produção, a unit do worker permite as arquiteturas `native x86` e desativa
+`MemoryDenyWriteExecute` porque o bootstrap oficial do SteamCMD é um executável
+Linux de 32 bits e o runtime da Steam exige mapeamentos incompatíveis com essa
+restrição. A exceção não se aplica à web nem ao helper privilegiado; o worker
+mantém `NoNewPrivileges`, capabilities vazias, proteção do sistema e somente os
+paths graváveis explicitamente necessários.
+
 Após o Start, o health check respeita o timeout configurado, inicialmente 120
 segundos. O sucesso exige REST/health ONLINE, versão instalada compatível com a
 branch pública observada e ausência de novos erros críticos. Saída bruta do

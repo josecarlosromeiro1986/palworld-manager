@@ -63,6 +63,14 @@ A configuração estrutural é validada com Pydantic Settings no startup de web 
 - O Update é executado somente pelo worker. Em production, o adapter valida `STEAMCMD` como executável regular absoluto e `PALWORLD_DIR` como diretório estrutural regular, recusa symlinks e usa exclusivamente argumentos separados e fixos para login anônimo, App ID `2394010`, consulta da branch pública e `app_update 2394010 validate`. Não há input livre, credencial Steam, `shell=True`, saída bruta persistida ou execução como `root`. Development e test usam fakes integrais e não executam SteamCMD nem acessam a instalação estrutural do Palworld.
 - O usuário `palmanager` receberá no deploy apenas execução do binário SteamCMD e acesso de leitura/escrita necessário ao diretório do Palworld por grupo dedicado. O Update não usa `sudo` para ampliar acesso ao filesystem e não altera binários fora de `PALWORLD_DIR`; Start/Stop continuam restritos às regras fechadas de systemd já definidas.
 
+O sandbox do worker possui uma exceção explícita e isolada para compatibilidade
+com o runtime oficial da Steam: `SystemCallArchitectures=native x86` aceita o
+bootstrap de 32 bits e `MemoryDenyWriteExecute=false` permite os mapeamentos
+exigidos pelo SteamCMD. Web e helper privilegiado preservam
+`SystemCallArchitectures=native` e `MemoryDenyWriteExecute=true`. O worker
+continua não-root, sem capabilities, com `NoNewPrivileges=true`,
+`ProtectSystem=strict`, namespaces e paths graváveis limitados.
+
 Operações destrutivas exigem confirmações explícitas, locks e auditoria. Uma operação interrompida não é retomada automaticamente. Os requisitos completos estão em [SPECIFICATION.md](../../SPECIFICATION.md), especialmente nas seções de autenticação, jobs, backup e hardening.
 
 ## Baseline de produção

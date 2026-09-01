@@ -47,8 +47,10 @@ RestrictNamespaces=true
 RestrictRealtime=true
 RestrictSUIDSGID=true
 LockPersonality=true
-MemoryDenyWriteExecute=true
-SystemCallArchitectures=native
+# SteamCMD bootstraps through a 32-bit executable and its runtime requires
+# executable writable mappings. Keep this exception isolated to the worker.
+MemoryDenyWriteExecute=false
+SystemCallArchitectures=native x86
 
 [Install]
 WantedBy=multi-user.target
