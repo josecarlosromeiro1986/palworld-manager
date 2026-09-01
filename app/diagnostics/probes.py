@@ -207,9 +207,10 @@ class ProductionEnvironmentDiagnosticsProbe:
         try:
             database = self._settings.manager_database
             settings_file = self._settings.palworld_settings
-            directories_ok = all(
-                _usable_directory(path, writable=True)
-                for path in (database.parent, self._settings.palworld_dir, settings_file.parent)
+            directories_ok = (
+                _usable_directory(database.parent, writable=True)
+                and _usable_directory(self._settings.palworld_dir, writable=False)
+                and _usable_directory(settings_file.parent, writable=True)
             )
             files_ok = (
                 _usable_file(database, readable=True, writable=True)
@@ -297,16 +298,13 @@ def resolve_git_commit(environment: AppEnvironment) -> str:
     if executable is None:
         return "indisponível"
     repository = Path(__file__).resolve().parents[2]
+    command = [os.fspath(executable)]
+    if environment is AppEnvironment.PRODUCTION:
+        command.extend(("-c", f"safe.directory={os.fspath(repository)}"))
+    command.extend(("-C", os.fspath(repository), "rev-parse", "--short=12", "HEAD"))
     try:
         result = _run_command(
-            (
-                os.fspath(executable),
-                "-C",
-                os.fspath(repository),
-                "rev-parse",
-                "--short=12",
-                "HEAD",
-            ),
+            command,
             timeout_seconds=COMMAND_TIMEOUT_SECONDS,
         )
     except (OSError, subprocess.TimeoutExpired):

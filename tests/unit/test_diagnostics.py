@@ -5,8 +5,10 @@ from datetime import UTC, datetime
 from ipaddress import ip_address
 from pathlib import Path
 
+import pytest
 from pydantic import SecretStr
 
+import app.diagnostics.probes as diagnostics_probes
 from app.config import AppEnvironment, Settings
 from app.diagnostics.models import DiagnosticCheck, DiagnosticReport, DiagnosticStatus
 from app.diagnostics.probes import (
@@ -23,7 +25,7 @@ def _production_settings(tmp_path: Path) -> Settings:
         app_host=ip_address("127.0.0.1"),
         manager_database=tmp_path / "manager.db",
         palworld_dir=tmp_path / "palworld",
-        palworld_settings=tmp_path / "palworld/PalWorldSettings.ini",
+        palworld_settings=(tmp_path / "palworld/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"),
         steamcmd=tmp_path / "steamcmd",
         rclone=tmp_path / "rclone",
         palworld_rest_username=SecretStr("fake-user"),
@@ -117,6 +119,63 @@ def test_production_probe_uses_only_fixed_read_only_commands(tmp_path: Path) -> 
         ),
         (TAILSCALE_PATH, "status", "--json"),
         (TAILSCALE_PATH, "serve", "status", "--json"),
+    ]
+
+
+def test_permissions_check_accepts_read_only_palworld_root_for_web(tmp_path: Path) -> None:
+    settings = _production_settings(tmp_path)
+    settings.palworld_dir.mkdir()
+    settings.palworld_settings.parent.mkdir(parents=True)
+    settings.manager_database.write_text("database", encoding="utf-8")
+    settings.palworld_settings.write_text("settings", encoding="utf-8")
+    settings.steamcmd.write_text("steamcmd", encoding="utf-8")
+    settings.rclone.write_text("rclone", encoding="utf-8")
+    settings.steamcmd.chmod(0o750)
+    settings.rclone.chmod(0o750)
+    settings.palworld_dir.chmod(0o550)
+
+    try:
+        check = ProductionEnvironmentDiagnosticsProbe(
+            settings,
+            commit="7af506404a21",
+        )._permissions_check()
+    finally:
+        settings.palworld_dir.chmod(0o750)
+
+    assert check.status is DiagnosticStatus.OK
+
+
+def test_production_commit_probe_trusts_only_the_fixed_checkout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(
+        command: Sequence[str],
+        *,
+        timeout_seconds: float,
+    ) -> subprocess.CompletedProcess[str]:
+        assert timeout_seconds == 5.0
+        normalized = tuple(command)
+        calls.append(normalized)
+        return subprocess.CompletedProcess(normalized, 0, stdout="7af506404a21\n", stderr="")
+
+    monkeypatch.setattr(diagnostics_probes, "_run_command", runner)
+
+    assert diagnostics_probes.resolve_git_commit(AppEnvironment.PRODUCTION) == "7af506404a21"
+
+    repository = Path(diagnostics_probes.__file__).resolve().parents[2]
+    assert calls == [
+        (
+            diagnostics_probes.GIT_PATH,
+            "-c",
+            f"safe.directory={repository}",
+            "-C",
+            str(repository),
+            "rev-parse",
+            "--short=12",
+            "HEAD",
+        )
     ]
 
 

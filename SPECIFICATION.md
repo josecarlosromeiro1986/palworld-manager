@@ -628,6 +628,14 @@ Permitir com confirmação forte. Antes, tratar Palworld de forma segura, avisar
 
 Somente leitura. Verificar os serviços web, worker e Palworld, processos, portas, REST API, health do worker por systemd + heartbeat no SQLite, disco/RAM, permissões/diretórios, SteamCMD, conectividade necessária, Tailscale/Serve, rclone/Drive, Discord, SQLite/migrations, versão/commit e erros relevantes.
 
+O check de permissões executado pela web deve respeitar sua fronteira de
+privilégio: exige escrita somente no banco e no diretório/arquivo de
+configuração do Palworld, enquanto `PALWORLD_DIR` precisa apenas de leitura e
+travessia. A capacidade ampliada de escrita do worker não pode ser concedida à
+web para satisfazer o diagnóstico. A leitura do commit em produção pode confiar
+somente no checkout estrutural fixo durante a chamada read-only ao Git, sem
+gravar `safe.directory` global ou persistente.
+
 Mostrar ✓ OK, ⚠ Atenção, ✗ Falha. Botões Testar novamente e Copiar diagnóstico. Nunca incluir segredos.
 
 ## 33. Auditoria

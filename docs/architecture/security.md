@@ -71,6 +71,12 @@ exigidos pelo SteamCMD. Web e helper privilegiado preservam
 continua não-root, sem capabilities, com `NoNewPrivileges=true`,
 `ProtectSystem=strict`, namespaces e paths graváveis limitados.
 
+O diagnóstico não amplia essa fronteira: a web valida `PALWORLD_DIR` somente
+para leitura e travessia e exige escrita apenas nos paths que sua própria unit
+libera. A identificação do commit confia exclusivamente no checkout estrutural
+fixo, root-owned, por uma opção `safe.directory` limitada à chamada read-only;
+ela não altera a configuração Git do usuário ou do sistema.
+
 Operações destrutivas exigem confirmações explícitas, locks e auditoria. Uma operação interrompida não é retomada automaticamente. Os requisitos completos estão em [SPECIFICATION.md](../../SPECIFICATION.md), especialmente nas seções de autenticação, jobs, backup e hardening.
 
 ## Baseline de produção

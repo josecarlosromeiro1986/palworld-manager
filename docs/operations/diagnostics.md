@@ -41,6 +41,13 @@ esses executáveis ou serviços externos. Em production, as consultas diretas de
 host usam argumentos fixos e sem shell. Tailscale é consultado somente por
 `tailscale status --json` e `tailscale serve status --json`.
 
+O check de paths reflete o sandbox da web: exige escrita no banco e no
+diretório/arquivo do `PalWorldSettings.ini`, mas somente leitura e travessia em
+`PALWORLD_DIR`. A escrita ampla continua exclusiva do worker. Para mostrar o
+commit de um checkout protegido e pertencente a root, a consulta `rev-parse`
+usa `safe.directory` apenas como opção fixa daquele comando; nenhuma
+configuração Git global ou persistente é criada.
+
 Development e test usam fakes integrais para os sinais de host. Eles não
 consultam systemd, Tailscale, portas, paths estruturais, SteamCMD, rclone,
 Google Drive ou Discord reais.
