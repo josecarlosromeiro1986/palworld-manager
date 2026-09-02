@@ -2,6 +2,7 @@
 {% from "components/icon.html" import icon with context %}
 
 {% block body %}
+{% set current_role = request.state.principal.role.value %}
 <body class="min-h-screen overflow-x-hidden bg-canvas font-sans text-ink antialiased">
   <div
     data-sidebar-backdrop
@@ -46,9 +47,13 @@
         </span>
         <div class="min-w-0">
           <p class="truncate text-sm font-medium text-ink">{{ username }}</p>
-          <p class="text-xs text-muted">Administrador</p>
+          <p class="text-xs text-muted">{{ "Administrador" if current_role == "ADMIN" else "Usuário" }}</p>
         </div>
       </div>
+      <a href="/account" class="mb-1 flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-muted hover:bg-surface-raised hover:text-ink">
+        {{ icon("settings") }}
+        <span>Minha conta</span>
+      </a>
       <form method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, CreatedAtMixin, IntegerPrimaryKeyMixin
@@ -8,10 +8,14 @@ from app.db.base import Base, CreatedAtMixin, IntegerPrimaryKeyMixin
 
 class User(IntegerPrimaryKeyMixin, CreatedAtMixin, Base):
     __tablename__ = "users"
+    __table_args__ = (CheckConstraint("role IN ('ADMIN', 'USER')", name="valid_role"),)
 
     username: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    username_key: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(20), server_default=text("'ADMIN'"), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("1"))
+    password_change_required: Mapped[bool] = mapped_column(Boolean, server_default=text("0"))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.current_timestamp(),

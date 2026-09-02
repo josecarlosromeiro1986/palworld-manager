@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Minha conta - Palworld Manager{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <p class="mb-1 text-xs font-medium text-accent">CONTA</p>
+  <h1 class="text-xl font-semibold text-ink sm:text-2xl">Minha conta</h1>
+  <p class="mt-1 text-sm text-muted">{{ username }} · {{ "Administrador" if role == "ADMIN" else "Usuário" }}</p>
+</header>
+
+<section class="max-w-3xl rounded-md border bg-surface p-4 sm:p-5">
+  <h2 class="text-base font-semibold text-ink">Alterar senha</h2>
+  <p class="mt-1 text-xs text-muted">A alteração encerra todas as suas sessões.</p>
+  {% if password_change_required %}
+    <p class="mt-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning" role="alert">Altere a senha temporária antes de continuar.</p>
+  {% endif %}
+  {% if error %}<p class="mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/account/password" class="mt-4 grid gap-4" data-confirm data-confirm-title="Alterar senha?" data-confirm-message="Todas as suas sessões serão encerradas." data-confirm-button="Alterar senha" data-confirm-tone="warning">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="block text-sm font-medium text-ink">Senha atual
+      <input class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink" type="password" name="current_password" autocomplete="current-password" required>
+    </label>
+    <label class="block text-sm font-medium text-ink">Nova senha
+      <input class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink" type="password" name="new_password" minlength="6" autocomplete="new-password" required>
+    </label>
+    <label class="block text-sm font-medium text-ink">Confirmar nova senha
+      <input class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink" type="password" name="new_password_confirmation" minlength="6" autocomplete="new-password" required>
+    </label>
+    <div><button type="submit" class="min-h-10 rounded-md border px-4 text-sm font-semibold text-warning hover:border-warning">Alterar senha e sair</button></div>
+  </form>
+</section>
+{% endblock %}

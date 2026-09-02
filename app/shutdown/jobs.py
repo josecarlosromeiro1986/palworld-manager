@@ -66,6 +66,7 @@ class InvalidForcedShutdownError(RuntimeError):
 @dataclass(frozen=True, slots=True)
 class ShutdownJobView:
     id: int
+    requested_by_user_id: int | None
     kind: ShutdownJobKind
     status: str
     progress: int
@@ -110,6 +111,7 @@ def enqueue_assisted_shutdown(
         is_cancellable=countdown_minutes > 0,
         requires_maintenance_lock=True,
         coordination_key=LIFECYCLE_COORDINATION_KEY,
+        requested_by_user_id=user_id,
         result={
             "countdown_minutes": countdown_minutes,
             "remaining_seconds": countdown_minutes * 60,
@@ -185,6 +187,7 @@ def enqueue_forced_shutdown(
         is_cancellable=False,
         requires_maintenance_lock=True,
         coordination_key=LIFECYCLE_COORDINATION_KEY,
+        requested_by_user_id=user_id,
         result={"source_job_id": source_job_id, "timeout_seconds": timeout_seconds},
     )
     session.add(job)
@@ -206,19 +209,23 @@ def enqueue_forced_shutdown(
     return job
 
 
-def request_shutdown_cancel(session: Session, job_id: int, *, user_id: int) -> bool:
-    changed_status = session.scalar(
-        update(Job)
-        .where(
-            Job.id == job_id,
-            Job.kind == ShutdownJobKind.ASSISTED.value,
-            Job.status.in_(ACTIVE_JOB_STATUSES),
-            Job.is_cancellable.is_(True),
-            Job.cancel_requested.is_(False),
-        )
-        .values(cancel_requested=True)
-        .returning(Job.status)
+def request_shutdown_cancel(
+    session: Session,
+    job_id: int,
+    *,
+    user_id: int,
+    owner_user_id: int | None = None,
+) -> bool:
+    query = update(Job).where(
+        Job.id == job_id,
+        Job.kind == ShutdownJobKind.ASSISTED.value,
+        Job.status.in_(ACTIVE_JOB_STATUSES),
+        Job.is_cancellable.is_(True),
+        Job.cancel_requested.is_(False),
     )
+    if owner_user_id is not None:
+        query = query.where(Job.requested_by_user_id == owner_user_id)
+    changed_status = session.scalar(query.values(cancel_requested=True).returning(Job.status))
     if changed_status is None:
         return False
     job = session.get_one(Job, job_id)
@@ -254,20 +261,24 @@ def request_shutdown_cancel(session: Session, job_id: int, *, user_id: int) -> b
     return True
 
 
-def request_shutdown_now(session: Session, job_id: int, *, user_id: int) -> bool:
-    changed_id = session.scalar(
-        update(Job)
-        .where(
-            Job.id == job_id,
-            Job.kind == ShutdownJobKind.ASSISTED.value,
-            Job.status.in_(ACTIVE_JOB_STATUSES),
-            Job.is_cancellable.is_(True),
-            Job.cancel_requested.is_(False),
-            Job.execute_now_requested.is_(False),
-        )
-        .values(execute_now_requested=True)
-        .returning(Job.id)
+def request_shutdown_now(
+    session: Session,
+    job_id: int,
+    *,
+    user_id: int,
+    owner_user_id: int | None = None,
+) -> bool:
+    query = update(Job).where(
+        Job.id == job_id,
+        Job.kind == ShutdownJobKind.ASSISTED.value,
+        Job.status.in_(ACTIVE_JOB_STATUSES),
+        Job.is_cancellable.is_(True),
+        Job.cancel_requested.is_(False),
+        Job.execute_now_requested.is_(False),
     )
+    if owner_user_id is not None:
+        query = query.where(Job.requested_by_user_id == owner_user_id)
+    changed_id = session.scalar(query.values(execute_now_requested=True).returning(Job.id))
     if changed_id is None:
         return False
     record_audit_event(
@@ -439,6 +450,7 @@ def shutdown_job_view(job: Job) -> ShutdownJobView:
     failure = result.get("failure")
     return ShutdownJobView(
         id=job.id,
+        requested_by_user_id=job.requested_by_user_id,
         kind=kind,
         status=job.status,
         progress=job.progress,

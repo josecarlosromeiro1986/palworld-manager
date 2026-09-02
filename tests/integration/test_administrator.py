@@ -7,6 +7,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, select, text
 
 from app.auth.passwords import verify_password
+from app.auth.roles import UserRole
 from app.auth.service import (
     AdministratorAlreadyExistsError,
     AdministratorNotFoundError,
@@ -16,6 +17,7 @@ from app.auth.service import (
 from app.auth.sessions import issue_session
 from app.db.engine import create_database_engine, create_session_factory, session_scope
 from app.db.models import SessionRecord, User
+from app.users.service import create_user
 
 
 @pytest.fixture
@@ -41,6 +43,9 @@ def test_create_administrator_persists_only_argon2id_hash(migrated_engine: Engin
         stored = session.get(User, administrator_id)
         assert stored is not None
         assert stored.username == "admin"
+        assert stored.username_key == "admin"
+        assert stored.role == "ADMIN"
+        assert stored.password_change_required is False
         assert stored.password_hash.startswith("$argon2id$")
         assert plaintext_password not in stored.password_hash
         assert verify_password(plaintext_password, stored.password_hash)
@@ -52,7 +57,7 @@ def test_create_administrator_persists_only_argon2id_hash(migrated_engine: Engin
     assert plaintext_password not in database_contents
 
 
-def test_v1_rejects_a_second_administrator(migrated_engine: Engine) -> None:
+def test_bootstrap_rejects_a_second_initial_administrator(migrated_engine: Engine) -> None:
     factory = create_session_factory(migrated_engine)
 
     with session_scope(factory) as session:
@@ -82,6 +87,32 @@ def test_reset_administrator_password_replaces_hash(migrated_engine: Engine) -> 
         stored_session = session.scalar(select(SessionRecord))
         assert stored_session is not None
         assert stored_session.revoked_at is not None
+
+
+def test_reset_administrator_password_rejects_user_account(
+    migrated_engine: Engine,
+) -> None:
+    factory = create_session_factory(migrated_engine)
+    with session_scope(factory) as session:
+        administrator = create_administrator(session, "admin", "senha-admin")
+        user = create_user(
+            session,
+            "operador",
+            "senha-temporaria",
+            UserRole.USER,
+            actor_user_id=administrator.id,
+        )
+        user_id = user.id
+        original_hash = user.password_hash
+
+    with pytest.raises(AdministratorNotFoundError), session_scope(factory) as session:
+        reset_administrator_password(session, "OPERADOR", "senha-substituta")
+
+    with session_scope(factory) as session:
+        stored = session.get_one(User, user_id)
+        assert stored.password_hash == original_hash
+        assert stored.password_change_required is True
+        assert verify_password("senha-temporaria", stored.password_hash)
 
 
 def test_reset_rejects_unknown_administrator(migrated_engine: Engine) -> None:

@@ -9,6 +9,7 @@ from starlette.responses import Response
 
 from app.auth.cookies import SESSION_CSRF_COOKIE_NAME
 from app.auth.csrf import tokens_match
+from app.auth.roles import UserRole
 from app.auth.sessions import SessionPrincipal, session_csrf_is_valid
 from app.dashboard.metrics import HostMetricsService, MetricsSnapshot
 from app.db.engine import session_scope
@@ -341,7 +342,14 @@ def cancel_assisted_shutdown(
     if not _valid_session_csrf(request, csrf_token):
         return PlainTextResponse("Token CSRF inválido.", status_code=403)
     with session_scope(_session_factory(request)) as session:
-        if not request_shutdown_cancel(session, job_id, user_id=_principal(request).user_id):
+        principal = _principal(request)
+        owner_user_id = principal.user_id if principal.role is UserRole.USER else None
+        if not request_shutdown_cancel(
+            session,
+            job_id,
+            user_id=principal.user_id,
+            owner_user_id=owner_user_id,
+        ):
             return PlainTextResponse("O job não pode mais ser cancelado.", status_code=409)
         job = session.get_one(Job, job_id)
         return _shutdown_response(request, job)
@@ -356,7 +364,14 @@ def execute_assisted_shutdown_now(
     if not _valid_session_csrf(request, csrf_token):
         return PlainTextResponse("Token CSRF inválido.", status_code=403)
     with session_scope(_session_factory(request)) as session:
-        if not request_shutdown_now(session, job_id, user_id=_principal(request).user_id):
+        principal = _principal(request)
+        owner_user_id = principal.user_id if principal.role is UserRole.USER else None
+        if not request_shutdown_now(
+            session,
+            job_id,
+            user_id=principal.user_id,
+            owner_user_id=owner_user_id,
+        ):
             return PlainTextResponse("O job não pode mais ser antecipado.", status_code=409)
         job = session.get_one(Job, job_id)
         return _shutdown_response(request, job)

@@ -37,6 +37,10 @@ class Job(IntegerPrimaryKeyMixin, CreatedAtMixin, Base):
     execute_now_requested: Mapped[bool] = mapped_column(Boolean, server_default=text("0"))
     requires_maintenance_lock: Mapped[bool] = mapped_column(Boolean, server_default=text("0"))
     coordination_key: Mapped[str | None] = mapped_column(String(100))
+    requested_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        index=True,
+    )
     claimed_by: Mapped[str | None] = mapped_column(String(100))
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

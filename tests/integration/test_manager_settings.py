@@ -159,7 +159,8 @@ def test_manager_settings_routes_require_authentication_and_hide_structural_fiel
     assert page.status_code == 200
     assert "Configurações do Painel" in page.text
     assert "local_backup_retention" in page.text
-    assert "current_password" in page.text
+    assert "current_password" not in page.text
+    assert "/account" in page.text
     assert "DISCORD_WEBHOOK_URL" not in page.text
     assert "PALWORLD_SERVICE" not in page.text
     assert "STEAMCMD" not in page.text
@@ -262,7 +263,7 @@ def test_password_change_requires_current_password_and_revokes_all_sessions(
     csrf_token = _csrf(client)
 
     rejected = client.post(
-        "/manager-settings/password",
+        "/account/password",
         data={
             "csrf_token": "invalid",
             "current_password": "senha-ficticia",
@@ -273,7 +274,7 @@ def test_password_change_requires_current_password_and_revokes_all_sessions(
     assert rejected.status_code == 403
 
     response = client.post(
-        "/manager-settings/password",
+        "/account/password",
         data={
             "csrf_token": csrf_token,
             "current_password": "senha-ficticia",
@@ -298,7 +299,7 @@ def test_password_change_requires_current_password_and_revokes_all_sessions(
         assert all(record.revoked_at is not None for record in sessions)
         audit = session.scalar(
             select(AuditEvent)
-            .where(AuditEvent.action == "MANAGER_PASSWORD_UPDATE")
+            .where(AuditEvent.action == "ACCOUNT_PASSWORD_UPDATE")
             .order_by(AuditEvent.id.desc())
         )
         assert audit is not None
@@ -328,7 +329,7 @@ def test_password_change_rejects_policy_or_confirmation_without_sensitive_audit(
     _login(client)
 
     response = client.post(
-        "/manager-settings/password",
+        "/account/password",
         data={
             "csrf_token": _csrf(client),
             "current_password": "senha-ficticia",
@@ -346,7 +347,7 @@ def test_password_change_rejects_policy_or_confirmation_without_sensitive_audit(
         assert verify_password("senha-ficticia", administrator.password_hash)
         audit = session.scalar(
             select(AuditEvent)
-            .where(AuditEvent.action == "MANAGER_PASSWORD_UPDATE")
+            .where(AuditEvent.action == "ACCOUNT_PASSWORD_UPDATE")
             .order_by(AuditEvent.id.desc())
         )
         assert audit is not None
@@ -367,7 +368,7 @@ def test_password_change_reuses_abuse_protection_for_current_password(
         "new_password_confirmation": "nova-senha-ficticia",
     }
 
-    responses = [client.post("/manager-settings/password", data=data) for _ in range(5)]
+    responses = [client.post("/account/password", data=data) for _ in range(5)]
 
     assert [response.status_code for response in responses] == [400, 400, 400, 400, 429]
     factory = create_session_factory(manager_settings_context.engine)

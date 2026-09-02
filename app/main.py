@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.account.router import router as account_router
 from app.audit.history import AuditHistoryService
 from app.audit.router import router as audit_router
 from app.auth.middleware import AuthenticationMiddleware
@@ -41,6 +42,7 @@ from app.players.service import ManualPlayersService
 from app.security import RequestBodyLimitMiddleware, SecurityHeadersMiddleware
 from app.system.palworld_service import create_palworld_service
 from app.updates.router import router as updates_router
+from app.users.router import router as users_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -119,6 +121,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.include_router(health_router)
     application.include_router(auth_router)
+    application.include_router(account_router)
+    application.include_router(users_router)
     application.include_router(audit_router)
     application.include_router(host_power_router)
     application.include_router(backups_router)

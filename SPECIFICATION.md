@@ -262,7 +262,9 @@ FastAPI escuta apenas em `127.0.0.1:<porta>`. Publicação privada via **Tailsca
 
 ## 9. Autenticação e segurança de sessão
 
-V1 com um administrador, mas modelo preparado para múltiplos usuários futuros.
+Após a V1, o Manager suporta múltiplos usuários com papéis `ADMIN` e `USER`.
+O administrador criado pela CLI é migrado e preservado automaticamente como
+`ADMIN`, sem alteração da senha.
 
 - senha mínima: 6 caracteres;
 - Argon2id;
@@ -275,9 +277,11 @@ V1 com um administrador, mas modelo preparado para múltiplos usuários futuros.
 - troca de senha invalida todas as sessões;
 - troca de senha pelo painel exige a senha atual, a nova senha e a confirmação
   exata da nova senha;
+- a nova senha deve ser diferente da senha atual, inclusive durante a troca
+  obrigatória da senha temporária;
 - a validação da senha atual usa a mesma proteção contra tentativas abusivas do
   login; após o sucesso, todas as sessões, inclusive a atual, são revogadas, os
-  cookies de autenticação são removidos e o administrador retorna ao login;
+  cookies de autenticação são removidos e o usuário retorna ao login;
 - a alteração é auditada sem registrar senha, hash ou qualquer outro valor
   sensível;
 - cookies `HttpOnly` e `SameSite=Strict` em todos os ambientes; o cookie de sessão usa `Secure` obrigatoriamente em produção e pode omiti-lo somente em development/test para permitir o acesso HTTP local;
@@ -288,7 +292,31 @@ V1 com um administrador, mas modelo preparado para múltiplos usuários futuros.
 
 Tudo autenticado por padrão, exceto `/login` e `/health`. `/health` é exclusivo da aplicação web e deve retornar apenas estado mínimo, por exemplo `{"status":"ok"}`. O worker não expõe servidor HTTP próprio.
 
-Recuperação de senha somente via terminal, com CLI equivalente a:
+Autorização é aplicada no backend por allowlist fechada:
+
+- `ADMIN` acessa todas as funções autenticadas e gerencia contas;
+- `USER` visualiza somente o Dashboard e Minha conta;
+- `USER` pode solicitar Start, Restart e Stop assistido com 0, 1, 5 ou 10
+  minutos;
+- durante a contagem, `USER` pode cancelar ou antecipar somente o próprio job;
+- backup rápido, SIGTERM, SIGKILL, energia do host e qualquer página
+  administrativa são negados ao `USER` com HTTP 403, além de não aparecerem
+  na interface;
+- o username é imutável, preserva sua grafia de exibição e é comparado sem
+  distinção entre maiúsculas e minúsculas no login e na unicidade;
+- usuários criados pela UI recebem senha temporária e precisam alterá-la no
+  primeiro login; até isso ocorrer, somente Minha conta e logout são permitidos;
+- alteração própria de senha exige senha atual e revoga todas as sessões;
+- alteração de papel/status e reset administrativo de senha revogam todas as
+  sessões do alvo;
+- a UI administrativa permite criar, alterar papel, ativar/desativar e resetar
+  senha, mas nunca excluir fisicamente uma conta;
+- um administrador não altera o próprio papel/status nem redefine a própria
+  senha pela gestão; deve usar Minha conta;
+- o último administrador ativo não pode ser desativado nem rebaixado.
+
+Recuperação de senha somente via terminal e exclusivamente para contas ADMIN,
+com CLI equivalente a:
 
 ```bash
 python -m app.cli reset-password
@@ -412,13 +440,10 @@ Definições versionadas no projeto e baseadas na documentação oficial. Sem sc
 
 ## 21. Configurações do Painel
 
-Editar somente parâmetros operacionais seguros: backup, horário, retenção, timezone, métricas, aviso assistido, limites de disco, timeouts, senha, teste Discord e Drive.
+Editar somente parâmetros operacionais seguros: backup, horário, retenção, timezone, métricas, aviso assistido, limites de disco, timeouts e testes Discord e Drive.
 
-A troca de senha no painel exige senha atual, nova senha e confirmação. A senha
-atual passa pela proteção contra tentativas abusivas já usada no login. Depois
-de uma alteração válida com Argon2id e a política mínima vigente, todas as
-sessões são revogadas, os cookies de autenticação são removidos, a ação é
-auditada sem valores sensíveis e o administrador retorna à tela de login.
+A troca de senha pertence à página **Minha conta**, disponível para ambos os
+papéis, e segue as regras da seção 9.
 
 Não permitir alterar pela UI gatilhos `systemd.path`, helpers privilegiados, serviços arbitrários, executáveis arbitrários, infraestrutura Tailscale ou caminhos críticos livres.
 
@@ -654,7 +679,8 @@ Usar journald para `palworld-manager.service` e `palworld-manager-worker.service
 
 ## 36. Banco
 
-SQLite + SQLAlchemy 2.x + Alembic. Modelo preparado para múltiplos usuários.
+SQLite + SQLAlchemy 2.x + Alembic. O modelo suporta múltiplos usuários, papéis,
+status, troca obrigatória de senha e autoria dos jobs controláveis pelo `USER`.
 
 Entidades sugeridas: `users`, `sessions`, `login_attempts`, `app_settings`, `audit_events`, `notification_events`, `jobs`, `backup_records`, `ban_history`.
 
@@ -678,7 +704,7 @@ Validar inputs; nunca interpolar input em shell; preferir `subprocess` com lista
 
 ## 40. Fora da V1
 
-Terminal web, mods, jogadores offline por save, restore individual de jogador, monitoramento contínuo de login/logout, notificações de entrada/saída, scraping docs, React/Vue, Redis/Celery/RabbitMQ/Kafka, Prometheus/Grafana/Sentry, API própria, múltiplos admins na UI, roles, exportação de auditoria, anúncios agendados, criptografia de backups, rollback automático de Restore/Update, GitHub Actions obrigatório e auto-update do Manager.
+Terminal web, mods, jogadores offline por save, restore individual de jogador, monitoramento contínuo de login/logout, notificações de entrada/saída, scraping docs, React/Vue, Redis/Celery/RabbitMQ/Kafka, Prometheus/Grafana/Sentry, API própria, exportação de auditoria, anúncios agendados, criptografia de backups, rollback automático de Restore/Update, GitHub Actions obrigatório e auto-update do Manager.
 
 # 41. Plano incremental para o Codex
 
@@ -777,6 +803,13 @@ Registrar commit anterior, atualizar, dependências, assets, migrations, config,
 ### Etapa 31 — Hardening e V1
 Revisão completa de permissões, secrets, CSRF, sessão, shell/path/tar, concorrência, locks, logs, retenção, timeouts, testes e docs. **Aceite:** `make check` passa; versão `1.0.0`. Commit: `release: palworld manager 1.0.0`.
 
+### Etapa 32 — Usuários e controle de acesso
+Papéis `ADMIN`/`USER`, gestão sem exclusão física, senha temporária obrigatória,
+autorização fechada no backend e autoria de desligamentos assistidos. **Aceite:**
+o usuário existente migra para `ADMIN`; `USER` acessa somente Dashboard/Minha
+conta e as ações permitidas; bypass direto recebe 403; sessões e último
+administrador ativo são protegidos. Commit: `feat: add user roles and access control`.
+
 ## 42. Testes
 
 Unitários: health states do Palworld e worker, inclusive ausência inicial de heartbeat, config, retenção, quota, locks, cancelamento, INI, auth, timeouts, auditoria e estados/retries de notificação.
@@ -843,7 +876,7 @@ Login seguro; app como `palmanager`; Tailscale Serve; Dashboard; métricas; heal
 
 ## 48. Roadmap pós-V1
 
-Múltiplos administradores, roles, API `/api/v1`, notificações adicionais, monitoramento de jogadores, mods, GitHub Actions, métricas persistentes opcionais, outros destinos de backup, internacionalização e autenticação externa.
+API `/api/v1`, notificações adicionais, monitoramento de jogadores, mods, GitHub Actions, métricas persistentes opcionais, outros destinos de backup, internacionalização e autenticação externa.
 
 ## 49. Resumo
 

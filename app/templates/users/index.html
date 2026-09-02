@@ -1,0 +1,80 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Usuários - Palworld Manager{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <p class="mb-1 text-xs font-medium text-accent">CONTROLE DE ACESSO</p>
+  <h1 class="text-xl font-semibold text-ink sm:text-2xl">Usuários</h1>
+  <p class="mt-1 text-sm text-muted">Gerencie papéis, acesso e senhas temporárias. Usuários não são excluídos.</p>
+</header>
+
+{% if error %}<p class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>{% endif %}
+{% if saved %}<p class="mb-4 rounded-md border border-positive/30 bg-positive/10 px-3 py-2 text-sm text-positive" role="status">Alteração salva e sessões afetadas revogadas.</p>{% endif %}
+
+<section class="rounded-md border bg-surface p-4 sm:p-5" aria-labelledby="new-user-title">
+  <h2 id="new-user-title" class="text-base font-semibold text-ink">Criar usuário</h2>
+  <p class="mt-1 text-xs text-muted">A senha informada é temporária e deverá ser alterada no primeiro login.</p>
+  <form method="post" action="/users" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="text-sm font-medium text-ink">Nome de usuário
+      <input class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3" name="username" maxlength="100" autocomplete="off" required>
+    </label>
+    <label class="text-sm font-medium text-ink">Papel
+      <select class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3" name="role">
+        <option value="USER">Usuário</option>
+        <option value="ADMIN">Administrador</option>
+      </select>
+    </label>
+    <label class="text-sm font-medium text-ink">Senha temporária
+      <input class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3" type="password" name="temporary_password" minlength="6" autocomplete="new-password" required>
+    </label>
+    <label class="text-sm font-medium text-ink">Confirmar senha
+      <input class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3" type="password" name="temporary_password_confirmation" minlength="6" autocomplete="new-password" required>
+    </label>
+    <div class="md:col-span-2 xl:col-span-4"><button class="min-h-10 rounded-md bg-accent px-4 text-sm font-semibold text-canvas" type="submit">Criar usuário</button></div>
+  </form>
+</section>
+
+<section class="mt-6 space-y-3" aria-labelledby="users-title">
+  <h2 id="users-title" class="text-base font-semibold text-ink">Contas existentes</h2>
+  {% for user in users %}
+    <article class="rounded-md border bg-surface p-4">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 class="font-semibold text-ink">{{ user.username }}</h3>
+          <p class="mt-1 text-xs text-muted">{{ "Administrador" if user.role == "ADMIN" else "Usuário" }} · {{ "Ativo" if user.is_active else "Inativo" }}{% if user.password_change_required %} · troca de senha pendente{% endif %}</p>
+        </div>
+        {% if user.id == current_user_id %}<span class="rounded-full border px-2 py-1 text-xs text-accent">Sua conta</span>{% endif %}
+      </div>
+      {% if user.id != current_user_id %}
+        <div class="mt-4 grid gap-3 lg:grid-cols-3">
+          <form method="post" action="/users/{{ user.id }}/role" class="flex items-end gap-2" data-confirm data-confirm-title="Alterar papel?" data-confirm-message="As sessões deste usuário serão encerradas." data-confirm-button="Alterar papel" data-confirm-tone="warning">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="flex-1 text-xs text-muted">Papel
+              <select class="mt-1 min-h-10 w-full rounded-md border bg-canvas px-2 text-sm text-ink" name="role">
+                <option value="USER" {% if user.role == "USER" %}selected{% endif %}>Usuário</option>
+                <option value="ADMIN" {% if user.role == "ADMIN" %}selected{% endif %}>Administrador</option>
+              </select>
+            </label>
+            <button class="min-h-10 rounded-md border px-3 text-xs text-warning" type="submit">Salvar</button>
+          </form>
+          <form method="post" action="/users/{{ user.id }}/status" class="flex items-end" data-confirm data-confirm-title="{{ 'Desativar' if user.is_active else 'Reativar' }} usuário?" data-confirm-message="As sessões deste usuário serão encerradas." data-confirm-button="Confirmar" data-confirm-tone="warning">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="active" value="{{ 'false' if user.is_active else 'true' }}">
+            <button class="min-h-10 w-full rounded-md border px-3 text-xs {{ 'text-danger' if user.is_active else 'text-positive' }}" type="submit">{{ "Desativar" if user.is_active else "Reativar" }}</button>
+          </form>
+          <form method="post" action="/users/{{ user.id }}/password" class="grid grid-cols-2 gap-2" data-confirm data-confirm-title="Redefinir senha?" data-confirm-message="A nova senha será temporária e todas as sessões serão encerradas." data-confirm-button="Redefinir senha" data-confirm-tone="warning">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input class="min-h-10 rounded-md border bg-canvas px-2 text-sm text-ink" type="password" name="temporary_password" minlength="6" placeholder="Senha temporária" autocomplete="new-password" required>
+            <input class="min-h-10 rounded-md border bg-canvas px-2 text-sm text-ink" type="password" name="temporary_password_confirmation" minlength="6" placeholder="Confirmar" autocomplete="new-password" required>
+            <button class="col-span-2 min-h-10 rounded-md border px-3 text-xs text-warning" type="submit">Redefinir senha</button>
+          </form>
+        </div>
+      {% else %}
+        <p class="mt-3 text-xs text-muted">Use Minha conta para alterar sua senha.</p>
+      {% endif %}
+    </article>
+  {% endfor %}
+</section>
+{% endblock %}

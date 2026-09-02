@@ -118,24 +118,4 @@
   </div>
 </section>
 
-<section class='mt-6 rounded-md border bg-surface p-4 sm:p-5' aria-labelledby='password-title'>
-  <h2 id='password-title' class='text-base font-semibold text-ink'>Alterar senha</h2>
-  <p class='mt-1 text-xs text-muted'>A troca revoga todas as sessões e retorna ao login.</p>
-  {% if password_error %}<p class='mt-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger' role='alert'>{{ password_error }}</p>{% endif %}
-  <form method='post' action='/manager-settings/password' class='mt-4 grid gap-4 md:grid-cols-3' data-confirm data-confirm-title='Alterar senha?' data-confirm-message='Todas as sessões, inclusive esta, serão encerradas.' data-confirm-button='Alterar senha' data-confirm-tone='warning'>
-    <input type='hidden' name='csrf_token' value='{{ csrf_token }}'>
-    <label class='block text-sm font-medium text-ink'>Senha atual
-      <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' type='password' name='current_password' autocomplete='current-password' required>
-    </label>
-    <label class='block text-sm font-medium text-ink'>Nova senha
-      <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' type='password' name='new_password' minlength='6' autocomplete='new-password' required>
-    </label>
-    <label class='block text-sm font-medium text-ink'>Confirmar nova senha
-      <input class='mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink' type='password' name='new_password_confirmation' minlength='6' autocomplete='new-password' required>
-    </label>
-    <div class='md:col-span-3 md:text-right'>
-      <button type='submit' class='min-h-10 rounded-md border px-4 text-sm font-semibold text-warning hover:border-warning'>Alterar senha e sair</button>
-    </div>
-  </form>
-</section>
 {% endblock %}

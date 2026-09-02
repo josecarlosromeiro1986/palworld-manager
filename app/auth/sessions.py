@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.csrf import generate_token, hash_token, token_matches_hash
+from app.auth.roles import UserRole
 from app.db.models import SessionRecord, User
 
 SESSION_MAXIMUM_DURATION = timedelta(hours=8)
@@ -23,6 +24,8 @@ class SessionPrincipal:
     session_id: int
     user_id: int
     username: str
+    role: UserRole
+    password_change_required: bool
     csrf_token_hash: str
 
 
@@ -86,6 +89,8 @@ def resolve_session(
         session_id=record.id,
         user_id=user.id,
         username=user.username,
+        role=UserRole(user.role),
+        password_change_required=user.password_change_required,
         csrf_token_hash=record.csrf_token_hash,
     )
 
