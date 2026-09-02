@@ -32,7 +32,7 @@ Consulte a [Política de Privacidade](privacy.md) para entender quais dados do G
 
 ## Operações
 
-- [Instalação em produção](operations/production-install.md): procedimento nativo reproduzível para Ubuntu Server.
+- [Instalação em produção](operations/production-install.md): procedimento nativo reproduzível para Ubuntu Server, permissões, integrações e aceite funcional.
 - [Deploy](operations/deploy.md): atualização recorrente segura e rollback manual explícito.
 - [Backup e restore](operations/backup-restore.md): conteúdo, integridade, retenção e restauração segura.
 - [Atualizações](operations/updates.md): atualização manual do Palworld via SteamCMD.
@@ -48,8 +48,8 @@ Consulte a [Política de Privacidade](privacy.md) para entender quais dados do G
 - [REST API do Palworld](integrations/palworld-rest-api.md): cliente oficial tipado, consulta manual de jogadores, anúncios, administração de jogadores e tratamento seguro de falhas.
 - [Editor do PalWorldSettings.ini](integrations/palworld-settings-ini.md): schema versionado, preservação de desconhecidos, backup pré-save e Restart.
 - [Tailscale](integrations/tailscale.md): acesso privado por Tailscale Serve e HTTPS.
-- [Google Drive e rclone](integrations/google-drive-rclone.md): armazenamento remoto de backups gerenciados.
-- [Discord](integrations/discord.md): webhook e política enxuta de notificações.
+- [Google Drive e rclone](integrations/google-drive-rclone.md): Google Cloud, OAuth próprio, remote protegido e backups gerenciados.
+- [Discord](integrations/discord.md): criação do webhook, instalação do secret, teste e política de notificações.
 
 ## Decisões arquiteturais
 

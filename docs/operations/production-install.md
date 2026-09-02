@@ -35,6 +35,28 @@ Se a instalação real usa outro path ou outra unidade, altere simultaneamente a
 configuração estrutural, o sandbox, o adapter, o helper root e os templates
 systemd. Não libere curingas nem uma unidade arbitrária.
 
+## Ordem de execução e critério de conclusão
+
+Execute as seções na ordem. A instalação só está concluída quando todos estes
+itens forem verdadeiros:
+
+- Palworld e sua REST API funcionam localmente antes do Manager;
+- web e worker executam como `palmanager`, permanecem habilitados e saudáveis;
+- checkout e artefatos privilegiados são protegidos por `root`;
+- banco, jobs, backups e tokens renováveis são graváveis apenas pelos usuários
+  previstos;
+- o remote `palworld-manager:` usa OAuth próprio e passa no teste do Drive;
+- o webhook do Discord passa no teste de entrega, quando essa integração for
+  habilitada;
+- a web escuta somente em `127.0.0.1:8080` e o HTTPS é publicado apenas pelo
+  Tailscale Serve;
+- login administrativo, consulta de jogadores, lifecycle e backup manual
+  concluem sem expor credenciais.
+
+Faça um backup offline validado de `Pal/Saved` e preserve uma cópia da unit
+`palworld.service` antes da primeira alteração de permissões. Pare diante de
+symlink, path inesperado, backup inválido ou serviço Palworld não funcional.
+
 ## 1. Pré-requisitos
 
 Use Ubuntu Server com systemd e Python 3.12 ou mais recente. Instale as
@@ -72,6 +94,25 @@ test -x /usr/games/steamcmd
 O SteamCMD e o serviço `palworld.service` devem estar instalados e funcionais
 antes do Manager. Não prossiga se `PALWORLD_DIR`, o mundo ou os INIs forem
 symlinks; os adapters de produção os recusam.
+
+### Preparar a REST API oficial do Palworld
+
+No `PalWorldSettings.ini` real, preserve todos os parâmetros e confirme
+`RESTAPIEnabled=True`, `RESTAPIPort=8212` e uma `AdminPassword` forte.
+Trate essa senha como secret. Reinicie o Palworld somente em uma janela segura e
+valide sem autenticar:
+
+```bash
+sudo systemctl restart palworld.service
+systemctl is-active --quiet palworld.service
+ss -ltn '( sport = :8212 )'
+curl --silent --output /dev/null --write-out '%{http_code}\n' http://127.0.0.1:8212/v1/api/info
+```
+
+O listener deve existir e a chamada sem credenciais deve retornar `401`. Não
+publique a porta 8212 na LAN ou Internet; o Manager usa o loopback. A sintaxe do
+INI, a relação com os secrets Basic Auth e a validação funcional estão em
+[REST API do Palworld](../integrations/palworld-rest-api.md).
 
 ## 2. Usuário e grupos
 
@@ -149,15 +190,18 @@ Crie o arquivo de secrets sem copiar seu conteúdo para o terminal, logs ou
 documentação:
 
 ```bash
-sudo install -o root -g palmanager -m 0640 /dev/null /etc/palworld-manager/secrets.env
+sudo test -e /etc/palworld-manager/secrets.env || sudo install -o root -g palmanager -m 0640 /dev/null /etc/palworld-manager/secrets.env
 sudoedit /etc/palworld-manager/secrets.env
 ```
 
 O arquivo deve definir `PALWORLD_REST_USERNAME` e
-`PALWORLD_REST_PASSWORD`. `DISCORD_WEBHOOK_URL` é opcional. Use uma linha
-`NOME=valor` por variável, com quoting compatível com
+`PALWORLD_REST_PASSWORD` com o par Basic Auth aceito pelo Palworld.
+`DISCORD_WEBHOOK_URL` é opcional e só deve ser adicionado depois que o webhook
+for criado. Use uma linha `NOME=valor` por variável, com quoting compatível com
 `systemd.exec(5)`. Não use `export`, não registre valores em tickets e não
-execute `cat` nesse arquivo.
+execute `cat` nesse arquivo. Consulte
+[REST API do Palworld](../integrations/palworld-rest-api.md) e
+[Discord](../integrations/discord.md) para preparar cada integração.
 
 Valide apenas metadata e nomes esperados:
 
@@ -172,17 +216,27 @@ acima não imprimem valores.
 
 ## 5. rclone
 
+Antes de abrir o assistente, crie um projeto no Google Cloud, habilite
+**Google Drive API**, conclua Branding/Audience/Data Access, publique o
+aplicativo OAuth e crie um cliente próprio do tipo **Desktop app**. Não use o
+client compartilhado do rclone para uma instalação duradoura e nunca exponha
+Client ID, Client secret ou token. O passo a passo, inclusive para servidor sem
+navegador, está em
+[Google Drive com rclone](../integrations/google-drive-rclone.md).
+
 Crie a configuração separada dos secrets da aplicação. Ela precisa ser gravável
 por `palmanager` porque tokens OAuth podem ser renovados:
 
 ```bash
-sudo install -o palmanager -g palmanager -m 0600 /dev/null /var/lib/palworld-manager/rclone/rclone.conf
+sudo test -e /var/lib/palworld-manager/rclone/rclone.conf || sudo install -o palmanager -g palmanager -m 0600 /dev/null /var/lib/palworld-manager/rclone/rclone.conf
 sudo -u palmanager env RCLONE_CONFIG=/var/lib/palworld-manager/rclone/rclone.conf /usr/bin/rclone config
 ```
 
 Na interface interativa, crie o remote exato `palworld-manager` para Google
-Drive. Não configure outro namespace: o código limita todas as operações a
-`Palworld Manager/Backups/`.
+Drive, informe o OAuth próprio, selecione o escopo `drive`, deixe
+`service_account_file` vazio e não configure Shared Drive salvo se essa for
+uma decisão explícita da instalação. Não configure outro namespace: o código
+limita todas as operações a `Palworld Manager/Backups/`.
 
 Valide sem mostrar a configuração:
 
@@ -264,6 +318,19 @@ sudo -u palmanager test -w /home/steam/palserver/Pal/Saved/Config/LinuxServer
 sudo -u palmanager test -x /usr/games/steamcmd
 ```
 
+Os quatro comandos devem retornar exit code zero. Confirme também que
+`/home/steam` conserva owner, grupo e modo originais e possui somente a ACL de
+travessia concedida ao grupo compartilhado:
+
+```bash
+sudo getfacl --absolute-names /home/steam
+id palmanager
+```
+
+`palmanager` deve pertencer a `palworld-manager` e `systemd-journal`, mas
+não ao grupo privado `steam`. Não corrija falhas com `chmod 777`, `o+x`,
+ACL recursiva ou execução da aplicação como root.
+
 ## 7. Migrations e administrador inicial
 
 Aplique migrations antes de iniciar os serviços. O transient service lê os dois
@@ -312,6 +379,12 @@ sudo systemd-run --quiet --wait --pty --collect \
 
 A senha é solicitada com entrada oculta. Para redefinição futura, troque apenas
 `create-admin` por `reset-password`.
+
+Depois do primeiro login, use a página **Usuários** para criar outras contas
+`ADMIN` ou `USER`. Contas novas recebem senha temporária e precisam trocá-la
+no primeiro acesso; não compartilhe a conta inicial. A CLI de recuperação é
+exclusiva para administradores. Consulte
+[Usuários e controle de acesso](user-management.md) antes de delegar acesso.
 
 ## 8. Gatilhos systemd.path, helper e units
 
@@ -437,6 +510,43 @@ Revise somente categorias e mensagens controladas; não copie ambientes ou
 arquivos de secrets para o journal. De outro dispositivo autorizado da tailnet,
 abra a URL HTTPS exibida pelo Serve e confirme login e logout.
 
+### Aceite funcional e persistência
+
+Entre como `ADMIN` e valide uma operação por vez:
+
+1. em **Diagnóstico**, execute novamente os checks e investigue qualquer
+   `Falha`; Palworld intencionalmente offline e Discord não configurado podem
+   aparecer como atenção, não como defeito da instalação;
+2. com o Palworld online, use **Jogadores > Atualizar jogadores** para confirmar
+   a autenticação REST;
+3. em **Configurações do Painel**, teste conexão/quota do Google Drive e, se
+   configurado, a entrega do Discord; espere `SUCCEEDED` e `SENT`;
+4. crie um backup manual e confirme `SUCCEEDED`, integridade `VALID` e
+   registro local; o fluxo também suporta Palworld comprovadamente offline;
+5. envie esse backup ao Drive e confirme que o registro remoto fica `VALID`;
+6. em uma janela sem jogadores, valide Stop assistido, Start e Restart, deixando
+   o Palworld online ao final. Não use reboot, poweroff, SIGKILL, Restore ou
+   Update apenas como teste de instalação;
+7. crie uma conta `USER`, troque a senha temporária no primeiro login e
+   confirme que ela vê somente Dashboard e pode solicitar Start, Restart e Stop
+   assistido.
+
+O backup automático usa o mesmo pipeline seguro do backup manual. Confirme em
+**Configurações do Painel** o horário, timezone e retenções antes de depender do
+primeiro agendamento.
+
+Por fim, confirme habilitação e ausência de erros recentes:
+
+```bash
+for unit in palworld.service palworld-manager.service palworld-manager-worker.service tailscaled.service; do systemctl is-enabled --quiet $unit && systemctl is-active --quiet $unit || exit 1; done
+journalctl --unit palworld-manager.service --unit palworld-manager-worker.service --priority=err --since today --no-pager
+```
+
+Planeje um reboot controlado do Ubuntu somente quando isso fizer parte da janela
+de manutenção. Depois dele, repita os checks de serviços, `/health`, heartbeat,
+Serve e acesso HTTPS. A última job de reboot pode continuar visível no painel
+após a volta; ela é histórico operacional, não sinal de repetição pendente.
+
 ## 11. Falhas e limites desta etapa
 
 - Não use Docker em produção.
@@ -454,4 +564,7 @@ A atualização recorrente, as validações pós-restart e o rollback manual est
 [Segurança](../architecture/security.md), [Jobs e locks](../architecture/jobs-and-locks.md),
 [Backup e restore](backup-restore.md), [Energia do host](host-power.md),
 [Tailscale](../integrations/tailscale.md) e
-[Google Drive com rclone](../integrations/google-drive-rclone.md).
+[Google Drive com rclone](../integrations/google-drive-rclone.md),
+[Discord](../integrations/discord.md),
+[REST API do Palworld](../integrations/palworld-rest-api.md) e
+[Usuários e controle de acesso](user-management.md).

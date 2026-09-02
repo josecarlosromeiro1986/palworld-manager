@@ -37,13 +37,48 @@ O health converte essas categorias para seus estados técnicos. A página de jog
 
 ## Configuração e ambientes
 
+Antes de iniciar o Manager em produção, habilite a API no arquivo real
+`/home/steam/palserver/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini`.
+Dentro de `OptionSettings`, confirme:
+
+```text
+RESTAPIEnabled=True
+RESTAPIPort=8212
+```
+
+No INI real, preserve a sintaxe já usada pelo arquivo e não substitua
+`OptionSettings` por esse fragmento. Defina também uma `AdminPassword` forte
+usando a sintaxe existente do INI. Seu valor é sensível e não deve aparecer em
+evidências, histórico ou documentação. Reinicie o Palworld em uma
+janela segura e valide apenas que o listener existe e que uma chamada sem
+credenciais é rejeitada:
+
+```bash
+sudo systemctl restart palworld.service
+systemctl is-active --quiet palworld.service
+ss -ltn '( sport = :8212 )'
+curl --silent --output /dev/null --write-out '%{http_code}\n' http://127.0.0.1:8212/v1/api/info
+```
+
+O último comando deve retornar `401`; isso confirma que a API responde e exige
+autenticação sem revelar credenciais. A documentação oficial também recomenda
+que essa API não seja publicada diretamente na Internet. O Manager deve
+alcançá-la somente pelo loopback do host.
+
 A URL-base estrutural permanece separada das credenciais:
 
 ```text
 PALWORLD_REST_BASE_URL=http://127.0.0.1:8212/v1/api
 ```
 
-Em produção, `PALWORLD_REST_USERNAME` e `PALWORLD_REST_PASSWORD` são secrets obrigatórios provenientes de `/etc/palworld-manager/secrets.env`. Não existe username padrão nem fallback para `admin`; valor ausente, vazio ou inválido impede o startup sem revelar a credencial.
+Em produção, `PALWORLD_REST_USERNAME` e `PALWORLD_REST_PASSWORD` são secrets
+obrigatórios provenientes de `/etc/palworld-manager/secrets.env`. Informe o
+par Basic Auth aceito pelo servidor instalado; a senha deve corresponder à
+credencial administrativa configurada no Palworld. Não existe username padrão
+nem fallback para `admin` no Manager: valor ausente, vazio ou inválido impede
+o startup sem revelar a credencial. Depois da instalação, confirme o contrato
+pelo botão **Atualizar jogadores** e pelo diagnóstico, sem testar a senha na
+linha de comando.
 
 Development e test selecionam um cliente fake completo no startup, sem exigir credenciais ou abrir rede. Ele simula info, jogadores, anúncios, Kick, Ban, Unban e todas as categorias de falha. O container `mock-services` expõe os contratos HTTP confirmados para desenvolvimento de integrações sem um servidor Palworld real.
 
@@ -68,6 +103,7 @@ Os três formulários exigem sessão, CSRF e o modal compartilhado. Sucesso e fa
 ## Referências oficiais
 
 - [Introdução à REST API](https://docs.palworldgame.com/api/rest-api/palwold-rest-api/)
+- [Parâmetros de configuração do servidor](https://docs.palworldgame.com/settings-and-operation/configuration/)
 - [`GET /info`](https://docs.palworldgame.com/api/rest-api/info/)
 - [`GET /players`](https://docs.palworldgame.com/api/rest-api/players/)
 - [`POST /announce`](https://docs.palworldgame.com/api/rest-api/announce/)
