@@ -75,19 +75,19 @@ class RecordingLifecycle:
 
 class ControlledLogs:
     def __init__(self) -> None:
-        self.critical = False
+        self.messages: list[tuple[str, int | None]] = []
 
     def history(self, limit: int) -> list[LogEntry]:
         assert limit == 100
-        if not self.critical:
-            return []
         return [
             LogEntry(
-                "test:1",
+                f"test:{index}",
                 datetime.now(UTC) + timedelta(seconds=1),
-                "erro crítico simulado sem dados sensíveis",
+                message,
                 LogCategory.ERROR,
+                priority,
             )
+            for index, (message, priority) in enumerate(self.messages, start=1)
         ]
 
     def stream(self, after_cursor: str | None) -> Iterator[LogEntry | None]:
@@ -396,7 +396,7 @@ def test_post_apply_failure_has_no_rollback_and_requires_manual_review(
     if failure == "start":
         restore_context.lifecycle.fail_action = LifecycleAction.START
     else:
-        restore_context.logs.critical = True
+        restore_context.logs.messages = [("erro crítico simulado sem dados sensíveis", None)]
     job_id = _enqueue_restore(restore_context)
 
     assert restore_context.worker.process_next()
@@ -410,6 +410,31 @@ def test_post_apply_failure_has_no_rollback_and_requires_manual_review(
         assert job.result["preventive_backup_record_id"] is not None
     assert restore_context.target.apply_calls == 1
     assert any(path.endswith("Level.sav") for path in restore_context.target.world_files)
+
+
+@pytest.mark.parametrize(
+    ("message", "priority"),
+    [
+        ("LogHttp: access-control-expose-headers: x-sentry-error", 6),
+        ("palworld.service: Main process exited, code=exited, status=143/n/a", 3),
+    ],
+)
+def test_restore_ignores_visual_errors_that_are_not_operationally_critical(
+    restore_context: RestoreContext,
+    message: str,
+    priority: int,
+) -> None:
+    restore_context.logs.messages = [(message, priority)]
+    job_id = _enqueue_restore(restore_context)
+
+    assert restore_context.worker.process_next()
+
+    factory = create_session_factory(restore_context.engine)
+    with session_scope(factory) as session:
+        job = session.get_one(Job, job_id)
+        assert job.status == "SUCCEEDED"
+        assert job.result is not None
+        assert job.result["requires_manual_review"] is False
 
 
 def test_restore_is_non_cancellable_locked_and_duplicate_is_rejected(

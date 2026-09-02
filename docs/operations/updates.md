@@ -47,6 +47,12 @@ branch pública observada e ausência de novos erros críticos. Saída bruta do
 SteamCMD não entra em logs, auditoria ou banco; somente categorias e metadados não
 sensíveis são persistidos.
 
+A categoria visual `ERROR` não é usada isoladamente como gate operacional.
+Cabeçalhos informativos com `x-sentry-error` e a saída esperada do processo por
+SIGTERM/status 143 não transformam em falha um Update que voltou a `ONLINE` e
+validou a versão. O detector pós-Update continua recusando prioridades críticas e
+assinaturas explícitas de falha.
+
 Não há Update automático nem rollback automático. Se o SteamCMD ou a validação
 posterior falhar depois do Stop, o job termina com revisão manual obrigatória e
 não tenta iniciar silenciosamente uma instalação potencialmente ambígua. O backup

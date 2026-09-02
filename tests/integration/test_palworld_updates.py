@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -30,7 +31,7 @@ from app.jobs.service import GLOBAL_MAINTENANCE_LOCK, claim_next_job, recover_in
 from app.lifecycle.fake import FAKE_PALWORLD_ACTIVE_KEY, PersistentFakePalworldEnvironment
 from app.lifecycle.service import create_lifecycle_executor
 from app.lifecycle.worker import LifecycleJobWorker
-from app.logs.service import FakePalworldLogSource
+from app.logs.service import LogCategory, LogEntry
 from app.shutdown.service import create_shutdown_executors
 from app.updates.jobs import (
     UPDATE_CHECK_JOB_KIND,
@@ -50,8 +51,31 @@ class UpdateContext:
     steamcmd: FakeSteamCmdGateway
     disk: FakeDiskSpaceSource
     rest: FakePalworldRestClient
+    logs: "ControlledLogs"
     worker: LifecycleJobWorker
     user_id: int
+
+
+class ControlledLogs:
+    def __init__(self) -> None:
+        self.messages: list[tuple[str, int | None]] = []
+
+    def history(self, limit: int) -> list[LogEntry]:
+        assert limit == 100
+        return [
+            LogEntry(
+                f"test:{index}",
+                datetime.now(UTC) + timedelta(seconds=1),
+                message,
+                LogCategory.ERROR,
+                priority,
+            )
+            for index, (message, priority) in enumerate(self.messages, start=1)
+        ]
+
+    def stream(self, after_cursor: str | None) -> Iterator[LogEntry | None]:
+        del after_cursor
+        return iter(())
 
 
 @pytest.fixture
@@ -79,6 +103,7 @@ def update_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
     steamcmd = FakeSteamCmdGateway()
     disk = FakeDiskSpaceSource()
     logs = MemoryJobLogStore()
+    palworld_logs = ControlledLogs()
     worker = LifecycleJobWorker(
         factory,
         lifecycle,
@@ -93,11 +118,11 @@ def update_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
             backup_service,
             assisted,
             lifecycle,
-            FakePalworldLogSource(),
+            palworld_logs,
             job_logs=logs,
         ),
     )
-    yield UpdateContext(engine, steamcmd, disk, rest, worker, user_id)
+    yield UpdateContext(engine, steamcmd, disk, rest, palworld_logs, worker, user_id)
     engine.dispose()
 
 
@@ -150,6 +175,30 @@ def test_manual_update_creates_valid_preventive_backup_and_finishes_online(
         assert [event.event_type for event in notifications] == ["UPDATE_COMPLETED"]
         assert audit is not None
         assert update_context.steamcmd.update_calls == 1
+
+
+@pytest.mark.parametrize(
+    ("message", "priority"),
+    [
+        ("LogHttp: access-control-expose-headers: x-sentry-error", 6),
+        ("palworld.service: Main process exited, code=exited, status=143/n/a", 3),
+    ],
+)
+def test_update_ignores_visual_errors_that_are_not_operationally_critical(
+    update_context: UpdateContext,
+    message: str,
+    priority: int,
+) -> None:
+    update_context.logs.messages = [(message, priority)]
+    job_id = _check_then_enqueue_update(update_context)
+
+    assert update_context.worker.process_next() is True
+
+    with session_scope(_factory(update_context)) as session:
+        job = session.get_one(Job, job_id)
+        assert job.status == "SUCCEEDED"
+        assert job.result is not None
+        assert job.result["requires_manual_review"] is False
 
 
 def test_update_aborts_before_backup_when_disk_is_critical(

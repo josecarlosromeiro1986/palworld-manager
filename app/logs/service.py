@@ -25,6 +25,28 @@ SENSITIVE_ASSIGNMENT_PATTERN = re.compile(
 )
 AUTHORIZATION_PATTERN = re.compile(r"(?i)\b(authorization)\b(\s*[:=]\s*)[^\r\n,;]+")
 URL_CREDENTIALS_PATTERN = re.compile(r"(?i)(https?://)[^\s/:@]+:[^\s/@]+@")
+NON_CRITICAL_OPERATIONAL_PATTERNS = (
+    re.compile(
+        r"\baccess-control-expose-headers\s*:\s*[^\r\n]*\bx-sentry-error\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bmain process exited\b[^\r\n]*\b(?:status|code)\s*[=:]\s*143(?:\b|/)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:status|code)\s*[=:]\s*143(?:\b|/)[^\r\n]*"
+        r"\b(?:sigterm|main process exited|code=exited)\b",
+        re.IGNORECASE,
+    ),
+)
+CRITICAL_OPERATIONAL_PATTERN = re.compile(
+    r"\b(?:fatal(?:\s+error)?|critical error|erro cr[ií]tico|crash(?:ed)?|panic|"
+    r"segmentation fault|core dumped|out of memory|unhandled exception|assertion failed)\b"
+    r"|fatalerror"
+    r"|\bfailed to (?:load|save|initialize|start|open|read|write)\b",
+    re.IGNORECASE,
+)
 
 
 class LogCategory(StrEnum):
@@ -45,6 +67,7 @@ class LogEntry:
     occurred_at: datetime
     message: str
     category: LogCategory
+    priority: int | None = None
 
 
 class PalworldLogSource(Protocol):
@@ -134,6 +157,15 @@ def classify_log(message: str, priority: int | None = None) -> LogCategory:
     return LogCategory.NORMAL
 
 
+def is_critical_log(entry: LogEntry) -> bool:
+    """Classifica falhas operacionais sem reutilizar a categoria visual da UI."""
+    if any(pattern.search(entry.message) for pattern in NON_CRITICAL_OPERATIONAL_PATTERNS):
+        return False
+    if entry.priority is not None and entry.priority <= 3:
+        return True
+    return CRITICAL_OPERATIONAL_PATTERN.search(entry.message) is not None
+
+
 def parse_journal_entry(raw_line: str, redactor: LogRedactor) -> LogEntry | None:
     try:
         payload = json.loads(raw_line)
@@ -175,6 +207,7 @@ def parse_journal_entry(raw_line: str, redactor: LogRedactor) -> LogEntry | None
         occurred_at=datetime.fromtimestamp(microseconds / 1_000_000, tz=UTC),
         message=safe_message,
         category=classify_log(safe_message, priority),
+        priority=priority,
     )
 
 

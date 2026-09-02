@@ -129,6 +129,12 @@ externos permanecem intocados.
 
 O Stop só é aceito quando o serviço está offline e a porta REST está fechada. A publicação usa nomes temporários controlados no mesmo filesystem, mantém o grupo do mundo anterior e aplica `0770` em diretórios e `0660` em arquivos. O worker continua não-root e precisa apenas pertencer ao grupo compartilhado com o Palworld; nenhum comando usa shell. O Start só conclui após health `ONLINE`, incluindo `/info` da REST API oficial, e ausência de erros críticos posteriores ao início.
 
+A verificação pós-Start usa um detector operacional próprio, separado da
+categoria visual `ERROR` da página de logs. Cabeçalhos informativos que contêm
+`x-sentry-error` e o encerramento esperado por SIGTERM com status 143 durante o
+fluxo não invalidam um Restore que voltou a `ONLINE`; prioridades críticas e
+assinaturas explícitas de falha continuam bloqueando a conclusão.
+
 O job não é cancelável em nenhuma fase. Não há rollback automático. Falha ou interrupção depois do início da substituição marca `requires_manual_review`; o worker não retoma o job e não remove automaticamente diretórios estruturais de estado ambíguo. O staging isolado do Manager é removido ao fim de uma execução conhecida; após encerramento abrupto do processo, permanece para inspeção segura. A V1 não restaura um jogador isoladamente.
 
 O Restore do painel aplica somente `world/` e as configurações do Palworld. Ele

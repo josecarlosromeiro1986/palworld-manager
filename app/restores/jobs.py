@@ -35,7 +35,7 @@ from app.jobs.service import (
 )
 from app.lifecycle.jobs import lifecycle_timeout
 from app.lifecycle.service import LifecycleAction, LifecycleExecutor, LifecycleOutcome
-from app.logs.service import LogCategory, PalworldLogError, PalworldLogSource
+from app.logs.service import PalworldLogError, PalworldLogSource, is_critical_log
 from app.manager_settings.service import configured_local_retention
 from app.notifications.service import (
     RESTORE_COMPLETED,
@@ -422,7 +422,7 @@ class LocalRestoreJobExecutor:
             occurred_at = entry.occurred_at
             if occurred_at.tzinfo is None:
                 occurred_at = occurred_at.replace(tzinfo=UTC)
-            if occurred_at >= start_requested_at and entry.category is LogCategory.ERROR:
+            if occurred_at >= start_requested_at and is_critical_log(entry):
                 raise RestoreError(
                     "POST_RESTORE_CRITICAL_LOG",
                     "O Palworld registrou erro crítico após o Restore.",

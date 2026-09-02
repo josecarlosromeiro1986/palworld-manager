@@ -108,6 +108,12 @@ não cria auditoria, jobs ou notificações e não expõe secrets ou paths.
 
 Os testes de logs validam os argumentos read-only e allowlisted do `journalctl`, parsing, classificação, proteção de secrets, fake completo, autenticação, histórico de 100/500/1000 linhas, filtros e ausência de persistência no SQLite. O aceite de reconexão abre o SSE com o cursor do histórico, simula nova conexão com `Last-Event-ID` e confirma que a entrega continua no evento seguinte sem repetir o último recebido.
 
+A detecção operacional de falhas críticas é testada separadamente da
+classificação visual. Regressões de Restore e Update confirmam que
+`access-control-expose-headers: x-sentry-error` e o encerramento esperado por
+SIGTERM/status 143 não causam falso `FAILED`, enquanto assinaturas críticas
+continuam bloqueando a conclusão.
+
 Os testes da REST API administrativa validam os campos oficiais tipados de jogadores, Basic Auth, timeout, servidor offline, indisponibilidade, autenticação, respostas inválidas e falhas inesperadas sem abrir rede nem expor detalhes internos. A integração web confirma que abrir ou reler a página não consulta jogadores, que somente o POST manual atualiza o cache em memória, que uma falha preserva o último snapshot válido e que anúncios exigem CSRF e repetição literal da mensagem. Sucesso e falha do anúncio são verificados na auditoria.
 
 Kick, Ban e Unban têm testes dos endpoints e payloads oficiais exatos, fake sem rede, CSRF, modal compartilhado, motivo opcional apenas para Kick e motivo obrigatório para Ban/Unban. A integração verifica sucesso e falha segura tanto em `ban_history` quanto em `audit_events`, incluindo alvo, `userId`, administrador, motivo e resultado.

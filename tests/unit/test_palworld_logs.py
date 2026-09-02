@@ -20,6 +20,7 @@ from app.logs.service import (
     PalworldLogError,
     StreamProcess,
     create_palworld_log_source,
+    is_critical_log,
     parse_journal_entry,
     validate_cursor,
     validate_history_limit,
@@ -184,9 +185,50 @@ def test_parser_preserves_message_classifies_and_redacts_secrets() -> None:
 
     assert entry is not None
     assert entry.category is LogCategory.ERROR
+    assert entry.priority == 3
     assert entry.occurred_at.tzinfo is UTC
     assert secret not in entry.message
     assert entry.message == "ERROR login failed password=[SEGREDO PROTEGIDO]"
+
+
+@pytest.mark.parametrize(
+    ("message", "priority"),
+    [
+        ("LogHttp: access-control-expose-headers: x-sentry-error", "6"),
+        ("palworld.service: Main process exited, code=exited, status=143/n/a", "3"),
+    ],
+)
+def test_visual_errors_are_not_automatically_operational_failures(
+    message: str,
+    priority: str,
+) -> None:
+    entry = parse_journal_entry(
+        journal_json("s=abc;i=critical-gate", message, priority=priority),
+        LogRedactor(),
+    )
+
+    assert entry is not None
+    assert entry.category is LogCategory.ERROR
+    assert is_critical_log(entry) is False
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Fatal error: world save could not be loaded",
+        "erro crítico ao carregar o mundo",
+        "server crashed during startup",
+    ],
+)
+def test_operational_critical_signatures_are_detected(message: str) -> None:
+    entry = LogEntry(
+        "test:critical",
+        datetime.now(UTC),
+        message,
+        LogCategory.NORMAL,
+    )
+
+    assert is_critical_log(entry) is True
 
 
 def test_parser_supports_journal_binary_message_without_html_interpretation() -> None:
