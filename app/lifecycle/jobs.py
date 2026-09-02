@@ -131,6 +131,7 @@ def enqueue_lifecycle_job(
         is_cancellable=False,
         requires_maintenance_lock=True,
         coordination_key=LIFECYCLE_COORDINATION_KEY,
+        requested_by_user_id=user_id,
         result={"timeout_seconds": timeout_seconds},
     )
     session.add(job)

@@ -46,14 +46,12 @@ enquanto a mesma verificação está ativa reutilizam o evento ou job existente.
 Development e test usam os fakes integrais dessas duas integrações, sem rede,
 rclone, Palworld, systemd ou filesystem estrutural real.
 
-## Troca de senha
+## Conta e usuários
 
-A troca exige senha atual, nova senha e confirmação exata. A senha atual passa
-pela mesma proteção transacional contra tentativas abusivas usada no login; a
-nova senha segue a política mínima e é armazenada somente como hash Argon2id.
-Após o sucesso, todas as sessões do administrador, inclusive a atual, são
-revogadas, os cookies de autenticação são removidos e o navegador retorna ao
-login. A auditoria registra apenas o resultado e categorias seguras de falha.
+A troca da própria senha foi centralizada em **Minha conta**, disponível para
+ambos os papéis. Criação, papel, status e reset administrativo ficam na página
+**Usuários**, exclusiva de `ADMIN`. Consulte
+[Usuários e controle de acesso](user-management.md).
 
 Consulte também [segurança](../architecture/security.md),
 [backup e restore](backup-restore.md), [métricas](../architecture/metrics.md),

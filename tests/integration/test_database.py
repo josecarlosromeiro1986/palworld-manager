@@ -49,9 +49,16 @@ def test_new_database_is_created_only_by_migrations(migrated_engine: Engine) -> 
     with migrated_engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
 
-    assert revision == "0006_drive_backup_locations"
+    assert revision == "0007_user_roles_access_control"
     job_columns = {column["name"] for column in inspect(migrated_engine).get_columns("jobs")}
-    assert {"cancel_requested", "execute_now_requested", "step"}.issubset(job_columns)
+    assert {
+        "cancel_requested",
+        "execute_now_requested",
+        "requested_by_user_id",
+        "step",
+    }.issubset(job_columns)
+    user_columns = {column["name"] for column in inspect(migrated_engine).get_columns("users")}
+    assert {"password_change_required", "role", "username_key"}.issubset(user_columns)
 
 
 def test_sqlite_connections_enable_integrity_and_concurrency_pragmas(
@@ -102,15 +109,66 @@ def test_session_scope_commits_and_rolls_back(migrated_engine: Engine) -> None:
     factory = create_session_factory(migrated_engine)
 
     with session_scope(factory) as session:
-        session.add(User(username="admin", password_hash="hash-ficticio"))
+        session.add(
+            User(
+                username="admin",
+                username_key="admin",
+                password_hash="hash-ficticio",
+                role="ADMIN",
+            )
+        )
 
     with pytest.raises(IntegrityError), session_scope(factory) as session:
-        session.add(User(username="admin", password_hash="outro-hash-ficticio"))
+        session.add(
+            User(
+                username="admin",
+                username_key="admin",
+                password_hash="outro-hash-ficticio",
+                role="ADMIN",
+            )
+        )
 
     with session_scope(factory) as session:
         users = session.scalars(select(User)).all()
 
     assert [user.username for user in users] == ["admin"]
+
+
+def test_upgrade_preserves_existing_administrator_as_admin(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = tmp_path / "upgrade.db"
+    monkeypatch.setenv("MANAGER_DATABASE", str(database_path))
+    config = Config("alembic.ini")
+    command.upgrade(config, "0006_drive_backup_locations")
+    engine = create_database_engine(database_path)
+    with engine.begin() as connection:
+        connection.execute(
+            text("INSERT INTO users (username, password_hash) VALUES (:username, :password_hash)"),
+            {"username": "AdminOriginal", "password_hash": "hash-existente"},
+        )
+    engine.dispose()
+
+    command.upgrade(config, "head")
+    upgraded = create_database_engine(database_path)
+    try:
+        with upgraded.connect() as connection:
+            user = (
+                connection.execute(
+                    text("SELECT username, username_key, role, password_change_required FROM users")
+                )
+                .mappings()
+                .one()
+            )
+        assert dict(user) == {
+            "username": "AdminOriginal",
+            "username_key": "adminoriginal",
+            "role": "ADMIN",
+            "password_change_required": 0,
+        }
+    finally:
+        upgraded.dispose()
 
 
 def test_initial_migration_can_downgrade_to_base(

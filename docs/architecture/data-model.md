@@ -1,6 +1,6 @@
 # Modelo de dados
 
-> Status: Implementado para a V1 `1.0.0`; o schema permanece versionado exclusivamente por migrations Alembic.
+> Status: Implementado para a V1 `1.0.0` e ampliado pela migration da Etapa 32; o schema permanece versionado exclusivamente por migrations Alembic.
 
 O modelo usa SQLite e SQLAlchemy 2.x. A migration inicial e suas revisões criam as entidades da V1 abaixo, com chaves estrangeiras, índices e constraints. O schema evolui somente por migrations explícitas. **Alembic é responsável por todas as migrations do banco; a aplicação não usa `create_all` para criar o schema.** Secrets não são armazenados nessas entidades.
 
@@ -10,7 +10,13 @@ Em produção, o arquivo persistente é `/var/lib/palworld-manager/manager.db`; 
 
 ### `users`
 
-Representa administradores, inicialmente um único usuário, com identidade e hash Argon2id da senha. A criação inicial e a redefinição por CLI estão implementadas; nenhuma senha em texto puro é persistida. Relaciona-se conceitualmente a sessões, tentativas de login e eventos de auditoria.
+Representa contas `ADMIN` e `USER`, com identidade, chave de username
+normalizada, status, indicador de troca obrigatória e hash Argon2id. A criação
+inicial e a redefinição por CLI permanecem disponíveis para o administrador de
+instalação; a UI gerencia contas adicionais sem exclusão física. Nenhuma senha
+em texto puro é persistida. A revision `0007_user_roles_access_control`
+migra todo usuário existente para `ADMIN` e preenche `username_key` sem alterar
+senha ou grafia de exibição.
 
 ### `sessions`
 
@@ -87,6 +93,11 @@ A revision `0004_assisted_shutdown_controls` adiciona os flags persistentes `can
 
 A revision `0005_persistent_job_system` adiciona `step`, a tabela singleton `worker_heartbeats` e `maintenance_locks`. O heartbeat guarda a identidade, início e último sinal do worker e também impede uma segunda identidade enquanto o lease de 30 segundos estiver válido. O lock global referencia o job proprietário e é adquirido na mesma transação do claim. Logs textuais permanecem fora do SQLite; `jobs.log_path` guarda somente a referência relativa sob `jobs/<ano>/`.
 
+A revision `0007_user_roles_access_control` adiciona
+`requested_by_user_id`. A autoria permite que um `USER` cancele ou antecipe
+somente o próprio desligamento assistido, enquanto `ADMIN` mantém controle de
+qualquer job válido.
+
 ### `backup_records`
 
 Cataloga backups gerenciados, sua localização relativa, integridade e estado. O backup local implementado cria o registro somente após salvar, montar, validar e publicar o arquivo; falhas não deixam registro `VALID`. Cada registro local referencia o job que o criou, usa `location=LOCAL`, `status=VALID`, tamanho, nome gerenciado e path relativo sob `backups/`, sem expor paths estruturais na interface.
@@ -120,4 +131,7 @@ explicitamente como cópia local cria o par `LOCAL` correspondente.
 
 Mantém o histórico administrativo implementado de Kick, Ban e Unban, incluindo ação, alvo, `userId`, administrador, motivo, resultado e timestamp. Complementa a auditoria, mas não substitui o estado mantido pelo Palworld. A página de jogadores exibe até 50 registros recentes; a página geral de auditoria oferece filtros e retenção de 90 dias para seus próprios eventos.
 
-O detalhamento futuro deve preservar transações, integridade referencial e preparação para múltiplos usuários. A migration atual está em `migrations/versions/` e deve ser aplicada com `make db-upgrade`. Consulte os requisitos de banco e auditoria em [SPECIFICATION.md](../../SPECIFICATION.md).
+Mudanças futuras devem preservar transações e integridade referencial. A
+migration atual está em `migrations/versions/` e deve ser aplicada com
+`make db-upgrade`. Consulte os requisitos de banco e auditoria em
+[SPECIFICATION.md](../../SPECIFICATION.md).

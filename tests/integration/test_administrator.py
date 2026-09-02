@@ -41,6 +41,9 @@ def test_create_administrator_persists_only_argon2id_hash(migrated_engine: Engin
         stored = session.get(User, administrator_id)
         assert stored is not None
         assert stored.username == "admin"
+        assert stored.username_key == "admin"
+        assert stored.role == "ADMIN"
+        assert stored.password_change_required is False
         assert stored.password_hash.startswith("$argon2id$")
         assert plaintext_password not in stored.password_hash
         assert verify_password(plaintext_password, stored.password_hash)
@@ -52,7 +55,7 @@ def test_create_administrator_persists_only_argon2id_hash(migrated_engine: Engin
     assert plaintext_password not in database_contents
 
 
-def test_v1_rejects_a_second_administrator(migrated_engine: Engine) -> None:
+def test_bootstrap_rejects_a_second_initial_administrator(migrated_engine: Engine) -> None:
     factory = create_session_factory(migrated_engine)
 
     with session_scope(factory) as session:

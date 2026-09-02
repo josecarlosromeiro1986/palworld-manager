@@ -75,10 +75,17 @@ usam um fake integral sem acesso à rede.
 
 A página **Configurações do Painel** mantém uma allowlist tipada de parâmetros
 operacionais de backup, horário, timezone, retenções, métricas, desligamento
-assistido, disco e timeouts. Ela também troca a senha com confirmação da senha
-atual, revoga todas as sessões e oferece testes de Discord e Drive que apenas
+assistido, disco e timeouts. Ela oferece testes de Discord e Drive que apenas
 criam eventos e jobs para o worker. Secrets, paths, executáveis, serviços,
 gatilhos systemd, helpers privilegiados e infraestrutura Tailscale permanecem fora da interface e do SQLite.
+
+A página **Usuários**, exclusiva de `ADMIN`, cria e administra contas
+`ADMIN`/`USER` sem exclusão física. Novas contas usam senha temporária e são
+obrigadas a alterá-la em **Minha conta** no primeiro login. `USER` vê somente o
+Dashboard e pode solicitar Start, Restart e Stop assistido; backup, sinais
+forçados, energia do host e demais páginas administrativas também são negados
+no backend. Mudanças de papel/status/senha revogam sessões, e o último
+administrador ativo é preservado.
 
 A página **Diagnóstico** agrega checks somente leitura do Manager, Palworld,
 worker, host, integrações, SQLite/migrations, versão/commit e erros recentes.

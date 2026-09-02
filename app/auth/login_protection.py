@@ -12,6 +12,7 @@ from app.audit.service import (
     record_audit_event,
 )
 from app.auth.passwords import verify_password_or_dummy
+from app.auth.roles import username_key
 from app.auth.service import MAXIMUM_USERNAME_LENGTH
 from app.db.models import LoginAttempt, User
 from app.notifications.service import LOGIN_BLOCKED, enqueue_discord_notification
@@ -44,7 +45,7 @@ def _tracked_username(username: str) -> str | None:
     normalized = username.strip()
     if not normalized:
         return None
-    return normalized[:MAXIMUM_USERNAME_LENGTH]
+    return username_key(normalized[:MAXIMUM_USERNAME_LENGTH])
 
 
 def _attempts_for_username(username: str | None) -> Select[tuple[LoginAttempt]]:
@@ -91,7 +92,7 @@ def _audit_details(source_address: str | None) -> dict[str, object] | None:
     return {"source_address": source_address}
 
 
-def attempt_administrator_login(
+def attempt_user_login(
     session: Session,
     username: str,
     password: str,
@@ -105,13 +106,13 @@ def attempt_administrator_login(
     # Serialize read/decide/write so concurrent requests cannot bypass the limit.
     session.execute(text("BEGIN IMMEDIATE"))
 
-    administrator = session.scalar(
+    user = session.scalar(
         select(User).where(
-            User.username == tracked_username,
+            User.username_key == tracked_username,
             User.is_active.is_(True),
         )
     )
-    user_id = administrator.id if administrator is not None else None
+    user_id = user.id if user is not None else None
     details = _audit_details(source_address)
 
     blocked_until = _active_block(session, tracked_username, current_time)
@@ -140,11 +141,11 @@ def attempt_administrator_login(
         session.flush()
         return LoginResult(user=None, blocked_until=blocked_until)
 
-    password_hash = administrator.password_hash if administrator is not None else None
-    if verify_password_or_dummy(password, password_hash) and administrator is not None:
+    password_hash = user.password_hash if user is not None else None
+    if verify_password_or_dummy(password, password_hash) and user is not None:
         session.add(
             LoginAttempt(
-                user_id=administrator.id,
+                user_id=user.id,
                 username=tracked_username,
                 source_address=source_address,
                 successful=True,
@@ -158,12 +159,12 @@ def attempt_administrator_login(
             action="LOGIN",
             result=AUDIT_RESULT_SUCCESS,
             origin=AUDIT_ORIGIN_ADMINISTRATOR,
-            user_id=administrator.id,
+            user_id=user.id,
             target=tracked_username,
             details=details,
         )
         session.flush()
-        return LoginResult(user=administrator, blocked_until=None)
+        return LoginResult(user=user, blocked_until=None)
 
     failure_count = _consecutive_failures(session, tracked_username) + 1
     new_block = (
@@ -204,3 +205,7 @@ def attempt_administrator_login(
         enqueue_discord_notification(session, LOGIN_BLOCKED, created_at=current_time)
     session.flush()
     return LoginResult(user=None, blocked_until=new_block)
+
+
+# Compatibilidade com integrações e scripts existentes.
+attempt_administrator_login = attempt_user_login

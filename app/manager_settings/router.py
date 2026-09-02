@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, cast
 
@@ -10,21 +9,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from starlette.datastructures import FormData
 from starlette.responses import Response
 
-from app.audit.service import (
-    AUDIT_ORIGIN_ADMINISTRATOR,
-    AUDIT_RESULT_FAILURE,
-    AUDIT_RESULT_SUCCESS,
-    record_audit_event,
-)
 from app.auth.cookies import (
     SESSION_CSRF_COOKIE_NAME,
-    clear_authentication_cookies,
     cookies_are_secure,
 )
 from app.auth.csrf import tokens_match
-from app.auth.login_protection import attempt_administrator_login
-from app.auth.passwords import PasswordPolicyError, validate_password
-from app.auth.service import reset_administrator_password
 from app.auth.sessions import SessionPrincipal, session_csrf_is_valid
 from app.backups.drive_jobs import (
     DRIVE_CHECK_JOB_KIND,
@@ -67,12 +56,6 @@ def _settings(request: Request) -> Settings:
     return cast(Settings, request.app.state.settings)
 
 
-def _source_address(request: Request) -> str | None:
-    if request.client is None:
-        return None
-    return request.client.host[:45]
-
-
 def _valid_session_csrf(request: Request, csrf_token: str | None) -> bool:
     principal = _principal(request)
     cookie_token = request.cookies.get(SESSION_CSRF_COOKIE_NAME)
@@ -94,8 +77,6 @@ def _page_response(
     status_code: int = 200,
     operational_error: str | None = None,
     operational_saved: bool = False,
-    password_error: str | None = None,
-    password_changed: bool = False,
 ) -> Response:
     with session_scope(_session_factory(request)) as session:
         snapshot = load_manager_settings(session)
@@ -112,8 +93,6 @@ def _page_response(
             "settings_version": snapshot.version,
             "operational_error": operational_error,
             "operational_saved": operational_saved,
-            "password_error": password_error,
-            "password_changed": password_changed,
             "discord_test": discord_test,
             "drive_test": drive_job_view(drive_test) if drive_test is not None else None,
         },
@@ -242,100 +221,6 @@ async def update_operational_settings(request: Request) -> Response:
         samesite="strict",
         path="/manager-settings",
     )
-    return response
-
-
-def _audit_password_update(
-    session: Session,
-    *,
-    user_id: int,
-    result: str,
-    reason: str | None = None,
-) -> None:
-    record_audit_event(
-        session,
-        occurred_at=datetime.now(UTC),
-        action="MANAGER_PASSWORD_UPDATE",
-        result=result,
-        origin=AUDIT_ORIGIN_ADMINISTRATOR,
-        user_id=user_id,
-        target="Administrador",
-        reason=reason,
-    )
-
-
-@router.post("/password", include_in_schema=False)
-def update_password(
-    request: Request,
-    current_password: Annotated[str, Form()],
-    new_password: Annotated[str, Form()],
-    new_password_confirmation: Annotated[str, Form()],
-    csrf_token: Annotated[str | None, Form()] = None,
-) -> Response:
-    principal = _principal(request)
-    if not _valid_session_csrf(request, csrf_token):
-        return PlainTextResponse("Token CSRF inválido.", status_code=403)
-    if new_password != new_password_confirmation:
-        with session_scope(_session_factory(request)) as session:
-            _audit_password_update(
-                session,
-                user_id=principal.user_id,
-                result=AUDIT_RESULT_FAILURE,
-                reason="CONFIRMATION_MISMATCH",
-            )
-        return _page_response(
-            request,
-            status_code=400,
-            password_error="A confirmação da nova senha não confere.",
-        )
-    try:
-        validate_password(new_password)
-    except PasswordPolicyError as error:
-        with session_scope(_session_factory(request)) as session:
-            _audit_password_update(
-                session,
-                user_id=principal.user_id,
-                result=AUDIT_RESULT_FAILURE,
-                reason="POLICY_REJECTED",
-            )
-        return _page_response(request, status_code=400, password_error=str(error))
-
-    with session_scope(_session_factory(request)) as session:
-        authentication = attempt_administrator_login(
-            session,
-            principal.username,
-            current_password,
-            _source_address(request),
-        )
-        if authentication.user is None:
-            _audit_password_update(
-                session,
-                user_id=principal.user_id,
-                result=AUDIT_RESULT_FAILURE,
-                reason="CURRENT_PASSWORD_REJECTED",
-            )
-            blocked = authentication.blocked
-        else:
-            reset_administrator_password(session, principal.username, new_password)
-            _audit_password_update(
-                session,
-                user_id=principal.user_id,
-                result=AUDIT_RESULT_SUCCESS,
-            )
-            blocked = False
-    if authentication.user is None:
-        return _page_response(
-            request,
-            status_code=429 if blocked else 400,
-            password_error=(
-                "Muitas tentativas. Tente novamente mais tarde."
-                if blocked
-                else "A senha atual não confere."
-            ),
-        )
-
-    response = RedirectResponse("/login?password_changed=1", status_code=303)
-    clear_authentication_cookies(response, _settings(request))
     return response
 
 

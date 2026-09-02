@@ -36,7 +36,8 @@ Consulte a [Política de Privacidade](privacy.md) para entender quais dados do G
 - [Deploy](operations/deploy.md): atualização recorrente segura e rollback manual explícito.
 - [Backup e restore](operations/backup-restore.md): conteúdo, integridade, retenção e restauração segura.
 - [Atualizações](operations/updates.md): atualização manual do Palworld via SteamCMD.
-- [Configurações do Painel](operations/manager-settings.md): allowlist operacional, limites, troca de senha e testes seguros de integrações.
+- [Usuários e controle de acesso](operations/user-management.md): papéis, gestão de contas, primeiro login e matriz de permissões.
+- [Configurações do Painel](operations/manager-settings.md): allowlist operacional, limites e testes seguros de integrações.
 - [Diagnóstico](operations/diagnostics.md): checks somente leitura, estados operacionais e relatório copiável sem secrets.
 - [Histórico e auditoria](operations/audit.md): trilha persistente, filtros, retenção e proteção de dados sensíveis.
 - [Energia do host Ubuntu](operations/host-power.md): reboot, shutdown, confirmação forte e privilégios mínimos.

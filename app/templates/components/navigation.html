@@ -1,14 +1,16 @@
 {% from "components/icon.html" import icon with context %}
+{% set current_role = request.state.principal.role.value %}
 {% set navigation = [
   ("Dashboard", "layout-dashboard", "/", "dashboard", true),
-  ("Jogadores", "users", "/players", "players", true),
-  ("Logs", "scroll-text", "/logs", "logs", true),
-  ("Backups", "archive", "/backups", "backups", true),
-  ("Atualizações", "refresh-cw", "/updates", "updates", true),
-  ("Configurações do Palworld", "sliders", "/palworld-settings", "palworld-settings", true),
-  ("Configurações do Painel", "settings", "/manager-settings", "manager-settings", true),
-  ("Diagnóstico", "stethoscope", "/diagnostics", "diagnostics", true),
-  ("Histórico / Auditoria", "history", "/audit", "audit", true)
+  ("Jogadores", "users", "/players", "players", current_role == "ADMIN"),
+  ("Logs", "scroll-text", "/logs", "logs", current_role == "ADMIN"),
+  ("Backups", "archive", "/backups", "backups", current_role == "ADMIN"),
+  ("Atualizações", "refresh-cw", "/updates", "updates", current_role == "ADMIN"),
+  ("Configurações do Palworld", "sliders", "/palworld-settings", "palworld-settings", current_role == "ADMIN"),
+  ("Configurações do Painel", "settings", "/manager-settings", "manager-settings", current_role == "ADMIN"),
+  ("Usuários", "users", "/users", "users", current_role == "ADMIN"),
+  ("Diagnóstico", "stethoscope", "/diagnostics", "diagnostics", current_role == "ADMIN"),
+  ("Histórico / Auditoria", "history", "/audit", "audit", current_role == "ADMIN")
 ] %}
 
 <nav aria-label="Navegação principal" class="flex-1 overflow-y-auto px-3 py-4">
@@ -20,11 +22,6 @@
             {{ icon(icon_name) }}
             <span>{{ label }}</span>
           </a>
-        {% else %}
-          <span class="nav-item" aria-disabled="true">
-            {{ icon(icon_name) }}
-            <span>{{ label }}</span>
-          </span>
         {% endif %}
       </li>
     {% endfor %}

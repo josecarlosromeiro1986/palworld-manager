@@ -7,8 +7,9 @@ from alembic.config import Config
 from sqlalchemy import Engine, select
 from sqlalchemy.exc import IntegrityError
 
+from app.auth.service import create_administrator
 from app.db.engine import create_database_engine, create_session_factory, session_scope
-from app.db.models import AppSetting, AuditEvent, Job, User
+from app.db.models import AppSetting, AuditEvent, Job
 from app.health.palworld import PalworldHealthState
 from app.jobs.logs import MemoryJobLogStore
 from app.jobs.service import (
@@ -57,9 +58,7 @@ class FailingExecutor:
 def _create_user(engine: Engine) -> int:
     factory = create_session_factory(engine)
     with session_scope(factory) as session:
-        user = User(username="admin", password_hash="hash-ficticio")
-        session.add(user)
-        session.flush()
+        user = create_administrator(session, "admin", "senha-ficticia")
         return user.id
 
 

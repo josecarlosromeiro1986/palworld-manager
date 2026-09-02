@@ -6,6 +6,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, select
 
+from app.auth.roles import UserRole
 from app.auth.service import create_administrator
 from app.config import AppEnvironment, Settings
 from app.db.engine import create_database_engine, create_session_factory, session_scope
@@ -22,6 +23,7 @@ from app.shutdown.jobs import (
 )
 from app.shutdown.service import create_shutdown_executors
 from app.system.palworld_service import PalworldSignal
+from app.users.service import create_user
 
 
 @pytest.fixture
@@ -64,6 +66,52 @@ def test_pending_countdown_can_be_cancelled_and_is_audited(shutdown_engine: Engi
         assert audit is not None
     with session_scope(factory) as session:
         assert request_shutdown_cancel(session, job_id, user_id=user_id) is False
+
+
+def test_user_can_control_only_own_shutdown_but_admin_can_control_any(
+    shutdown_engine: Engine,
+) -> None:
+    factory = create_session_factory(shutdown_engine)
+    administrator_id = _user_id(shutdown_engine)
+    with session_scope(factory) as session:
+        owner = create_user(
+            session,
+            "owner",
+            "senha-ficticia",
+            UserRole.USER,
+            actor_user_id=administrator_id,
+        )
+        other = create_user(
+            session,
+            "other",
+            "senha-ficticia",
+            UserRole.USER,
+            actor_user_id=administrator_id,
+        )
+        owner_id = owner.id
+        other_id = other.id
+        job_id = enqueue_assisted_shutdown(session, 5, user_id=owner_id).id
+
+    with session_scope(factory) as session:
+        assert (
+            request_shutdown_cancel(
+                session,
+                job_id,
+                user_id=other_id,
+                owner_user_id=other_id,
+            )
+            is False
+        )
+    with session_scope(factory) as session:
+        assert (
+            request_shutdown_cancel(
+                session,
+                job_id,
+                user_id=administrator_id,
+                owner_user_id=None,
+            )
+            is True
+        )
 
 
 def test_worker_executes_now_through_normal_stop_with_shared_fake(

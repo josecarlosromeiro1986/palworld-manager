@@ -37,10 +37,12 @@ Nenhuma etapa em andamento.
 - Etapa 29 — Deploy produção.
 - Etapa 30 — deploy.sh + rollback.
 - Etapa 31 — Hardening e V1 `1.0.0`.
+- Etapa 32 — Usuários e controle de acesso.
 
 ## Próxima etapa
 
-Nenhuma. A V1 `1.0.0` está concluída; trabalhos posteriores pertencem ao roadmap pós-V1 e exigem nova instrução.
+Nenhuma. A V1 `1.0.0` e a Etapa 32 pós-V1 estão concluídas; novos trabalhos
+exigem instrução específica.
 
 ## Observações
 

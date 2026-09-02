@@ -1,6 +1,6 @@
 # Testes
 
-> Status: Implementado para a V1 `1.0.0`. Pytest, gate completo, fluxos Playwright críticos e regressões de deploy/hardening estão disponíveis.
+> Status: Implementado para a V1 `1.0.0` e ampliado na Etapa 32. Pytest, gate completo, fluxos Playwright críticos e regressões de deploy/hardening/RBAC estão disponíveis.
 
 Pytest é a base da suíte automatizada.
 
@@ -26,7 +26,13 @@ Os testes de configuração isolam variáveis de ambiente e arquivos locais. A s
 
 Testes de banco usam um `manager.db` temporário por caso e executam `alembic upgrade head`. Eles verificam schema, revisão, pragmas SQLite, integridade referencial e commit/rollback sem tocar no volume de desenvolvimento.
 
-Os testes de credenciais verificam o formato Argon2id, a senha mínima, rejeição de hashes inválidos, criação de um único administrador e redefinição pela CLI. Usam bancos temporários e confirmam que senhas em texto puro não são persistidas nem exibidas.
+Os testes de credenciais verificam o formato Argon2id, a senha mínima, rejeição
+de hashes inválidos, bootstrap do administrador e redefinição pela CLI. A suíte
+de RBAC cobre login/username case-insensitive, senha temporária, allowlist do
+`USER` com 403 contra bypass direto, criação e gestão pelo `ADMIN`, revogação
+de sessões, proteção da própria conta e do último administrador ativo e autoria
+dos jobs de desligamento. Bancos temporários confirmam que senhas em texto puro
+não são persistidas nem exibidas.
 
 Os testes de autenticação cobrem rotas privadas por padrão, login e logout, CSRF, atributos dos cookies, revogação por troca de senha e limites exatos de 8 horas totais e 1 hora de inatividade. Também verificam o bloqueio na quinta falha consecutiva, reset por sucesso ou expiração, separação por usuário, aquisição transacional sob concorrência e auditoria sem senhas. O cliente ASGI usa `httpx2`, conforme a integração suportada pelo Starlette atual.
 

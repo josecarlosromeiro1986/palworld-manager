@@ -17,7 +17,7 @@ from app.auth.cookies import (
     set_session_cookies,
 )
 from app.auth.csrf import tokens_match
-from app.auth.login_protection import attempt_administrator_login
+from app.auth.login_protection import attempt_user_login
 from app.auth.sessions import (
     SessionPrincipal,
     issue_session,
@@ -91,7 +91,7 @@ def login(
         return PlainTextResponse("Token CSRF inválido.", status_code=403)
 
     with session_scope(_session_factory(request)) as session:
-        result = attempt_administrator_login(
+        result = attempt_user_login(
             session,
             username,
             password,
@@ -115,7 +115,10 @@ def login(
             )
         issued = issue_session(session, result.user)
 
-    response = RedirectResponse("/", status_code=303)
+    destination = (
+        "/account?password_change_required=1" if result.user.password_change_required else "/"
+    )
+    response = RedirectResponse(destination, status_code=303)
     set_session_cookies(response, issued, _settings(request))
     clear_login_csrf_cookie(response, _settings(request))
     return response

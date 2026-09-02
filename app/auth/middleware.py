@@ -5,6 +5,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import PlainTextResponse, RedirectResponse
 from starlette.types import ASGIApp
 
+from app.auth.authorization import password_change_path_is_allowed, request_is_authorized
 from app.auth.cookies import SESSION_COOKIE_NAME
 from app.auth.sessions import SessionPrincipal, resolve_session
 from app.db.engine import session_scope
@@ -44,4 +45,14 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return PlainTextResponse("Autenticação necessária.", status_code=401)
 
         request.state.principal = principal
+        if principal.password_change_required and not password_change_path_is_allowed(
+            request.method, request.url.path
+        ):
+            if request.method in SAFE_METHODS:
+                return RedirectResponse("/account?password_change_required=1", status_code=303)
+            return PlainTextResponse(
+                "Altere a senha temporária antes de continuar.", status_code=403
+            )
+        if not request_is_authorized(principal, request.method, request.url.path):
+            return PlainTextResponse("Acesso negado.", status_code=403)
         return await call_next(request)

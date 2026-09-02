@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.passwords import hash_password
+from app.auth.roles import UserRole, username_key
 from app.auth.sessions import revoke_user_sessions
 from app.db.models import User
 
@@ -23,6 +24,8 @@ class InvalidUsernameError(ValueError):
 
 
 def normalize_username(username: str) -> str:
+    if "\n" in username or "\r" in username:
+        raise InvalidUsernameError("O nome de usuario nao pode conter quebras de linha.")
     normalized = username.strip()
     if not normalized:
         raise InvalidUsernameError("O nome de usuario nao pode ficar vazio.")
@@ -37,9 +40,13 @@ def create_administrator(session: Session, username: str, password: str) -> User
     if session.scalar(select(User.id).limit(1)) is not None:
         raise AdministratorAlreadyExistsError("O administrador inicial ja foi criado.")
 
+    normalized = normalize_username(username)
     administrator = User(
-        username=normalize_username(username),
+        username=normalized,
+        username_key=username_key(normalized),
         password_hash=hash_password(password),
+        role=UserRole.ADMIN.value,
+        password_change_required=False,
     )
     session.add(administrator)
     session.flush()
@@ -48,11 +55,14 @@ def create_administrator(session: Session, username: str, password: str) -> User
 
 def reset_administrator_password(session: Session, username: str, password: str) -> User:
     normalized_username = normalize_username(username)
-    administrator = session.scalar(select(User).where(User.username == normalized_username))
+    administrator = session.scalar(
+        select(User).where(User.username_key == username_key(normalized_username))
+    )
     if administrator is None:
         raise AdministratorNotFoundError("Administrador nao encontrado.")
 
     administrator.password_hash = hash_password(password)
+    administrator.password_change_required = False
     administrator.updated_at = datetime.now(UTC)
     revoke_user_sessions(session, administrator.id)
     session.flush()
