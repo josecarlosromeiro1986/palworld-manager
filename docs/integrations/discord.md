@@ -17,6 +17,68 @@ um `notification_event` `DISCORD_TEST` de conteúdo fixo e acompanha seu estado;
 a web não acessa o webhook. Solicitações repetidas enquanto o teste está
 `PENDING` ou `SENDING` reutilizam o evento ativo.
 
+## Configuração de produção
+
+### 1. Criar o webhook no Discord
+
+A conta que executa esta etapa precisa conseguir gerenciar webhooks no servidor
+Discord e no canal escolhido:
+
+1. abra **Configurações do servidor > Integrações > Webhooks**;
+2. selecione **Novo webhook** ou **Criar webhook**;
+3. defina um nome identificável, por exemplo `Palworld Manager`;
+4. selecione o canal que receberá os alertas;
+5. copie a URL do webhook e guarde-a como secret.
+
+A URL concede capacidade de publicar no canal. Não a cole no chat, em issue,
+log, screenshot, comando gravado no histórico ou arquivo versionado. O
+procedimento oficial do Discord está em
+[Intro to Webhooks](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
+
+### 2. Instalar o secret
+
+Crie ou edite o arquivo protegido sem colocar a URL na linha de comando:
+
+```bash
+sudo test -e /etc/palworld-manager/secrets.env || sudo install -o root -g palmanager -m 0640 /dev/null /etc/palworld-manager/secrets.env
+sudoedit /etc/palworld-manager/secrets.env
+```
+
+Preserve as credenciais REST já existentes e adicione exatamente uma linha:
+
+```text
+DISCORD_WEBHOOK_URL='URL_DO_WEBHOOK'
+```
+
+Valide somente owner, grupo, modo, presença da variável e leitura pelo worker.
+Os comandos abaixo não exibem o valor:
+
+```bash
+sudo stat -c '%U %G %a %n' /etc/palworld-manager/secrets.env
+sudo grep -Eq '^DISCORD_WEBHOOK_URL=' /etc/palworld-manager/secrets.env
+sudo -u palmanager test -r /etc/palworld-manager/secrets.env
+```
+
+O resultado de `stat` deve ser `root palmanager 640`. Reinicie somente o
+worker para carregar o secret:
+
+```bash
+sudo systemctl restart palworld-manager-worker.service
+systemctl is-active --quiet palworld-manager-worker.service
+```
+
+### 3. Validar a entrega
+
+Entre como `ADMIN`, abra **Configurações do Painel** e solicite o teste do
+Discord. O evento deve chegar ao canal e terminar como `SENT`. Se permanecer
+pendente, confirme primeiro o heartbeat do worker; se falhar, consulte o job e o
+journal por categoria, sem imprimir o ambiente do processo nem o arquivo de
+secrets.
+
+Para rotacionar a integração, crie outro webhook, substitua a linha por
+`sudoedit`, reinicie o worker e conclua um novo teste antes de excluir o
+webhook antigo. Se a URL for exposta, exclua imediatamente o webhook no Discord.
+
 ## Entrega
 
 FastAPI ou worker podem criar um `notification_event` no SQLite. Somente o worker pode consumir o evento e entregar a mensagem ao Discord; FastAPI não acessará o webhook para envio direto.
