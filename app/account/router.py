@@ -113,6 +113,7 @@ def update_password(
             _audit_password(session, principal.user_id, AUDIT_RESULT_FAILURE, "POLICY_REJECTED")
         return _page(request, error=str(error), status_code=400)
 
+    password_reused = False
     with session_scope(_session_factory(request)) as session:
         authentication = attempt_user_login(
             session,
@@ -127,6 +128,14 @@ def update_password(
                 AUDIT_RESULT_FAILURE,
                 "CURRENT_PASSWORD_REJECTED",
             )
+        elif new_password == current_password:
+            password_reused = True
+            _audit_password(
+                session,
+                principal.user_id,
+                AUDIT_RESULT_FAILURE,
+                "NEW_PASSWORD_MATCHES_CURRENT",
+            )
         else:
             update_own_password(session, principal.user_id, new_password)
             _audit_password(session, principal.user_id, AUDIT_RESULT_SUCCESS)
@@ -137,6 +146,12 @@ def update_password(
             else "A senha atual não confere."
         )
         return _page(request, error=message, status_code=429 if authentication.blocked else 400)
+    if password_reused:
+        return _page(
+            request,
+            error="A nova senha deve ser diferente da senha atual.",
+            status_code=400,
+        )
 
     response = RedirectResponse("/login?password_changed=1", status_code=303)
     clear_authentication_cookies(response, _settings(request))

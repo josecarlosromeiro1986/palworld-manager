@@ -277,6 +277,8 @@ O administrador criado pela CLI é migrado e preservado automaticamente como
 - troca de senha invalida todas as sessões;
 - troca de senha pelo painel exige a senha atual, a nova senha e a confirmação
   exata da nova senha;
+- a nova senha deve ser diferente da senha atual, inclusive durante a troca
+  obrigatória da senha temporária;
 - a validação da senha atual usa a mesma proteção contra tentativas abusivas do
   login; após o sucesso, todas as sessões, inclusive a atual, são revogadas, os
   cookies de autenticação são removidos e o usuário retorna ao login;
@@ -313,7 +315,8 @@ Autorização é aplicada no backend por allowlist fechada:
   senha pela gestão; deve usar Minha conta;
 - o último administrador ativo não pode ser desativado nem rebaixado.
 
-Recuperação de senha somente via terminal, com CLI equivalente a:
+Recuperação de senha somente via terminal e exclusivamente para contas ADMIN,
+com CLI equivalente a:
 
 ```bash
 python -m app.cli reset-password

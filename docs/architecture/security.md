@@ -14,6 +14,7 @@ sudo para a aplicação.
 - Tailscale controla os dispositivos autorizados, sem whitelist duplicada no Manager.
 - O Manager armazena somente hashes Argon2id. A senha aceita de 6 a 1024 caracteres; o limite superior impede trabalho Argon2 desproporcional e a senha nunca é aceita como argumento de linha de comando.
 - A criação do administrador inicial e a redefinição de sua senha estão disponíveis por CLI interativa, com entrada oculta e confirmação.
+- A redefinição pela CLI aceita somente contas ADMIN; contas USER são tratadas como administrador inexistente e permanecem inalteradas.
 - A UI permite que `ADMIN` crie e gerencie contas `ADMIN`/`USER` sem exclusão física. O username é imutável e único sem distinção de maiúsculas e minúsculas.
 - As sessões são server-side no SQLite. Tokens de sessão e CSRF são aleatórios; somente seus hashes ficam no banco.
 - O cookie contém um identificador opaco. Sessões duram no máximo 8 horas e expiram após 1 hora de inatividade; logout e troca de senha as revogam.
@@ -21,6 +22,7 @@ sudo para a aplicação.
 - Cinco tentativas inválidas consecutivas para o mesmo usuário causam bloqueio por 15 minutos. Login bem-sucedido ou expiração do bloqueio reinicia a contagem.
 - O endereço de origem observado é armazenado para auditoria, mas não compõe a chave do bloqueio. Tentativas e bloqueios são auditados sem registrar senhas.
 - A troca em **Minha conta** exige a senha atual, a nova senha e sua confirmação exata. A validação da senha atual reutiliza a proteção contra tentativas abusivas do login; uma troca bem-sucedida grava somente o novo hash Argon2id, revoga inclusive a sessão atual, remove os cookies de autenticação, registra a ação sem valores sensíveis e retorna o usuário ao login.
+- A nova senha deve ser diferente da atual; repetir a senha temporária não remove a pendência de troca nem revoga a sessão.
 - Contas criadas na UI exigem troca da senha temporária no primeiro login. Até a conclusão, somente Minha conta e logout são autorizados.
 - A autorização do `USER` usa allowlist de Dashboard, Start, Restart, Stop assistido e controle do próprio countdown. Todas as outras rotas, inclusive backup, sinais forçados e energia do host, retornam 403 mesmo se chamadas diretamente.
 - Mudança de papel/status e reset administrativo revogam as sessões do alvo. Autoalteração administrativa e remoção/rebaixamento do último `ADMIN` ativo são recusadas.

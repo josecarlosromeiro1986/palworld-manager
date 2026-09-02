@@ -87,6 +87,24 @@ def test_temporary_password_blocks_all_but_account_and_logout(
     assert blocked_page.headers["location"] == "/account?password_change_required=1"
     assert blocked_action.status_code == 403
     assert account.status_code == 200
+
+    reused = client.post(
+        "/account/password",
+        data={
+            "csrf_token": _session_csrf(client),
+            "current_password": "senha-temporaria",
+            "new_password": "senha-temporaria",
+            "new_password_confirmation": "senha-temporaria",
+        },
+    )
+    assert reused.status_code == 400
+    assert "nova senha deve ser diferente" in reused.text
+
+    factory = create_session_factory(role_context.engine)
+    with session_scope(factory) as session:
+        user = session.scalar(select(User).where(User.username_key == "operador"))
+        assert user is not None
+        assert user.password_change_required is True
     assert "Altere a senha temporária" in account.text
 
     changed = client.post(

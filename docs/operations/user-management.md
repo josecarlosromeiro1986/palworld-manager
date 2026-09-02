@@ -54,13 +54,17 @@ administrador. No primeiro login, o usuário é direcionado para **Minha conta**
 até concluir a troca, somente essa página e logout são aceitos. A troca exige:
 
 1. senha atual;
-2. nova senha compatível com a política;
+2. nova senha compatível com a política e diferente da senha atual;
 3. confirmação exata da nova senha.
 
 O sucesso grava somente o hash Argon2id, remove a pendência, revoga todas as
 sessões — inclusive a atual —, limpa os cookies e retorna ao login. A senha
 temporária, a nova senha e seus hashes nunca aparecem em logs, auditoria,
 respostas ou documentação.
+
+A recuperação pela CLI reset-password é exclusiva para contas ADMIN. Informar
+o username de uma conta USER retorna administrador não encontrado e não altera
+senha, pendência ou sessões dessa conta.
 
 ## Autoria de jobs
 

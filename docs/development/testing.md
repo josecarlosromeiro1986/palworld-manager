@@ -33,6 +33,8 @@ de RBAC cobre login/username case-insensitive, senha temporária, allowlist do
 de sessões, proteção da própria conta e do último administrador ativo e autoria
 dos jobs de desligamento. Bancos temporários confirmam que senhas em texto puro
 não são persistidas nem exibidas.
+As regressões também rejeitam a reutilização da senha temporária e confirmam
+que a recuperação pela CLI preserva contas USER.
 
 Os testes de autenticação cobrem rotas privadas por padrão, login e logout, CSRF, atributos dos cookies, revogação por troca de senha e limites exatos de 8 horas totais e 1 hora de inatividade. Também verificam o bloqueio na quinta falha consecutiva, reset por sucesso ou expiração, separação por usuário, aquisição transacional sob concorrência e auditoria sem senhas. O cliente ASGI usa `httpx2`, conforme a integração suportada pelo Starlette atual.
 

@@ -56,7 +56,10 @@ def create_administrator(session: Session, username: str, password: str) -> User
 def reset_administrator_password(session: Session, username: str, password: str) -> User:
     normalized_username = normalize_username(username)
     administrator = session.scalar(
-        select(User).where(User.username_key == username_key(normalized_username))
+        select(User).where(
+            User.username_key == username_key(normalized_username),
+            User.role == UserRole.ADMIN.value,
+        )
     )
     if administrator is None:
         raise AdministratorNotFoundError("Administrador nao encontrado.")
