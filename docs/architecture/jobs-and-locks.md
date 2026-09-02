@@ -1,0 +1,74 @@
+# Jobs e locks
+
+> Status: Fila persistente, worker separado, aquisição atômica, heartbeat, recovery, logs de jobs e maintenance lock global implementados.
+
+Desligamentos, ações de ciclo de vida e energia do host, backups, restores locais/remotos, transferências do Google Drive e Updates usam jobs persistentes no SQLite. Em produção, o worker é um processo independente da aplicação web.
+
+```text
+palworld-manager.service        → FastAPI e interação web
+palworld-manager-worker.service → consumo e execução de jobs
+SQLite                          → persistência, coordenação e fila
+```
+
+O serviço web é responsável por autenticação, sessões, páginas Jinja2, HTMX, SSE, consultas, Dashboard e criação e acompanhamento de jobs. Ele não executa diretamente operações longas ou destrutivas destinadas ao worker.
+
+O worker executa as operações suportadas por handlers explícitos. `LOCAL_BACKUP` usa a chave de coordenação própria `LOCAL_BACKUP`, impedindo duas solicitações simultâneas, e exige o lock `GLOBAL` para não concorrer com operações incompatíveis. `LOCAL_RESTORE` e `REMOTE_RESTORE` compartilham a chave `LOCAL_RESTORE` contra double-submit e sobreposição, também exigem o lock `GLOBAL` e nunca são executados pela web. `DRIVE_UPLOAD`, `DRIVE_DOWNLOAD` e `DRIVE_DELETE` usam chaves por artefato e o lock global; `DRIVE_CHECK` apenas consulta conexão/quota e não toma o maintenance lock. `PALWORLD_UPDATE_CHECK` coordena somente verificações manuais e não toma o lock; `PALWORLD_UPDATE` compartilha a coordenação de lifecycle, é executado exclusivamente pelo worker e exige o lock `GLOBAL` durante verificação, backup, desligamento, SteamCMD e validação final.
+
+O primeiro consumidor implementado é o ciclo de vida do Palworld. A web cria jobs `PALWORLD_START`, `PALWORLD_STOP` e `PALWORLD_RESTART`; o worker os adquire e executa. Uma chave de coordenação com índice único parcial impede duas solicitações simultâneas do mesmo domínio, e cada job preserva o timeout vigente no momento da solicitação.
+
+O desligamento usa `PALWORLD_ASSISTED_SHUTDOWN`, `PALWORLD_FORCE_SIGTERM` e `PALWORLD_FORCE_SIGKILL` sob a mesma chave. A contagem grava progresso e pedidos de cancelamento ou execução imediata no SQLite. O worker fecha o ponto de cancelamento antes de iniciar o Stop. SIGKILL nunca é criado como consequência automática: somente uma nova requisição autenticada, após falha de SIGTERM, pode enfileirá-lo.
+
+`HOST_REBOOT` e `HOST_SHUTDOWN` usam a chave `HOST_POWER`, são não canceláveis e exigem o lock global. O worker verifica o Palworld, executa o Stop assistido imediato quando ele não está `OFFLINE` e só então solicita o comando de energia fechado. Falha no tratamento do Palworld bloqueia o comando do host.
+
+Além dos jobs, o worker é o único processo que entrega `notification_events` a
+integrações externas. FastAPI e worker podem criar esses eventos no SQLite, mas
+FastAPI não chama o Discord diretamente. O claim muda atomicamente um evento
+elegível de `PENDING` para `SENDING` e incrementa a tentativa antes do POST,
+impedindo aquisição duplicada. O loop processa no máximo um job e uma
+notificação por iteração para evitar starvation entre as filas.
+
+## Execução e observabilidade
+
+- O SQLite guarda metadados, estado, etapa, progresso, timestamps, resultado e referência ao arquivo de log.
+- Os logs textuais ficam em `jobs/<ano>/<tipo>-<id>.log`, ao lado do banco, exigem path estrutural e arquivo regular sem symlink e são retidos por 90 dias.
+- O log registra apenas mensagens operacionais controladas; detalhes de exceções e secrets não são copiados.
+- O Dashboard acompanha estado, etapa, progresso e o trecho recente do log.
+- Cada transição relevante produz auditoria consistente.
+
+No startup e depois a cada hora, o worker remove logs de jobs e eventos de auditoria com mais de 90 dias. A varredura usa somente os namespaces gerenciados; arquivos externos e entradas não regulares são preservados.
+
+A aquisição usa uma única atualização condicional no SQLite. Uma corrida real entre consumidores entrega o job a apenas um deles. O heartbeat também funciona como lease: uma identidade diferente com heartbeat de menos de 30 segundos é recusada, impedindo que um segundo processo recupere jobs de um worker ainda vivo.
+
+## Health do worker
+
+O worker não expõe servidor HTTP. Ele persiste um heartbeat no SQLite a cada 10 segundos; sua saúde combina esse timestamp com o estado e o tempo de ativação de `palworld-manager-worker.service`:
+
+```text
+systemd ativo + sem heartbeat + ativação < 30 segundos  → STARTING
+systemd ativo + sem heartbeat + ativação >= 30 segundos → UNRESPONSIVE
+systemd ativo + heartbeat < 30 segundos                  → HEALTHY
+systemd ativo + heartbeat >= 30 segundos                 → UNRESPONSIVE
+systemd inativo                                           → OFFLINE
+```
+
+O Dashboard consulta esse estado a cada 10 segundos. O `/health` continua exclusivo do serviço web.
+
+## Maintenance lock
+
+O worker adquire a linha `GLOBAL` de `maintenance_locks` na mesma transação do claim de um job incompatível. Outros jobs que exigem o lock permanecem `PENDING`; trabalhos sem lock podem continuar. O lock é liberado ao terminar e locks órfãos de jobs terminais são removidos com segurança. Backup, Restore, Update, reboot e shutdown do host usam essa coordenação; o backup pré-update ocorre dentro do lock do próprio Update. Leituras seguras, métricas, logs, verificação manual de versão e diagnósticos não dependem do lock.
+
+## Cancelamento e recuperação
+
+Contagens regressivas, backups locais, uploads e downloads independentes podem ser cancelados nos checkpoints seguros implementados. O backup local fecha o cancelamento antes da publicação atômica; transferências remotas fecham antes de publicar a cópia validada. Exclusão remota não é cancelável. Restores locais e remotos são não canceláveis desde a criação: a UI informa essa condição e nenhuma rota de cancelamento é oferecida. O Update aceita cancelamento na fila, no backup preventivo e na contagem regressiva, mas fecha o ponto antes do Stop. SteamCMD modificando arquivos, Restore substituindo saves e outras etapas de estado incerto não podem ser interrompidos pela UI.
+
+O reinício do serviço web não implica reinício do worker. Um job já em execução continuará de forma independente quando isso for seguro.
+
+Se o worker reiniciar após perder o lease anterior, localiza jobs ainda em `RUNNING`, muda cada um para `INTERRUPTED`, encerra o ponto de cancelamento, libera o lock e registra auditoria com resultado `INTERRUPTED`, além do log. Nenhum job interrompido é recolocado na fila. A UI exige revisão manual e o health atual do Palworld permite verificar o estado real antes de uma nova ação.
+
+No startup, eventos `SENDING` com uma ou duas tentativas retornam a `PENDING`
+para nova entrega; com três tentativas passam a `FAILED`. Essa reconciliação
+preserva a semântica at least once e admite duplicidade quando o Discord aceitou
+o POST antes da interrupção. Falhas transitórias usam backoff de 5 e 30 segundos
+e nunca ultrapassam três tentativas.
+
+Redis, Celery, RabbitMQ e Kafka não fazem parte da V1 porque a fila local persistida e um worker independente atendem ao escopo de uma instalação pequena, evitando serviços adicionais em produção. Consulte [SPECIFICATION.md](../../SPECIFICATION.md) para os fluxos e critérios de aceite completos.

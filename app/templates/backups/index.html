@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% block title %}Backups - Palworld Manager{% endblock %}
+{% block content %}
+<header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+  <div><p class="mb-1 text-xs font-medium text-accent">PROTEÇÃO LOCAL</p><h1 class="text-xl font-semibold text-ink sm:text-2xl">Backups</h1><p class="mt-1 text-sm text-muted">Backup diário às 04:00 no timezone configurado, com retenção de 3 arquivos válidos.</p></div>
+  <form hx-post="/backups" hx-target="#backup-job" hx-swap="innerHTML" data-confirm data-confirm-title="Criar backup agora?" data-confirm-message="O worker solicitará um salvamento seguro e criará um backup local validado." data-confirm-button="Criar backup">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="min-h-10 rounded-md bg-accent px-4 text-sm font-semibold text-canvas hover:opacity-90">Backup agora</button>
+  </form>
+</header>
+<section id="backup-job" class="mb-6" aria-live="polite">
+  {% include "backups/_job.html" %}
+</section>
+<section id="restore-job" class="mb-6" aria-live="polite">
+  {% include "restores/_job.html" %}
+</section>
+<section id="drive-job" class="mb-6" aria-live="polite" hx-get="/backups/drive/latest" hx-trigger="load" hx-swap="innerHTML"></section>
+{% include "backups/_list.html" %}
+<section id="drive-backups" hx-get="/backups/drive/list" hx-trigger="load" hx-swap="outerHTML">
+  <p class="mt-6 rounded-md border bg-surface px-4 py-8 text-center text-sm text-muted">Carregando Google Drive…</p>
+</section>
+{% endblock %}

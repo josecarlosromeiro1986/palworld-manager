@@ -1,0 +1,34 @@
+{% extends "layouts/app.html" %}
+{% block title %}Atualizações - Palworld Manager{% endblock %}
+{% block content %}
+<header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+  <div>
+    <p class="mb-1 text-xs font-medium text-accent">STEAMCMD OFICIAL</p>
+    <h1 class="text-xl font-semibold text-ink sm:text-2xl">Atualizações do Palworld</h1>
+    <p class="mt-1 text-sm text-muted">Verificação e instalação exclusivamente manuais para o App ID 2394010.</p>
+  </div>
+  <form hx-post="/updates/check" hx-target="#update-check" hx-swap="innerHTML">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="min-h-10 rounded-md border border-accent px-4 text-sm font-semibold text-accent hover:bg-accent/10">Verificar atualizações</button>
+  </form>
+</header>
+
+<section class="mb-6 rounded-md border bg-surface p-4">
+  <h2 class="text-sm font-semibold text-ink">Versões</h2>
+  <div id="update-check" class="mt-3" aria-live="polite">
+    {% with job=check_job, mode="check", job_log_lines=check_job_log_lines, error=None %}
+      {% include "updates/_job.html" %}
+    {% endwith %}
+  </div>
+</section>
+
+<section class="rounded-md border bg-surface p-4">
+  <h2 class="text-sm font-semibold text-ink">Instalação manual</h2>
+  <p class="mt-1 text-xs text-muted">O worker verifica espaço e versão novamente, cria um backup válido, avisa jogadores, para o servidor e só então executa o SteamCMD.</p>
+  <div id="update-operation" class="mt-3" aria-live="polite">
+    {% with job=update_job, mode="update", job_log_lines=update_job_log_lines, error=None %}
+      {% include "updates/_job.html" %}
+    {% endwith %}
+  </div>
+</section>
+{% endblock %}

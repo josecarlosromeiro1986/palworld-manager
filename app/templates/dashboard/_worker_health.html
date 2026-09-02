@@ -1,0 +1,23 @@
+{% set tones = {
+  "HEALTHY": "text-positive border-positive/30 bg-positive/10",
+  "STARTING": "text-accent border-accent/30 bg-accent/10",
+  "UNRESPONSIVE": "text-danger border-danger/30 bg-danger/10",
+  "OFFLINE": "text-muted border-default bg-surface-raised"
+} %}
+<article class="rounded-md border bg-surface p-3 sm:p-4" data-worker-health-state="{{ health.state.value }}">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <h2 class="text-sm font-medium text-ink">Worker</h2>
+      <p class="mt-0.5 text-xs text-muted">{{ description }}</p>
+    </div>
+    <span class="rounded-full border px-2 py-1 text-xs font-semibold {{ tones[health.state.value] }}">
+      {{ health.state.value }}
+    </span>
+  </div>
+  <p class="mt-2 text-xs text-muted">
+    systemd: {{ health.service_state | upper }}
+    {% if health.heartbeat_age_seconds is not none %}
+      · heartbeat há {{ "%.1f" | format(health.heartbeat_age_seconds) }} s
+    {% endif %}
+  </p>
+</article>

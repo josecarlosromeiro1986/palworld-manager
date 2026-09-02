@@ -1,0 +1,38 @@
+{% extends "layouts/app.html" %}
+{% from "components/icon.html" import icon with context %}
+
+{% block title %}Diagnóstico - Palworld Manager{% endblock %}
+
+{% block content %}
+<header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+  <div>
+    <p class="mb-1 text-xs font-medium text-accent">SOMENTE LEITURA</p>
+    <h1 class="text-xl font-semibold text-ink sm:text-2xl">Diagnóstico</h1>
+    <p class="mt-1 max-w-3xl text-sm text-muted">Verificações operacionais seguras do Manager, Palworld e integrações. O relatório não inclui secrets, saídas brutas ou paths estruturais.</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <button
+      type="button"
+      hx-get="/diagnostics/report"
+      hx-target="#diagnostics-report"
+      hx-swap="outerHTML"
+      hx-disabled-elt="this"
+      class="inline-flex min-h-10 items-center gap-2 rounded-md border bg-surface-raised px-3 text-sm font-medium text-accent hover:border-current disabled:cursor-wait disabled:opacity-60"
+    >
+      {{ icon("refresh-cw") }}
+      Testar novamente
+    </button>
+    <button
+      type="button"
+      data-diagnostics-copy
+      class="inline-flex min-h-10 items-center gap-2 rounded-md border bg-surface-raised px-3 text-sm font-medium text-ink hover:border-line-strong"
+    >
+      {{ icon("copy") }}
+      Copiar diagnóstico
+    </button>
+  </div>
+</header>
+
+<p class="mb-3 min-h-5 text-xs text-muted" data-diagnostics-copy-feedback aria-live="polite"></p>
+{% include "diagnostics/_report.html" %}
+{% endblock %}

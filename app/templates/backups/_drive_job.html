@@ -1,0 +1,36 @@
+{% if drive_error %}
+  <p class="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ drive_error }}</p>
+{% endif %}
+{% if drive_job %}
+  {% set terminal = drive_job.status in ["SUCCEEDED", "FAILED", "CANCELLED", "INTERRUPTED"] %}
+  {% set operation_labels = {"CHECK": "Teste do Google Drive", "UPLOAD": "Upload para Google Drive", "DOWNLOAD": "Download do Google Drive", "DELETE": "Exclusão no Google Drive"} %}
+  {% set step_labels = {"WAITING": "aguardando worker", "CHECKING_CONNECTION": "testando conexão e quota", "VALIDATING_LOCAL": "validando backup local", "CHECKING_QUOTA": "verificando quota e retenção", "UPLOADING": "enviando backup", "VERIFYING_REMOTE": "validando SHA-256 remoto", "DOWNLOADING": "baixando backup", "VALIDATING_DOWNLOAD": "validando e publicando cópia local", "DELETING_REMOTE": "removendo backup gerenciado", "COMPLETED": "concluído", "FAILED": "falhou", "CANCELLED": "cancelado", "INTERRUPTED": "interrompido"} %}
+  <article
+    data-drive-job
+    {% if not terminal %}hx-get="/backups/drive/jobs/{{ drive_job.id }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}
+    class="rounded-md border bg-surface-raised p-3"
+  >
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-medium text-ink">{{ operation_labels.get(drive_job.operation, drive_job.operation) }} · Job #{{ drive_job.id }}</p>
+        {% if drive_job.filename %}<p class="mt-1 break-all font-mono text-[10px] text-muted">{{ drive_job.filename }}</p>{% endif %}
+        <p class="mt-1 text-xs text-muted">{{ step_labels.get(drive_job.step, drive_job.step) }} · {{ drive_job.progress }}%</p>
+      </div>
+      <span class="text-xs font-semibold {% if drive_job.status == 'SUCCEEDED' %}text-positive{% elif drive_job.status in ['FAILED', 'INTERRUPTED'] %}text-danger{% elif drive_job.status == 'CANCELLED' %}text-warning{% else %}text-accent{% endif %}">{{ drive_job.status }}</span>
+    </div>
+    <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-canvas"><div class="h-full bg-accent" style="width: {{ drive_job.progress }}%"></div></div>
+    {% if drive_job.quota_free %}<p class="mt-3 text-xs text-muted">Quota: {{ drive_job.quota_used }} usados de {{ drive_job.quota_total }} · {{ drive_job.quota_free }} livres · {{ drive_job.remote_count }} objeto(s) no namespace.</p>{% endif %}
+    {% if drive_job.error %}<p class="mt-3 text-xs text-danger">A operação remota falhou de forma segura. Backups locais permaneceram intactos.</p>{% endif %}
+    {% if drive_job.is_cancellable %}
+      <form class="mt-3" hx-post="/backups/drive/jobs/{{ drive_job.id }}/cancel" hx-target="closest article[data-drive-job]" hx-swap="outerHTML" data-confirm data-confirm-key="drive-cancel-{{ drive_job.id }}" data-confirm-title="Cancelar transferência?" data-confirm-message="Cancelar no próximo ponto seguro? A cópia local será preservada." data-confirm-button="Cancelar transferência" data-confirm-tone="warning">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="min-h-9 rounded-md border px-3 text-xs font-medium text-warning hover:border-warning">Cancelar em ponto seguro</button>
+      </form>
+    {% elif not terminal %}
+      <p class="mt-3 text-xs text-warning">A operação entrou na publicação ou exclusão e não pode mais ser cancelada.</p>
+    {% endif %}
+    {% if drive_job_log_lines %}
+      <details class="mt-3" data-job-log-key="drive-{{ drive_job.id }}"><summary class="cursor-pointer text-xs text-muted">Log do job</summary><pre class="mt-2 max-h-40 overflow-auto rounded bg-canvas p-2 text-xs text-muted">{{ drive_job_log_lines | join('\n') }}</pre></details>
+    {% endif %}
+  </article>
+{% endif %}

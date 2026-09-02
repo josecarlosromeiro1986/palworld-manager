@@ -1,0 +1,59 @@
+{% if error %}
+  <p class="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning" role="alert">
+    {{ error }}
+  </p>
+{% endif %}
+{% if job %}
+  {% set action_labels = {"START": "Iniciar", "STOP": "Parar", "RESTART": "Reiniciar"} %}
+  {% set step_labels = {"WAITING": "aguardando", "EXECUTING": "executando", "COMPLETED": "concluído", "FAILED": "falhou", "INTERRUPTED": "interrompido"} %}
+  {% set terminal = job.status in ["SUCCEEDED", "FAILED", "INTERRUPTED"] %}
+  <div
+    class="rounded-md border bg-surface-raised px-3 py-2 text-sm"
+    data-lifecycle-job="{{ job.id }}"
+    data-job-status="{{ job.status }}"
+    {% if not terminal %}
+      hx-get="/dashboard/lifecycle/jobs/{{ job.id }}"
+      hx-trigger="every 1s"
+      hx-swap="outerHTML"
+    {% endif %}
+  >
+    <div class="flex items-center justify-between gap-3">
+      <p class="font-medium text-ink">{{ action_labels[job.action.value] }} servidor</p>
+      {% if job.status == "SUCCEEDED" %}
+        <span class="font-semibold text-positive">CONCLUÍDO</span>
+      {% elif job.status == "FAILED" %}
+        <span class="font-semibold text-danger">FALHOU</span>
+      {% elif job.status == "INTERRUPTED" %}
+        <span class="font-semibold text-warning">INTERROMPIDO</span>
+      {% elif job.status == "RUNNING" %}
+        <span class="font-semibold text-accent">EM EXECUÇÃO</span>
+      {% else %}
+        <span class="font-semibold text-muted">PENDENTE</span>
+      {% endif %}
+    </div>
+    {% if job.timed_out %}
+      <p class="mt-1 text-xs text-danger">O timeout configurado foi atingido.</p>
+    {% elif job.final_state %}
+      <p class="mt-1 text-xs text-muted">Estado final: {{ job.final_state }}</p>
+    {% else %}
+      <p class="mt-1 text-xs text-muted">Job #{{ job.id }} · {{ step_labels[job.step] }} · progresso {{ job.progress }}%</p>
+    {% endif %}
+    {% if job.status == "INTERRUPTED" %}
+      <p class="mt-1 text-xs text-warning">A execução não foi retomada. Verifique o estado real antes de agir novamente.</p>
+    {% endif %}
+    {% if job_log_lines %}
+      <details class="mt-2" data-job-log-key="lifecycle-{{ job.id }}">
+        <summary class="cursor-pointer text-xs text-muted">Log do job</summary>
+        <pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-surface p-2 text-xs text-muted">{{ job_log_lines | join('\n') }}</pre>
+      </details>
+    {% endif %}
+    {% if job.status == "FAILED" and job.action.value == "STOP" %}
+      <form class="mt-3 flex flex-wrap gap-2" hx-post="/dashboard/shutdown/jobs/{{ job.id }}/force/SIGTERM" hx-target="#lifecycle-feedback" hx-swap="innerHTML">
+        <label class="sr-only" for="legacy-force-term-{{ job.id }}">Digite FORCAR</label>
+        <input id="legacy-force-term-{{ job.id }}" class="rounded-md border bg-surface px-2 py-1 text-sm text-ink" name="confirmation" placeholder="Digite FORCAR" required>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="rounded-md border px-2 py-1 text-sm text-danger" type="submit">Tentar SIGTERM</button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}

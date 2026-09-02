@@ -1,0 +1,62 @@
+<section
+  id="local-backups"
+  aria-labelledby="local-backups-title"
+  class="rounded-md border bg-surface"
+  hx-get="/backups/list"
+  hx-trigger="localBackupFinished from:body"
+  hx-swap="outerHTML"
+>
+  <div class="border-b px-4 py-3">
+    <h2 id="local-backups-title" class="text-sm font-semibold text-ink">Backups locais</h2>
+    <p class="mt-1 text-xs text-muted">Somente artefatos gerenciados e validados são listados. O Restore aplica apenas mundo e configurações do Palworld.</p>
+  </div>
+  {% if backups %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[920px] text-left text-sm">
+        <thead class="text-xs text-muted">
+          <tr><th class="px-4 py-3">Arquivo</th><th class="px-4 py-3">Data</th><th class="px-4 py-3">Tamanho</th><th class="px-4 py-3">Integridade</th><th class="px-4 py-3">Job</th><th class="px-4 py-3">Ação</th></tr>
+        </thead>
+        <tbody class="divide-y">
+          {% for backup in backups %}
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">{{ backup.filename }}</td>
+              <td class="px-4 py-3 text-muted">{{ backup.created_at }}</td>
+              <td class="px-4 py-3 tabular-nums text-muted">{{ backup.size }}</td>
+              <td class="px-4 py-3"><span class="text-positive">{{ backup.status }}</span><p class="mt-1 max-w-44 truncate font-mono text-[10px] text-muted" title="SHA-256">{{ backup.sha256 }}</p></td>
+              <td class="px-4 py-3 text-muted">{% if backup.job_id %}#{{ backup.job_id }} · {% endif %}{{ backup.job_status }}</td>
+              <td class="px-4 py-3">
+                {% if backup.uploaded_to_drive %}
+                  <p class="mb-2 text-xs text-positive">Enviado ao Drive</p>
+                {% else %}
+                  <form class="mb-3" hx-post="/backups/drive/upload/{{ backup.id }}" hx-target="#drive-job" hx-swap="innerHTML" data-confirm data-confirm-key="drive-upload-{{ backup.id }}" data-confirm-title="Enviar ao Google Drive?" data-confirm-message="O worker validará novamente o backup local, verificará quota e aplicará retenção somente sobre backups remotos gerenciados." data-confirm-button="Enviar ao Drive">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="min-h-9 rounded-md border px-3 text-xs font-medium text-ink hover:border-accent">Enviar ao Drive</button>
+                  </form>
+                {% endif %}
+                <form
+                  class="flex min-w-52 flex-col gap-2"
+                  hx-post="/backups/{{ backup.id }}/restore"
+                  hx-target="#restore-job"
+                  hx-swap="innerHTML"
+                  data-confirm
+                  data-confirm-source="restore-confirmation-{{ backup.id }}"
+                  data-confirm-title="Restaurar este backup?"
+                  data-confirm-message="O worker validará tudo, criará um backup preventivo, parará o Palworld e substituirá mundo e configurações. O Manager não será restaurado e não há rollback automático."
+                  data-confirm-button="Iniciar Restore"
+                  data-confirm-tone="danger"
+                >
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <label for="restore-confirmation-{{ backup.id }}" class="text-xs text-muted">Digite <strong>RESTAURAR</strong></label>
+                  <input id="restore-confirmation-{{ backup.id }}" name="confirmation" required autocomplete="off" class="field min-h-9 px-2 py-1 text-xs" placeholder="RESTAURAR">
+                  <button type="submit" class="min-h-9 rounded-md border border-danger/40 px-3 text-xs font-semibold text-danger hover:border-danger">Restaurar</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="px-4 py-8 text-center text-sm text-muted">Nenhum backup local válido disponível.</p>
+  {% endif %}
+</section>

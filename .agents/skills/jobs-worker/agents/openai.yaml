@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jobs Worker"
+  short_description: "Jobs, worker, locks e notificações externas"
+  default_prompt: "Use $jobs-worker para implementar este fluxo persistente com concorrência e recuperação seguras."

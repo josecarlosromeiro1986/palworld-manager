@@ -1,0 +1,253 @@
+import subprocess
+from collections.abc import Sequence
+from ipaddress import ip_address
+
+import pytest
+from pydantic import SecretStr
+
+from app.config import AppEnvironment, Settings
+from app.system.host_control import (
+    SYSTEMCTL_PATH,
+    HostControlRequestError,
+    PrivilegedHostAction,
+)
+from app.system.palworld_service import (
+    FakePalworldService,
+    PalworldServiceControlError,
+    PalworldServiceQueryError,
+    PalworldSignal,
+    SystemdPalworldService,
+    create_palworld_service,
+)
+
+
+class RecordingRunner:
+    def __init__(
+        self,
+        result: subprocess.CompletedProcess[str] | None = None,
+        error: OSError | subprocess.TimeoutExpired | None = None,
+    ) -> None:
+        self.result = result
+        self.error = error
+        self.command: tuple[str, ...] | None = None
+        self.timeout_seconds: float | None = None
+
+    def __call__(
+        self,
+        command: Sequence[str],
+        *,
+        timeout_seconds: float,
+    ) -> subprocess.CompletedProcess[str]:
+        self.command = tuple(command)
+        self.timeout_seconds = timeout_seconds
+        if self.error is not None:
+            raise self.error
+        assert self.result is not None
+        return self.result
+
+
+class RecordingHostControlRequester:
+    def __init__(self, error: HostControlRequestError | None = None) -> None:
+        self.error = error
+        self.actions: list[PrivilegedHostAction] = []
+
+    def __call__(self, action: PrivilegedHostAction) -> None:
+        self.actions.append(action)
+        if self.error is not None:
+            raise self.error
+
+
+def completed_process(
+    *,
+    stdout: str,
+    returncode: int = 0,
+    stderr: str = "",
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(
+        args=[SYSTEMCTL_PATH],
+        returncode=returncode,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+
+def test_systemd_adapter_queries_only_the_configured_service() -> None:
+    runner = RecordingRunner(completed_process(stdout="active\n"))
+    service = SystemdPalworldService("palworld.service", runner=runner)
+
+    status = service.get_status()
+
+    assert status.active is True
+    assert status.source_state == "active"
+    assert runner.command == (
+        "/usr/bin/systemctl",
+        "show",
+        "--property=ActiveState",
+        "--value",
+        "palworld.service",
+    )
+    assert runner.timeout_seconds == 5.0
+
+
+@pytest.mark.parametrize("source_state", ["inactive", "failed", "activating"])
+def test_systemd_non_active_states_are_reported_as_inactive(source_state: str) -> None:
+    service = SystemdPalworldService(
+        "palworld.service",
+        runner=RecordingRunner(completed_process(stdout=f"{source_state}\n")),
+    )
+
+    status = service.get_status()
+
+    assert status.active is False
+    assert status.source_state == source_state
+
+
+@pytest.mark.parametrize(
+    "service_name",
+    [
+        "--all.service",
+        "palworld.service --no-pager",
+        "../palworld.service",
+        "palworld",
+        "other-valid.service",
+    ],
+)
+def test_systemd_adapter_rejects_untrusted_service_names(service_name: str) -> None:
+    with pytest.raises(ValueError):
+        SystemdPalworldService(service_name)
+
+
+def test_systemd_command_failure_does_not_expose_stderr() -> None:
+    private_detail = "detalhe-privado-do-host"
+    service = SystemdPalworldService(
+        "palworld.service",
+        runner=RecordingRunner(completed_process(stdout="", returncode=1, stderr=private_detail)),
+    )
+
+    with pytest.raises(PalworldServiceQueryError) as error:
+        service.get_status()
+
+    assert private_detail not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "runner_error",
+    [
+        OSError("falha local"),
+        subprocess.TimeoutExpired(cmd=[SYSTEMCTL_PATH], timeout=5),
+    ],
+)
+def test_systemd_execution_errors_become_safe_query_errors(
+    runner_error: OSError | subprocess.TimeoutExpired,
+) -> None:
+    service = SystemdPalworldService(
+        "palworld.service",
+        runner=RecordingRunner(error=runner_error),
+    )
+
+    with pytest.raises(PalworldServiceQueryError, match="Não foi possível"):
+        service.get_status()
+
+
+def test_systemd_adapter_rejects_invalid_state_output() -> None:
+    service = SystemdPalworldService(
+        "palworld.service",
+        runner=RecordingRunner(completed_process(stdout="active\nconteúdo inesperado")),
+    )
+
+    with pytest.raises(PalworldServiceQueryError, match="estado inválido"):
+        service.get_status()
+
+
+def test_fake_service_is_controllable_without_systemd() -> None:
+    service = FakePalworldService()
+
+    assert service.get_status().active is False
+    service.set_active(True)
+    assert service.get_status().active is True
+    service.stop()
+    assert service.get_status().active is False
+    service.start()
+    assert service.get_status().active is True
+    service.restart()
+    assert service.get_status().active is True
+
+
+@pytest.mark.parametrize(
+    ("action", "helper_action"),
+    [
+        ("start", "palworld-start"),
+        ("stop", "palworld-stop"),
+        ("restart", "palworld-restart"),
+    ],
+)
+def test_systemd_adapter_runs_only_supported_lifecycle_commands(
+    action: str,
+    helper_action: str,
+) -> None:
+    requester = RecordingHostControlRequester()
+    service = SystemdPalworldService(
+        "palworld.service",
+        host_control_requester=requester,
+    )
+
+    getattr(service, action)()
+
+    assert requester.actions == [PrivilegedHostAction(helper_action)]
+
+
+def test_systemd_control_failure_does_not_expose_stderr() -> None:
+    private_detail = "detalhe-privado-do-host"
+    service = SystemdPalworldService(
+        "palworld.service",
+        host_control_requester=RecordingHostControlRequester(
+            HostControlRequestError(private_detail)
+        ),
+    )
+
+    with pytest.raises(PalworldServiceControlError) as error:
+        service.restart()
+
+    assert private_detail not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    ("signal", "helper_action"),
+    [
+        (PalworldSignal.TERM, "palworld-sigterm"),
+        (PalworldSignal.KILL, "palworld-sigkill"),
+    ],
+)
+def test_systemd_adapter_signals_only_the_main_process_of_configured_unit(
+    signal: PalworldSignal,
+    helper_action: str,
+) -> None:
+    requester = RecordingHostControlRequester()
+    service = SystemdPalworldService(
+        "palworld.service",
+        host_control_requester=requester,
+    )
+
+    service.send_signal(signal)
+
+    assert requester.actions == [PrivilegedHostAction(helper_action)]
+
+
+@pytest.mark.parametrize("environment", [AppEnvironment.DEVELOPMENT, AppEnvironment.TEST])
+def test_non_production_environments_use_fake_service(environment: AppEnvironment) -> None:
+    service = create_palworld_service(Settings(environment=environment))
+
+    assert isinstance(service, FakePalworldService)
+
+
+def test_production_uses_systemd_adapter() -> None:
+    service = create_palworld_service(
+        Settings(
+            environment=AppEnvironment.PRODUCTION,
+            app_host=ip_address("127.0.0.1"),
+            palworld_rest_username=SecretStr("usuario-ficticio"),
+            palworld_rest_password=SecretStr("senha-ficticia"),
+        )
+    )
+
+    assert isinstance(service, SystemdPalworldService)

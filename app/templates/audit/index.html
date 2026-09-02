@@ -1,0 +1,112 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Histórico / Auditoria - Palworld Manager{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <p class="mb-1 text-xs font-medium text-accent">RETENÇÃO DE 90 DIAS</p>
+  <h1 class="text-xl font-semibold text-ink sm:text-2xl">Histórico / Auditoria</h1>
+  <p class="mt-1 max-w-3xl text-sm text-muted">Trilha cronológica de ações administrativas, automáticas e internas. A consulta é paginada em 50 eventos e não oferece exportação na V1.</p>
+</header>
+
+<section class="mb-5 rounded-md border bg-surface p-3 sm:p-4" aria-labelledby="audit-filters-title">
+  <h2 id="audit-filters-title" class="mb-3 text-sm font-semibold text-ink">Filtros</h2>
+  {% if filter_error %}
+    <p class="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ filter_error }}</p>
+  {% endif %}
+  <form method="get" action="/audit" class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <label class="text-xs font-medium text-muted">Data inicial
+      <input type="date" name="date_from" value="{{ history.filters.date_from.isoformat() if history.filters.date_from else '' }}" class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink">
+    </label>
+    <label class="text-xs font-medium text-muted">Data final
+      <input type="date" name="date_to" value="{{ history.filters.date_to.isoformat() if history.filters.date_to else '' }}" class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink">
+    </label>
+    <label class="text-xs font-medium text-muted">Ação
+      <select name="action" class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 font-mono text-sm text-ink">
+        <option value="">Todas</option>
+        {% for action in history.actions %}<option value="{{ action }}" {% if history.filters.action == action %}selected{% endif %}>{{ action }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-xs font-medium text-muted">Resultado
+      <select name="result" class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink">
+        <option value="">Todos</option>
+        {% for value, label in [("SUCCESS", "Sucesso"), ("FAILURE", "Falha"), ("CANCELLED", "Cancelada"), ("INTERRUPTED", "Interrompida")] %}<option value="{{ value }}" {% if history.filters.result == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-xs font-medium text-muted">Origem
+      <select name="origin" class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink">
+        <option value="">Todas</option>
+        {% for value, label in [("ADMINISTRATOR", "Administrador"), ("AUTOMATIC", "Automático"), ("SYSTEM", "Sistema")] %}<option value="{{ value }}" {% if history.filters.origin == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-xs font-medium text-muted">Usuário
+      <select name="user_id" class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink">
+        <option value="">Todos</option>
+        {% for user in history.users %}<option value="{{ user.id }}" {% if history.filters.user_id == user.id %}selected{% endif %}>{{ user.username }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-xs font-medium text-muted md:col-span-2">Alvo
+      <input type="search" name="target" value="{{ history.filters.target or '' }}" maxlength="255" placeholder="Nome, recurso ou operação" class="mt-1.5 min-h-10 w-full rounded-md border bg-canvas px-3 text-sm text-ink">
+    </label>
+    <div class="flex flex-wrap items-end gap-2 md:col-span-2 xl:col-span-4">
+      <button type="submit" class="inline-flex min-h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-canvas hover:opacity-90">Aplicar filtros</button>
+      <a href="/audit" class="inline-flex min-h-10 items-center rounded-md border bg-surface-raised px-4 text-sm font-medium text-ink hover:border-line-strong">Limpar</a>
+    </div>
+  </form>
+</section>
+
+<section class="rounded-md border bg-surface" aria-labelledby="audit-results-title">
+  <div class="flex flex-col gap-1 border-b px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+    <h2 id="audit-results-title" class="text-sm font-semibold text-ink">Eventos</h2>
+    <p class="text-xs text-muted">{{ history.total_items }} evento(s) • página {{ history.page }} de {{ history.total_pages }} • {{ history.timezone_name }}</p>
+  </div>
+  {% if history.events %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[1050px] text-left text-xs">
+        <thead class="border-b bg-surface-raised text-muted">
+          <tr>
+            <th class="px-3 py-2 font-medium">Data/hora</th>
+            <th class="px-3 py-2 font-medium">Ação</th>
+            <th class="px-3 py-2 font-medium">Resultado</th>
+            <th class="px-3 py-2 font-medium">Origem</th>
+            <th class="px-3 py-2 font-medium">Usuário</th>
+            <th class="px-3 py-2 font-medium">Alvo</th>
+            <th class="px-3 py-2 font-medium">Detalhes</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {% for event in history.events %}
+            <tr data-audit-event="{{ event.id }}" data-audit-action="{{ event.action }}" data-audit-result="{{ event.result }}" data-audit-origin="{{ event.origin }}" class="align-top">
+              <td class="whitespace-nowrap px-3 py-3 text-muted"><time datetime="{{ event.occurred_at_iso }}">{{ event.occurred_at_display }}</time></td>
+              <td class="px-3 py-3 font-mono text-ink">{{ event.action }}</td>
+              <td class="px-3 py-3"><span class="rounded-full border px-2 py-1 font-semibold {% if event.result == 'SUCCESS' %}border-positive/30 bg-positive/10 text-positive{% elif event.result == 'FAILURE' %}border-danger/30 bg-danger/10 text-danger{% else %}border-warning/30 bg-warning/10 text-warning{% endif %}">{{ event.result_label }}</span></td>
+              <td class="px-3 py-3 text-ink">{{ event.origin_label }}</td>
+              <td class="px-3 py-3 text-ink">{{ event.username }}</td>
+              <td class="max-w-64 break-words px-3 py-3 text-ink">{{ event.target }}</td>
+              <td class="w-72 px-3 py-3">
+                {% if event.reason or event.duration or event.details or event.job_id %}
+                  <details>
+                    <summary class="cursor-pointer text-accent">Ver detalhes</summary>
+                    <dl class="mt-2 space-y-1 text-muted">
+                      {% if event.reason %}<div><dt class="inline font-medium text-ink">Motivo:</dt> <dd class="inline break-words">{{ event.reason }}</dd></div>{% endif %}
+                      {% if event.duration %}<div><dt class="inline font-medium text-ink">Duração:</dt> <dd class="inline">{{ event.duration }}</dd></div>{% endif %}
+                      {% if event.job_id %}<div><dt class="inline font-medium text-ink">Job:</dt> <dd class="inline font-mono">#{{ event.job_id }}</dd></div>{% endif %}
+                    </dl>
+                    {% if event.details %}<pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-canvas p-2 text-[11px] text-muted">{{ event.details }}</pre>{% endif %}
+                  </details>
+                {% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="px-4 py-8 text-center text-sm text-muted">Nenhum evento corresponde aos filtros informados.</p>
+  {% endif %}
+  <nav class="flex items-center justify-between gap-3 border-t px-3 py-3 sm:px-4" aria-label="Paginação da auditoria">
+    {% if history.previous_url %}<a href="{{ history.previous_url }}" rel="prev" class="inline-flex min-h-9 items-center rounded-md border bg-surface-raised px-3 text-sm text-ink hover:border-line-strong">Anterior</a>{% else %}<span></span>{% endif %}
+    {% if history.next_url %}<a href="{{ history.next_url }}" rel="next" class="inline-flex min-h-9 items-center rounded-md border bg-surface-raised px-3 text-sm text-ink hover:border-line-strong">Próxima</a>{% endif %}
+  </nav>
+</section>
+{% endblock %}

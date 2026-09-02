@@ -1,0 +1,10 @@
+{% if drive_test %}
+  {% set terminal = drive_test.status in ['SUCCEEDED', 'FAILED', 'CANCELLED', 'INTERRUPTED'] %}
+  <div {% if not terminal %}hx-get='/manager-settings/drive-tests/{{ drive_test.id }}' hx-trigger='every 1s' hx-swap='outerHTML'{% endif %} class='rounded-md border bg-surface p-3'>
+    <p class='text-xs font-medium {% if drive_test.status == 'SUCCEEDED' %}text-positive{% elif drive_test.status in ['FAILED', 'INTERRUPTED'] %}text-danger{% else %}text-accent{% endif %}'>Job #{{ drive_test.id }} · {{ drive_test.status }}</p>
+    {% if drive_test.quota_free %}<p class='mt-1 text-xs text-muted'>{{ drive_test.quota_free }} livres · {{ drive_test.remote_count }} objeto(s) gerenciado(s).</p>{% endif %}
+    {% if drive_test.error %}<p class='mt-1 text-xs text-danger'>O teste falhou de forma segura.</p>{% endif %}
+  </div>
+{% else %}
+  <p class='text-xs text-muted'>Nenhum teste solicitado.</p>
+{% endif %}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Privileged Operations"
+  short_description: "Operações de host com privilégios mínimos"
+  default_prompt: "Use $privileged-operations para revisar esta operação sensível com menor privilégio."

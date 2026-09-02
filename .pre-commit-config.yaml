@@ -1,0 +1,23 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Ruff lint
+        entry: ruff check .
+        language: system
+        pass_filenames: false
+      - id: ruff-format-check
+        name: Ruff format
+        entry: ruff format --check .
+        language: system
+        pass_filenames: false
+      - id: mypy
+        name: Mypy
+        entry: mypy
+        language: system
+        pass_filenames: false
+      - id: frontend-check
+        name: Frontend assets
+        entry: npm run check
+        language: system
+        pass_filenames: false

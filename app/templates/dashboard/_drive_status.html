@@ -1,0 +1,17 @@
+<article class="rounded-md border bg-surface p-3 sm:p-4">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-sm font-medium text-ink">Google Drive</h2>
+      {% if drive_status %}
+        <p class="mt-0.5 text-xs text-muted">Última operação: {{ drive_status.operation }} · Job #{{ drive_status.id }}</p>
+        {% if drive_status.quota_free %}<p class="mt-1 text-xs text-muted">{{ drive_status.quota_free }} livres de {{ drive_status.quota_total }}</p>{% endif %}
+      {% else %}
+        <p class="mt-0.5 text-xs text-muted">Ainda não testado pelo worker</p>
+      {% endif %}
+    </div>
+    <div class="flex items-center gap-3">
+      {% if drive_status %}<span class="text-xs font-semibold {% if drive_status.status == 'SUCCEEDED' %}text-positive{% elif drive_status.status in ['FAILED', 'INTERRUPTED'] %}text-danger{% elif drive_status.status == 'CANCELLED' %}text-warning{% else %}text-accent{% endif %}">{{ drive_status.status }}</span>{% else %}<span class="text-xs font-semibold text-muted">NÃO TESTADO</span>{% endif %}
+      <a href="/backups" class="text-xs font-medium text-accent hover:underline">Abrir backups</a>
+    </div>
+  </div>
+</article>

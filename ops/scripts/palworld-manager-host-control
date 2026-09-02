@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+umask 077
+
+[[ $# -eq 1 ]] || exit 64
+
+request_file="/run/palworld-manager/host-control/$1.request"
+
+case "$1" in
+    palworld-start)
+        command=(/usr/bin/systemctl --no-block start palworld.service)
+        ;;
+    palworld-stop)
+        command=(/usr/bin/systemctl --no-block stop palworld.service)
+        ;;
+    palworld-restart)
+        command=(/usr/bin/systemctl --no-block restart palworld.service)
+        ;;
+    palworld-sigterm)
+        command=(/usr/bin/systemctl kill --kill-whom=main --signal=SIGTERM palworld.service)
+        ;;
+    palworld-sigkill)
+        command=(/usr/bin/systemctl kill --kill-whom=main --signal=SIGKILL palworld.service)
+        ;;
+    host-reboot)
+        command=(/usr/bin/systemctl --no-block reboot)
+        ;;
+    host-poweroff)
+        command=(/usr/bin/systemctl --no-block poweroff)
+        ;;
+    *)
+        exit 64
+        ;;
+esac
+
+[[ -f "$request_file" && ! -L "$request_file" ]] || exit 66
+[[ "$(/usr/bin/stat --format='%U:%G:%a:%s' -- "$request_file")" == \
+    "palmanager:palmanager:600:0" ]] || exit 66
+/bin/rm -- "$request_file"
+
+exec "${command[@]}"

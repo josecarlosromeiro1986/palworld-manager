@@ -1,0 +1,38 @@
+<dialog
+  data-confirmation-modal
+  class="confirmation-modal w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-lg border bg-surface p-0 text-ink shadow-2xl"
+  aria-labelledby="confirmation-modal-title"
+  aria-describedby="confirmation-modal-description"
+>
+  <div class="border-b px-5 py-4">
+    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Confirmação</p>
+    <h2 id="confirmation-modal-title" data-confirmation-modal-title class="mt-1 text-lg font-semibold">
+      Confirmar ação?
+    </h2>
+    <p id="confirmation-modal-description" data-confirmation-modal-description class="mt-1 text-sm text-muted">
+      Revise os detalhes antes de continuar.
+    </p>
+  </div>
+  <div class="px-5 py-4">
+    <p data-confirmation-modal-preview-label class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+      Ação solicitada
+    </p>
+    <pre data-confirmation-modal-preview class="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-canvas p-3 font-sans text-sm text-ink"></pre>
+  </div>
+  <div class="flex flex-col-reverse gap-2 border-t bg-canvas/40 px-5 py-4 sm:flex-row sm:justify-end">
+    <button
+      type="button"
+      data-confirmation-modal-cancel
+      class="min-h-10 rounded-md border px-4 text-sm font-semibold text-muted hover:bg-surface-raised hover:text-ink"
+    >
+      Cancelar
+    </button>
+    <button
+      type="button"
+      data-confirmation-modal-confirm
+      class="confirmation-modal-confirm min-h-10 rounded-md px-4 text-sm font-semibold"
+    >
+      Confirmar
+    </button>
+  </div>
+</dialog>

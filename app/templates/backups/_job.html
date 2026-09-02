@@ -1,0 +1,33 @@
+{% if error %}
+  <p class="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
+{% endif %}
+{% if job %}
+  {% set terminal = job.status in ["SUCCEEDED", "FAILED", "CANCELLED", "INTERRUPTED"] %}
+  {% set step_labels = {"WAITING": "aguardando worker", "CHECKING_SERVER": "validando estado do servidor", "SAFE_SAVE": "solicitando salvamento seguro", "OFFLINE_SNAPSHOT": "servidor offline; preparando cópia direta", "COPYING_WORLD": "copiando mundo", "COPYING_DATABASE": "copiando banco", "BUILDING_MANIFEST": "criando manifest", "COMPRESSING": "compactando", "VALIDATING": "validando integridade", "PUBLISHING": "publicando", "COMPLETED": "concluído", "FAILED": "falhou", "CANCELLED": "cancelado", "INTERRUPTED": "interrompido"} %}
+  <article
+    data-backup-job
+    {% if not terminal %}hx-get="/backups/jobs/{{ job.id }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}
+    class="rounded-md border bg-surface-raised p-3"
+  >
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <p class="text-sm font-medium text-ink">Backup {{ "automático" if job.trigger == "AUTOMATIC" else "manual" }} · Job #{{ job.id }}</p>
+        <p class="mt-1 text-xs text-muted">{{ step_labels.get(job.step, job.step) }} · {{ job.progress }}%</p>
+      </div>
+      <span class="text-xs font-semibold {% if job.status == 'SUCCEEDED' %}text-positive{% elif job.status in ['FAILED', 'INTERRUPTED'] %}text-danger{% elif job.status == 'CANCELLED' %}text-warning{% else %}text-accent{% endif %}">{{ job.status }}</span>
+    </div>
+    <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-canvas"><div class="h-full bg-accent" style="width: {{ job.progress }}%"></div></div>
+    {% if job.error %}<p class="mt-3 text-xs text-danger">O backup falhou de forma segura e nenhum artefato válido foi registrado.</p>{% endif %}
+    {% if job.is_cancellable %}
+      <form class="mt-3" hx-post="/backups/jobs/{{ job.id }}/cancel" hx-target="closest article[data-backup-job]" hx-swap="outerHTML" data-confirm data-confirm-key="backup-cancel-{{ job.id }}" data-confirm-title="Cancelar backup?" data-confirm-message="Cancelar o backup no próximo ponto seguro?" data-confirm-button="Cancelar backup" data-confirm-tone="warning">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="min-h-9 rounded-md border px-3 text-xs font-medium text-warning hover:border-warning">Cancelar em ponto seguro</button>
+      </form>
+    {% elif not terminal %}
+      <p class="mt-3 text-xs text-warning">O backup entrou na publicação atômica e não pode mais ser cancelado.</p>
+    {% endif %}
+    {% if job_log_lines %}
+      <details class="mt-3" data-job-log-key="backup-{{ job.id }}"><summary class="cursor-pointer text-xs text-muted">Log do job</summary><pre class="mt-2 max-h-40 overflow-auto rounded bg-canvas p-2 text-xs text-muted">{{ job_log_lines | join('\n') }}</pre></details>
+    {% endif %}
+  </article>
+{% endif %}
