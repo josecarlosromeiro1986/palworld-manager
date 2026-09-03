@@ -561,6 +561,7 @@ run_transient() {
         --property=EnvironmentFile="${MANAGER_ENV}" \
         --property=EnvironmentFile="${SECRETS_ENV}" \
         --property=NoNewPrivileges=yes \
+        --property=PrivateTmp=yes \
         --property=ProtectSystem=strict \
         --property=ReadWritePaths=/var/lib/palworld-manager \
         "$@"

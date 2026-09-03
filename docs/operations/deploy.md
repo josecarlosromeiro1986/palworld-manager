@@ -59,7 +59,9 @@ O script:
 11. ativa o candidato, instala dependências/assets/configuração e normaliza
     ownership e permissões;
 12. valida a configuração e aplica `alembic upgrade head` por transient
-    services não-root com os EnvironmentFiles protegidos;
+    services não-root com os EnvironmentFiles protegidos, `ProtectSystem=strict`
+    e um `PrivateTmp=yes` gravável e isolado para arquivos temporários do
+    SQLite;
 13. reinicia e valida web e worker separadamente.
 
 O staging é removido ao sair. Essa limpeza não altera o commit ativo, não executa
@@ -148,6 +150,12 @@ sudo stat -c '%U %G %a %n' /etc/palworld-manager/secrets.env /var/lib/palworld-m
 
 Não mostre conteúdo de EnvironmentFiles, rclone ou secrets. Não inicie serviços
 se migrations, configuração ou ownership permanecerem incertos.
+
+Um `disk I/O error` durante um `batch_alter_table` pode indicar que o SQLite
+não recebeu uma área temporária gravável dentro do sandbox. Não repita a
+migration nem restaure o banco automaticamente. Preserve um snapshot íntegro,
+confirme que a revisão não avançou e verifique se o `run_transient` do comando
+estável contém `PrivateTmp=yes` antes de uma nova tentativa.
 
 ## Rollback manual
 

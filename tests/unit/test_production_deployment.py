@@ -233,6 +233,7 @@ def test_initial_transient_services_preserve_manager_file_modes() -> None:
     content = _read(PRODUCTION_INSTALL)
 
     assert content.count("--property=UMask=0027") == 2
+    assert content.count("--property=PrivateTmp=yes") == 2
     assert "'palmanager:palmanager:640'" in content
     assert "sqlite3 -readonly /var/lib/palworld-manager/manager.db" in content
 
