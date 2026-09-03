@@ -149,6 +149,9 @@ def test_migrations_and_config_use_protected_transient_service() -> None:
     assert '--property=EnvironmentFile="${MANAGER_ENV}"' in script
     assert '--property=EnvironmentFile="${SECRETS_ENV}"' in script
     assert "--property=NoNewPrivileges=yes" in script
+    assert "--property=PrivateTmp=yes" in script
+    assert "--property=ProtectSystem=strict" in script
+    assert "--property=ReadWritePaths=/var/lib/palworld-manager" in script
     assert '"${APP_DIR}/.venv/bin/alembic" upgrade head' in script
     assert "PALWORLD_REST_PASSWORD=" not in script
     assert "DISCORD_WEBHOOK_URL=" not in script

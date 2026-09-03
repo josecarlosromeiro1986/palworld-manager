@@ -343,6 +343,7 @@ sudo systemd-run --quiet --wait --pipe --collect \
   --property=User=palmanager \
   --property=Group=palmanager \
   --property=UMask=0027 \
+  --property=PrivateTmp=yes \
   --property=WorkingDirectory=/opt/palworld-manager \
   --property=EnvironmentFile=/etc/palworld-manager/manager.env \
   --property=EnvironmentFile=/etc/palworld-manager/secrets.env \
@@ -371,6 +372,7 @@ sudo systemd-run --quiet --wait --pty --collect \
   --property=User=palmanager \
   --property=Group=palmanager \
   --property=UMask=0027 \
+  --property=PrivateTmp=yes \
   --property=WorkingDirectory=/opt/palworld-manager \
   --property=EnvironmentFile=/etc/palworld-manager/manager.env \
   --property=EnvironmentFile=/etc/palworld-manager/secrets.env \
