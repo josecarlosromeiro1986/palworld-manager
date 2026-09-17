@@ -6,9 +6,18 @@ O painel **Configurações do Palworld** lê o caminho estrutural definido por `
 
 ## Definições versionadas
 
-As definições ficam no código do projeto e registram a versão `1.0.3` da [documentação oficial de parâmetros](https://docs.palworldgame.com/settings-and-operation/configuration/). Não há scraping nem atualização automática em runtime.
+As definições ficam no código do projeto e registram a versão `1.0.4` da
+[documentação oficial de parâmetros](https://docs.palworldgame.com/settings-and-operation/configuration/),
+com os escalares complementares de PvP confirmados no
+[guia oficial de PvP](https://docs.palworldgame.com/settings-and-operation/pvp/).
+Não há scraping nem atualização automática em runtime.
 
 O formulário apresenta apenas chaves presentes no arquivo e suportadas pelo schema local. Booleanos, inteiros, números, textos e enums são validados pelo backend. Limites numéricos específicos só são aplicados quando constam na referência oficial; portas usam o intervalo técnico de 1 a 65535.
+
+O schema `1.0.4` cobre os campos escalares documentados de desempenho,
+administração, recursos, PvP e balanceamento. Parâmetros reservados, removidos ou
+sem semântica publicada na referência vigente continuam fora da allowlist e são
+preservados sem edição.
 
 As seguintes regras reduzem o risco de alterar uma configuração que ganhou semântica nova no Palworld:
 
@@ -16,7 +25,11 @@ As seguintes regras reduzem o risco de alterar uma configuração que ganhou sem
 - chaves fora do schema são sinalizadas somente pelo nome, nunca editadas e preservadas;
 - entradas que não possam ser interpretadas permanecem intactas;
 - chaves conhecidas duplicadas ou com valor incompatível ficam bloqueadas para edição;
-- estruturas compostas reconhecidas, como `CrossplayPlatforms`, permanecem somente leitura nesta versão;
+- estruturas compostas reconhecidas, como `CrossplayPlatforms`,
+  `DenyTechnologyList` e `AdditionalDropItemWhenPlayerKillingInPvPMode`,
+  permanecem somente leitura nesta versão;
+- `AllowConnectPlatform`, indisponível na versão oficial vigente, é reconhecido
+  apenas para preservação;
 - `AdminPassword` e `ServerPassword` são reconhecidas como sensíveis, mas seus valores não aparecem na interface nem entram na auditoria.
 
 ## Leitura e gravação conservadoras

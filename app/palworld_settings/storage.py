@@ -19,6 +19,8 @@ FAKE_PALWORLD_SETTINGS = (
     'ServerDescription="Ambiente simulado",'
     "ServerPlayerMaxNum=32,RESTAPIEnabled=True,RESTAPIPort=8212,"
     "RCONEnabled=False,RCONPort=25575,ExpRate=1.000000,"
+    "bHardcore=False,BuildObjectDamageRate=1.000000,"
+    'DenyTechnologyList=("PALBOX","RepairBench"),'
     'PalCaptureRate=1.000000,AdminPassword="valor-fake-nao-exibir",'
     'FutureSetting=(Mode="Preserve,Me"))\n'
 )

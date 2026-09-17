@@ -810,6 +810,14 @@ o usuário existente migra para `ADMIN`; `USER` acessa somente Dashboard/Minha
 conta e as ações permitidas; bypass direto recebe 403; sessões e último
 administrador ativo são protegidos. Commit: `feat: add user roles and access control`.
 
+### Etapa 33 — Schema Palworld 1.0.4
+Atualizar a allowlist do editor INI com os campos escalares documentados na
+referência oficial `1.0.4`, mantendo estruturas compostas, parâmetros
+reservados/depreciados e valores sensíveis sem edição. **Aceite:** escalares
+reconhecidos são editáveis e validados; compostos e desconhecidos permanecem
+inalterados; backup pré-save, conflito, auditoria e Restart continuam
+preservados. Commit: `feat: update palworld settings schema`.
+
 ## 42. Testes
 
 Unitários: health states do Palworld e worker, inclusive ausência inicial de heartbeat, config, retenção, quota, locks, cancelamento, INI, auth, timeouts, auditoria e estados/retries de notificação.
