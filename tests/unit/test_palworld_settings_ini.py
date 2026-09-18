@@ -7,7 +7,12 @@ import pytest
 from pydantic import SecretStr
 
 from app.config import AppEnvironment, Settings
-from app.palworld_settings.definitions import SETTING_DEFINITIONS_BY_KEY
+from app.palworld_settings.definitions import (
+    PALWORLD_SETTINGS_SCHEMA_VERSION,
+    SETTING_DEFINITIONS,
+    SETTING_DEFINITIONS_BY_KEY,
+    SettingKind,
+)
 from app.palworld_settings.ini import (
     IniParseError,
     SettingValueError,
@@ -68,15 +73,107 @@ def test_parser_rejects_ambiguous_or_malformed_structure(content: str) -> None:
 def test_typed_values_use_only_documented_limits() -> None:
     base_limit = SETTING_DEFINITIONS_BY_KEY["BaseCampMaxNumInGuild"]
     sync_distance = SETTING_DEFINITIONS_BY_KEY["ServerReplicatePawnCullDistance"]
+    fishing_difficulty = SETTING_DEFINITIONS_BY_KEY["FishingDifficultyRate"]
     log_format = SETTING_DEFINITIONS_BY_KEY["LogFormatType"]
 
     assert parse_setting_value(base_limit, "10") == "10"
     assert parse_setting_value(sync_distance, "5000.0") == "5000.0"
+    assert parse_setting_value(fishing_difficulty, "0.1") == "0.1"
+    assert parse_setting_value(fishing_difficulty, "1.0") == "1.0"
     assert parse_setting_value(log_format, "Json") == "Json"
     with pytest.raises(SettingValueError, match="menor ou igual"):
         parse_setting_value(base_limit, "11")
+    with pytest.raises(SettingValueError, match="maior ou igual"):
+        parse_setting_value(fishing_difficulty, "0.09")
+    with pytest.raises(SettingValueError, match="menor ou igual"):
+        parse_setting_value(fishing_difficulty, "1.01")
     with pytest.raises(SettingValueError, match="opção inválida"):
         parse_setting_value(log_format, "Xml")
+
+
+def test_schema_1_0_4_recognizes_documented_scalar_fields_conservatively() -> None:
+    boolean_fields = {
+        "bAdditionalDropItemWhenPlayerKillingInPvPMode",
+        "bAllowEnemyCampSpawnNearBaseCamp",
+        "bAllowEnhanceStat_Attack",
+        "bAllowEnhanceStat_Health",
+        "bAllowEnhanceStat_Stamina",
+        "bAllowEnhanceStat_Weight",
+        "bAllowEnhanceStat_WorkSpeed",
+        "bAllowGlobalPalboxExport",
+        "bAllowGlobalPalboxImport",
+        "bAutoResetGuildNoOnlinePlayers",
+        "bBuildAreaLimit",
+        "bCanPickupOtherGuildDeathPenaltyDrop",
+        "bCharacterRecreateInHardcore",
+        "bDisplayPvPItemNumOnWorldMap_BaseCamp",
+        "bDisplayPvPItemNumOnWorldMap_Player",
+        "bEnableAimAssistPad",
+        "bEnableDefenseOtherGuildPlayer",
+        "bEnableFastTravelOnlyBaseCamp",
+        "bEnablePlayerToPlayerDamage",
+        "bExistPlayerAfterLogout",
+        "bHardcore",
+        "bInvisibleOtherGuildBaseCampAreaFX",
+        "bIsRandomizerPalLevelRandom",
+        "bIsStartLocationSelectByMap",
+        "bPalLost",
+    }
+    number_fields = {
+        "AdditionalDropItemNumWhenPlayerKillingInPvPMode",
+        "AutoResetGuildTimeNoOnlinePlayers",
+        "BlockRespawnTime",
+        "BuildObjectDamageRate",
+        "BuildObjectDeteriorationDamageRate",
+        "CollectionDropRate",
+        "CollectionObjectHpRate",
+        "CollectionObjectRespawnSpeedRate",
+        "EnemyDropItemRate",
+        "EquipmentDurabilityDamageRate",
+        "FishingDifficultyRate",
+        "GuildRejoinCooldownMinutes",
+        "ItemContainerForceMarkDirtyInterval",
+        "ItemCorruptionMultiplier",
+        "ItemWeightRate",
+        "MonsterFarmActionSpeedRate",
+        "PalAutoHPRegeneRate",
+        "PalAutoHpRegeneRateInSleep",
+        "PalStaminaDecreaceRate",
+        "PalStomachDecreaceRate",
+        "PlayerAutoHPRegeneRate",
+        "PlayerAutoHpRegeneRateInSleep",
+        "PlayerStaminaDecreaceRate",
+        "PlayerStomachDecreaceRate",
+        "RespawnPenaltyDurationThreshold",
+        "RespawnPenaltyTimeScale",
+        "VoiceChatMaxVolumeDistance",
+        "VoiceChatZeroVolumeDistance",
+    }
+
+    assert PALWORLD_SETTINGS_SCHEMA_VERSION == "1.0.4"
+    assert len(SETTING_DEFINITIONS) == len(SETTING_DEFINITIONS_BY_KEY)
+    assert all(
+        SETTING_DEFINITIONS_BY_KEY[key].kind is SettingKind.BOOLEAN for key in boolean_fields
+    )
+    assert all(SETTING_DEFINITIONS_BY_KEY[key].kind is SettingKind.NUMBER for key in number_fields)
+    assert all(
+        SETTING_DEFINITIONS_BY_KEY[key].kind is SettingKind.READ_ONLY
+        for key in (
+            "AdditionalDropItemWhenPlayerKillingInPvPMode",
+            "AllowConnectPlatform",
+            "CrossplayPlatforms",
+            "DenyTechnologyList",
+        )
+    )
+    assert all(
+        key not in SETTING_DEFINITIONS_BY_KEY
+        for key in (
+            "AutoSaveSpan",
+            "AutoTransferMasterCheckIntervalSeconds",
+            "BuildingNameDisplayCacheTTLSeconds",
+            "MaxGuildsPerFrame",
+        )
+    )
 
 
 def test_real_storage_creates_exact_backup_before_atomic_replace(tmp_path: Path) -> None:

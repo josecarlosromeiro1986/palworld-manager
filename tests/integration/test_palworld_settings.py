@@ -93,10 +93,15 @@ def test_settings_page_is_private_and_masks_sensitive_values(
 
     assert response.status_code == 200
     assert "Configurações do Palworld" in response.text
-    assert "Referência oficial 1.0.3" in response.text
+    assert "Referência oficial 1.0.4" in response.text
     assert "FutureSetting" in response.text
+    assert 'name="setting__bHardcore"' in response.text
+    assert 'name="setting__BuildObjectDamageRate"' in response.text
+    assert "Tecnologias bloqueadas" in response.text
+    assert 'name="setting__DenyTechnologyList"' not in response.text
     assert "valor-fake-nao-exibir" not in response.text
     assert "Valor sensível ocultado" in response.text
+    assert "Estrutura reconhecida e preservada sem edição" in response.text
     assert 'action="/palworld-settings"' in response.text
     assert "data-confirm" in response.text
     assert "hx-confirm" not in response.text
@@ -148,11 +153,36 @@ def test_save_requires_csrf_creates_backup_and_audits_only_field_names(
     assert event.target == "PalWorldSettings.ini"
     assert event.details == {
         "changed_fields": ["ServerName"],
-        "schema_version": "1.0.3",
+        "schema_version": "1.0.4",
         "backup_name": backup_name,
     }
     assert "Principal" not in str(event.details)
     assert "valor-fake-nao-exibir" not in str(event.details)
+
+
+def test_save_updates_new_scalar_fields_and_preserves_compound_values(
+    settings_context: SettingsContext,
+) -> None:
+    csrf = _login(settings_context.client)
+    snapshot = settings_context.service.load()
+    form = _editable_form(snapshot, csrf)
+    form["setting__bHardcore"] = "True"
+    form["setting__BuildObjectDamageRate"] = "1.5"
+
+    response = settings_context.client.post("/palworld-settings", data=form)
+
+    assert response.status_code == 200
+    assert "bHardcore=True" in settings_context.storage.content
+    assert "BuildObjectDamageRate=1.5" in settings_context.storage.content
+    assert 'DenyTechnologyList=("PALBOX","RepairBench")' in settings_context.storage.content
+    with session_scope(create_session_factory(settings_context.engine)) as session:
+        event = session.scalar(
+            select(AuditEvent).where(AuditEvent.action == "PALWORLD_SETTINGS_UPDATE")
+        )
+    assert event is not None
+    assert event.details is not None
+    assert event.details["changed_fields"] == ["bHardcore", "BuildObjectDamageRate"]
+    assert event.details["schema_version"] == "1.0.4"
 
 
 def test_unknown_or_invalid_fields_never_modify_ini(settings_context: SettingsContext) -> None:

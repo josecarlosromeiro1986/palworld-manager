@@ -38,11 +38,12 @@ Nenhuma etapa em andamento.
 - Etapa 30 — deploy.sh + rollback.
 - Etapa 31 — Hardening e V1 `1.0.0`.
 - Etapa 32 — Usuários e controle de acesso.
+- Etapa 33 — Schema Palworld `1.0.4`.
 
 ## Próxima etapa
 
-Nenhuma. A V1 `1.0.0` e a Etapa 32 pós-V1 estão concluídas; novos trabalhos
-exigem instrução específica.
+Nenhuma. A V1 `1.0.0` e as Etapas 32 e 33 pós-V1 estão concluídas; novos
+trabalhos exigem instrução específica.
 
 ## Observações
 
